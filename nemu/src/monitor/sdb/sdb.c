@@ -15,6 +15,7 @@
 
 #include <isa.h>
 #include <cpu/cpu.h>
+#include <memory/vaddr.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
@@ -42,17 +43,23 @@ static char* rl_gets() {
   return line_read;
 }
 
-static int cmd_c(char *args) {
-  cpu_exec(-1);
-  return 0;
-}
+static int cmd_c(char *args);
 
-
-static int cmd_q(char *args) {
-  return -1;
-}
+static int cmd_q(char *args);
 
 static int cmd_help(char *args);
+
+static int cmd_si(char *args);
+
+static int cmd_info(char *args);
+
+static int cmd_x(char *args);
+
+static int cmd_p(char *args);
+
+static int cmd_w(char *args);
+
+static int cmd_d(char *args);
 
 static struct {
   const char *name;
@@ -62,16 +69,28 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
-
-  /* TODO: Add more commands */
-
+  { "si", "Step N instructions", cmd_si },
+  { "info", "Display execution status and information", cmd_info },
+  { "x", "Print N dwords in memory starting from address EXPR", cmd_x },
+  { "p", "Evaluate EXPR", cmd_p },
+  { "w", "Set up watchpoint for address EXPR", cmd_w },
+  { "d", "Delete watchpoint for address EXPR", cmd_d },
 };
 
 #define NR_CMD ARRLEN(cmd_table)
 
+static int cmd_c(char *args) {
+  cpu_exec(-1);
+  return 0;
+}
+
+static int cmd_q(char *args) {
+  return -1;
+}
+
 static int cmd_help(char *args) {
   /* extract the first argument */
-  char *arg = strtok(NULL, " ");
+  char *arg = strtok(args, " ");
   int i;
 
   if (arg == NULL) {
@@ -79,8 +98,7 @@ static int cmd_help(char *args) {
     for (i = 0; i < NR_CMD; i ++) {
       printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
     }
-  }
-  else {
+  } else {
     for (i = 0; i < NR_CMD; i ++) {
       if (strcmp(arg, cmd_table[i].name) == 0) {
         printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
@@ -91,6 +109,71 @@ static int cmd_help(char *args) {
   }
   return 0;
 }
+
+static int cmd_si(char *args) {
+  char *arg = strtok(NULL, " ");
+
+  if (arg == NULL) {
+    cpu_exec(1);
+  } else {
+    int n = atoi(arg);
+    cpu_exec(n);
+  }
+
+  return 0;
+}
+
+static int cmd_info(char *args) {
+  char *arg = strtok(NULL, " ");
+
+  if (arg == NULL) {
+    puts("No argument given");
+  } else {
+    if (strcmp(arg, "r") == 0) {
+      isa_reg_display();
+    } else if (strcmp(arg, "w") == 0) {
+      // TODO: finish the implementation of info w
+      puts("Not implemented");
+    } else {
+      printf("Unknown argument '%s'\n", arg);
+    }
+  }
+  
+  return 0;
+}
+
+static int cmd_x(char *args) {
+  char *arg1 = strtok(NULL, " ");
+  char *arg2 = strtok(NULL, " ");
+
+  if (arg1 == NULL || arg2 == NULL) {
+    puts("Two arguments required");
+  } else {
+    int n = atoi(arg1);
+    vaddr_t addr = strtol(arg2, NULL, 16);
+    for (int i = 0; i < n; i++) {
+      int offset = i * 4;
+      printf(FMT_WORD ": " FMT_WORD "\n", addr + offset, vaddr_read(addr + offset, 4));
+    }
+  }
+  return 0;
+}
+
+static int cmd_p(char *args) {
+  puts("Not implemented");
+  return 0;
+}
+
+static int cmd_w(char *args) {
+  puts("Not implemented");
+  return 0;
+}
+
+static int cmd_d(char *args) {
+  puts("Not implemented");
+  return 0;
+}
+
 
 void sdb_set_batch_mode() {
   is_batch_mode = true;
