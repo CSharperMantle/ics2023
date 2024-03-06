@@ -31,8 +31,10 @@ static WP *head = NULL, *free_ = NULL;
 void init_wp_pool() {
   int i;
   for (i = 0; i < NR_WP; i ++) {
-    wp_pool[i].NO = i;
-    wp_pool[i].next = (i == NR_WP - 1 ? NULL : &wp_pool[i + 1]);
+    wp_pool[i] = (WP){
+      .NO = i,
+      .next = (i == NR_WP - 1 ? NULL : &wp_pool[i + 1]),
+    };
   }
 
   head = NULL;
