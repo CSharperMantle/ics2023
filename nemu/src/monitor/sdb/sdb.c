@@ -160,7 +160,17 @@ static int cmd_x(char *args) {
 }
 
 static int cmd_p(char *args) {
-  puts("Not implemented");
+  if (args == NULL) {
+    puts("One argument required");
+  } else {
+    bool success = false;
+    word_t value = expr(args, &success);
+    if (success) {
+      printf(FMT_WORD "\n", value);
+    } else {
+      puts("cannot parse expression");
+    }
+  }
   return 0;
 }
 

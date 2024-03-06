@@ -6,6 +6,7 @@
 !*.[cSh]
 !*.cc
 !.gitignore
+!.clang-format
 !README.md
 !Kconfig
 include/config
