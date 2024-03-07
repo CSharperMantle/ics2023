@@ -29,9 +29,15 @@ enum {
   TK_NEG,
   TK_DEREF,
   TK_REG,
+  TK_AND,
+};
 
-  /* TODO: Add more token types */
-
+enum {
+  PREC_AND = 0,
+  PREC_EQ_NEQ,
+  PREC_ADD_SUB,
+  PREC_MUL_DIV,
+  PREC_LEN_,
 };
 
 static struct rule {
@@ -47,6 +53,7 @@ static struct rule {
     {"\\)", ')'},             // right bracket
     {"==", TK_EQ},            // equal
     {"!=", TK_NEQ},           // not equal
+    {"&&", TK_AND},           // logical and
     {"0x[0-9]+", TK_NUM},     // hex number
     {"[0-9]+", TK_NUM},       // dec number
     {"\\$[a-z0-9]+", TK_REG}, // register
@@ -208,8 +215,10 @@ static ParenStatus check_parentheses(int p, int q) {
 
 static int find_main_op(int p, int q) {
   int level = 0;
-  int idx_main_mul_div = -1;
-  int idx_main_add_sub = -1;
+  int indices[PREC_LEN_];
+  for (int i = 0; i < PREC_LEN_; i++) {
+    indices[i] = -1;
+  }
   for (int i = p; i <= q; i++) {
     switch (tokens[i].type) {
       case '(':
@@ -224,22 +233,32 @@ static int find_main_op(int p, int q) {
     if (level == 0) {
       /* Change associativity for unary minus */
       switch (tokens[i].type) {
+        case TK_AND:
+          indices[PREC_AND] = i;
+          break;
+        case TK_EQ:
+        case TK_NEQ:
+          indices[PREC_EQ_NEQ] = i;
+          break;
         case '*':
         case '/':
-          // idx_main_mul_div = idx_main_mul_div == -1 ? i : idx_main_mul_div;
-          idx_main_mul_div = i;
+          indices[PREC_MUL_DIV] = i;
           break;
         case '+':
         case '-':
-          // idx_main_add_sub = idx_main_add_sub == -1 ? i : idx_main_add_sub;
-          idx_main_add_sub = i;
+          indices[PREC_ADD_SUB] = i;
           break;
         default:
           break;
       }
     }
   }
-  return idx_main_add_sub != -1 ? idx_main_add_sub : idx_main_mul_div;
+  for (int i = 0; i < PREC_LEN_; i++) {
+    if (indices[i] != -1) {
+      return indices[i];
+    }
+  }
+  return -1;
 }
 
 static word_t eval(int p, int q, bool *success) {
@@ -311,6 +330,12 @@ static word_t eval(int p, int q, bool *success) {
           return val_1 * val_2;
         case '/':
           return val_1 / val_2;
+        case TK_EQ:
+          return val_1 == val_2;
+        case TK_NEQ:
+          return val_1 != val_2;
+        case TK_AND:
+          return (val_1 && val_2) ? 1 : 0;
         default:
           panic("unreachable");
       }
