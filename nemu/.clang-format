@@ -1,0 +1,4 @@
+IndentWidth: 2
+IndentCaseLabels: true
+AlignOperands: Align
+ColumnLimit: 100

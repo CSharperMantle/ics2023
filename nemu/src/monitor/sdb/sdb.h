@@ -18,6 +18,22 @@
 
 #include <common.h>
 
+#define NR_WP 32
+#define WP_MAX_EXPR_LEN 255
+
+typedef struct watchpoint {
+  int NO;
+  struct watchpoint *next;
+  word_t prev_state;
+  char expr[WP_MAX_EXPR_LEN + 1];
+} WP;
+
 word_t expr(char *e, bool *success);
+
+WP *watchpoint_head(void);
+void watchpoint_print_all(void);
+void watchpoint_print_at(int no);
+void watchpoint_add(const char *e);
+void watchpoint_delete(int no);
 
 #endif
