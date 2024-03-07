@@ -194,7 +194,14 @@ config DIFFTEST_REF_NAME
   default "kvm" if DIFFTEST_REF_KVM
   default "spike" if DIFFTEST_REF_SPIKE
   default "none"
+
+config WATCHPOINT
+  bool "Enable watchpoints"
+  default y
+
+
 endmenu
+
 
 if MODE_SYSTEM
 source "src/memory/Kconfig"

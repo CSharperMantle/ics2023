@@ -106,14 +106,14 @@ static bool make_token(char *e) {
         };
 
         if (substr_len > ARRLEN(token.str) - 1) {
-          printf("token too long; %d bytes max\n", ARRLEN(token.str) - 1);
+          printf("Token too long; %d bytes max\n", ARRLEN(token.str) - 1);
           return false;
         }
 
         strncpy(token.str, substr_start, substr_len);
 
         if (nr_token >= ARRLEN(tokens)) {
-          printf("too many tokens; %d tokens max\n", ARRLEN(tokens));
+          printf("Too many tokens; %d tokens max\n", ARRLEN(tokens));
           return false;
         }
         tokens[nr_token++] = token;
@@ -131,7 +131,7 @@ static bool make_token(char *e) {
     }
 
     if (i == NR_REGEX) {
-      printf("no match at position %d\n%s\n%*.s^\n", position, e, position, "");
+      printf("No match at position %d\n%s\n%*.s^\n", position, e, position, "");
       return false;
     }
   }
@@ -245,7 +245,7 @@ static int find_main_op(int p, int q) {
 static word_t eval(int p, int q, bool *success) {
   if (p > q) {
     Log("(%d,%d): %s", p, q, "bad expression");
-    printf("bad expression at token #%d\n", q);
+    printf("Bad expression at token #%d\n", q);
     *success = false;
     return 0;
   } else if (p == q) {
@@ -259,7 +259,7 @@ static word_t eval(int p, int q, bool *success) {
         /* Remove prefix "$" */
         word_t val = isa_reg_str2val(tokens[p].str + 1, &reg_succ);
         if (!reg_succ) {
-          printf("unknown register \"%s\" at token #%d\n", tokens[p].str, p);
+          printf("Unknown register \"%s\" at token #%d\n", tokens[p].str, p);
           *success = false;
           return 0;
         }
@@ -276,7 +276,7 @@ static word_t eval(int p, int q, bool *success) {
       return eval(p + 1, q - 1, success);
     case PAREN_UNMATCHED:
       Log("(%d,%d): ill-formed parentheses", p, q);
-      printf("ill-formed parentheses at tokens #%d-#%d\n", p, q);
+      printf("Ill-formed parentheses at tokens #%d-#%d\n", p, q);
       *success = false;
       return 0;
     case PAREN_NONE: {
@@ -294,7 +294,7 @@ static word_t eval(int p, int q, bool *success) {
           default:
             Log("(%d,%d): not even a unary op at token #%d (%s); reporting", p, q, p,
                 tokens[p].str);
-            printf("bad expression at token #%d\n", p);
+            printf("Bad expression at token #%d\n", p);
             *success = false;
             return 0;
         }
