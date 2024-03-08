@@ -17,19 +17,15 @@
 #include <cpu/difftest.h>
 #include <isa.h>
 
-static void report_difftest_err(size_t i, vaddr_t pc, word_t expected, word_t actual) {
-  Log(FMT_WORD ": DIFF: %s, expected " FMT_WORD ", actual " FMT_WORD,
-      pc,
-      reg_name(i),
-      expected,
-      actual);
+static void report_difftest_err(const char *name, vaddr_t pc, word_t expected, word_t actual) {
+  Log(FMT_WORD ": DIFF: %s, expected " FMT_WORD ", actual " FMT_WORD, pc, name, expected, actual);
 }
 
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {
   bool equiv = true;
   for (size_t i = 0; i < ARRLEN(cpu.gpr); i++) {
     if (ref_r->gpr[i] != cpu.gpr[i]) {
-      report_difftest_err(i, pc, ref_r->gpr[i], cpu.gpr[i]);
+      report_difftest_err(reg_name(i), pc, ref_r->gpr[i], cpu.gpr[i]);
       equiv = false;
     }
   }
