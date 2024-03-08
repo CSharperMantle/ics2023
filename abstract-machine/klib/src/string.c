@@ -1,5 +1,5 @@
-#include <klib.h>
 #include <klib-macros.h>
+#include <klib.h>
 #include <stdint.h>
 
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
