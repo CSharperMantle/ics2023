@@ -57,7 +57,7 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   IFDEF(CONFIG_WATCHPOINT, eval_watchpoints());
 }
 
-static void disasm_into_str(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, uint8_t *inst) {
+static void disasm_into_buf(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, uint8_t *inst) {
   char *p = buf;
   p += snprintf(p, buf_len, FMT_WORD ":", pc);
   int inst_len = snpc - pc;
@@ -86,7 +86,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
   isa_exec_once(s);
   cpu.pc = s->dnpc;
 #ifdef CONFIG_ITRACE
-  disasm_into_str(s->logbuf, sizeof(s->logbuf), s->pc, s->snpc, (uint8_t *)&s->isa.inst.val);
+  disasm_into_buf(s->logbuf, sizeof(s->logbuf), s->pc, s->snpc, (uint8_t *)&s->isa.inst.val);
 #endif
 }
 
@@ -124,7 +124,7 @@ void assert_fail_msg() {
 
 static void print_iringbuf(void) {
 #ifdef CONFIG_IRINGBUF
-  Log("- - - %d recent instructions (old to new)", IRINGBUF_NR_ELEM);
+  Log("- - - %d recent instructions (bottom is newest)", IRINGBUF_NR_ELEM);
   size_t id_inst = iringbuf.tail;
   do {
     vaddr_t addr = iringbuf.insts[id_inst].addr;
@@ -132,7 +132,7 @@ static void print_iringbuf(void) {
 #ifndef CONFIG_ISA_loongarch32r
     static char buf[128];
     buf[0] = '\0';
-    disasm_into_str(buf, sizeof(buf), addr, addr + sizeof(val), (uint8_t *)&val);
+    disasm_into_buf(buf, sizeof(buf), addr, addr + sizeof(val), (uint8_t *)&val);
 #endif
     Log("%s", MUXNDEF(CONFIG_ISA_loongarch32r, buf, " Disasm N/A"));
     id_inst = (id_inst + 1) % IRINGBUF_NR_ELEM;
