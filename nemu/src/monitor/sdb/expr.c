@@ -102,8 +102,13 @@ static bool make_token(char *e) {
         char *substr_start = e + position;
         int substr_len = pmatch.rm_eo;
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i, rules[i].regex,
-            position, substr_len, substr_len, substr_start);
+        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
+            i,
+            rules[i].regex,
+            position,
+            substr_len,
+            substr_len,
+            substr_start);
 
         position += substr_len;
 
@@ -311,7 +316,10 @@ static word_t eval(int p, int q, bool *success) {
             word_t addr = eval(p + 1, q, success);
             return *success ? vaddr_read((vaddr_t)addr, 4) : 0;
           default:
-            Log("(%d,%d): not even a unary op at token #%d (%s); reporting", p, q, p,
+            Log("(%d,%d): not even a unary op at token #%d (%s); reporting",
+                p,
+                q,
+                p,
                 tokens[p].str);
             printf("Bad expression at token #%d\n", p);
             *success = false;
