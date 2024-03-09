@@ -1,6 +1,7 @@
 #include <klib-macros.h>
 #include <klib.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 
@@ -23,7 +24,7 @@ char *strcpy(char *dst, const char *src) {
 
 char *strncpy(char *dst, const char *src, size_t n) {
   char *orig = dst;
-  while (n-- && *src != '\0') {
+  while (*src != '\0' && n--) {
     *(dst++) = *(src++);
   }
   while (n--) {

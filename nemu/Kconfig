@@ -164,6 +164,11 @@ config MTRACE
   bool "Enable paddr memory access tracer"
   default n
 
+config DTRACE
+  depends on TRACE
+  bool "Enable device access tracer"
+  default n
+
 config DIFFTEST
   depends on TARGET_NATIVE_ELF
   bool "Enable differential testing"
