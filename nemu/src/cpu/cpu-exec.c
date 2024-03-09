@@ -57,6 +57,7 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   IFDEF(CONFIG_WATCHPOINT, eval_watchpoints());
 }
 
+#ifdef CONFIG_ITRACE
 static void disasm_into_buf(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, uint8_t *inst) {
   char *p = buf;
   p += snprintf(p, buf_len, FMT_WORD ":", pc);
@@ -79,15 +80,15 @@ static void disasm_into_buf(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, ui
   buf[0] = '\0'; // the upstream llvm does not support loongarch32r
 #endif
 }
+#endif
 
 static void exec_once(Decode *s, vaddr_t pc) {
   s->pc = pc;
   s->snpc = pc;
   isa_exec_once(s);
   cpu.pc = s->dnpc;
-#ifdef CONFIG_ITRACE
-  disasm_into_buf(s->logbuf, sizeof(s->logbuf), s->pc, s->snpc, (uint8_t *)&s->isa.inst.val);
-#endif
+  IFDEF(CONFIG_ITRACE,
+        disasm_into_buf(s->logbuf, sizeof(s->logbuf), s->pc, s->snpc, (uint8_t *)&s->isa.inst.val));
 }
 
 static void execute(uint64_t n) {
@@ -96,9 +97,7 @@ static void execute(uint64_t n) {
     vaddr_t orig_pc = cpu.pc;
     exec_once(&s, orig_pc);
     g_nr_guest_inst++;
-#ifdef CONFIG_IRINGBUF
-    iringbuf_insert(orig_pc, s.isa.inst.val);
-#endif
+    IFDEF(CONFIG_IRINGBUF, iringbuf_insert(orig_pc, s.isa.inst.val));
     trace_and_difftest(&s, cpu.pc);
     if (nemu_state.state != NEMU_RUNNING)
       break;
@@ -122,8 +121,8 @@ void assert_fail_msg() {
   statistic();
 }
 
-static void print_iringbuf(void) {
 #ifdef CONFIG_IRINGBUF
+static void print_iringbuf(void) {
   Log("- - - %d recent instructions (bottom is newest)", IRINGBUF_NR_ELEM);
   size_t id_inst = iringbuf.tail;
   do {
@@ -138,8 +137,8 @@ static void print_iringbuf(void) {
     id_inst = (id_inst + 1) % IRINGBUF_NR_ELEM;
   } while (id_inst != iringbuf.head);
   Log("- - -");
-#endif
 }
+#endif
 
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) {
@@ -169,14 +168,16 @@ void cpu_exec(uint64_t n) {
           nemu_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
                                    : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
           nemu_state.halt_pc);
+#ifdef CONFIG_IRINGBUF
       if (nemu_state.halt_ret != 0) {
         print_iringbuf();
       }
+#endif
       statistic();
       break;
     case NEMU_ABORT:
       Log("nemu: %s at pc = " FMT_WORD, ANSI_FMT("ABORT", ANSI_FG_RED), nemu_state.halt_pc);
-      print_iringbuf();
+      IFDEF(CONFIG_IRINGBUF, print_iringbuf());
       statistic();
       break;
     case NEMU_QUIT:

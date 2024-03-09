@@ -11,9 +11,11 @@
 #define AUDIO_ADDR_REG_COMMIT    (AUDIO_ADDR + 0x18)
 
 static size_t sbuf_pos = 0;
+static uint32_t sbuf_size = 0;
 
 void __am_audio_init(void) {
   sbuf_pos = 0;
+  sbuf_size = inl(AUDIO_ADDR_REG_SBUF_SIZE);
 }
 
 void __am_audio_config(AM_AUDIO_CONFIG_T *cfg) {
@@ -34,7 +36,6 @@ void __am_audio_status(AM_AUDIO_STATUS_T *stat) {
 
 void __am_audio_play(AM_AUDIO_PLAY_T *ctl) {
   uint8_t *buf = ctl->buf.start;
-  uint32_t sbuf_size = inl(AUDIO_ADDR_REG_SBUF_SIZE);
   uint32_t len = (uint8_t *)(ctl->buf.end) - buf;
 
   for (size_t i = 0; i < len; i++) {
