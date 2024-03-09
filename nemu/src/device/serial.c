@@ -32,10 +32,8 @@ static void serial_io_handler(uint32_t offset, int len, bool is_write) {
   switch (offset) {
     /* We bind the serial port with the host stderr in NEMU. */
     case CH_OFFSET:
-      if (is_write)
-        serial_putc(serial_base[0]);
-      else
-        panic("do not support read");
+      assert(is_write);
+      serial_putc(serial_base[0]);
       break;
     default:
       panic("do not support offset = %d", offset);

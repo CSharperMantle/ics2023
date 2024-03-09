@@ -23,12 +23,12 @@ void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
 }
 
 void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
-  const uint32_t scr_w = inl(VGACTL_ADDR_REG_WH) >> 16;
-  const int req_x = ctl->x;
-  const int req_y = ctl->y;
-  const int req_w = ctl->w;
-  const int req_h = ctl->h;
-  const uint32_t *pixels = (uint32_t *)ctl->pixels;
+  uint32_t scr_w = inl(VGACTL_ADDR_REG_WH) >> 16;
+  int req_x = ctl->x;
+  int req_y = ctl->y;
+  int req_w = ctl->w;
+  int req_h = ctl->h;
+  uint32_t *pixels = (uint32_t *)ctl->pixels;
   uint32_t *const fb = (uint32_t *)FB_ADDR;
   for (int y = 0; y < req_h; y++) {
     for (int x = 0; x < req_w; x++) {
