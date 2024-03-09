@@ -14,6 +14,7 @@
  ***************************************************************************************/
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
 #include <common.h>
 #include <device/map.h>
 #include <string.h>
@@ -57,15 +58,14 @@ static void callback_play(void *user_data, uint8_t *stream, int len) {
 }
 
 static void do_sdl_audio_init(void) {
-  SDL_AudioSpec want;
-
-  memset(&want, 0, sizeof(SDL_AudioSpec));
-  want.freq = audio_spec.freq;
-  want.channels = audio_spec.channels;
-  want.samples = audio_spec.samples;
-  want.format = AUDIO_S16SYS;
-  want.userdata = NULL;
-  want.callback = callback_play;
+  SDL_AudioSpec want = {
+      .freq = audio_spec.freq,
+      .channels = audio_spec.channels,
+      .samples = audio_spec.samples,
+      .format = AUDIO_S16SYS,
+      .userdata = NULL,
+      .callback = callback_play,
+  };
 
   SDL_InitSubSystem(SDL_INIT_AUDIO);
   SDL_OpenAudio(&want, NULL);
@@ -76,35 +76,38 @@ static void audio_io_handler(uint32_t offset, int len, bool is_write) {
   assert(len == 4);
   switch (offset / sizeof(uint32_t)) {
     case reg_freq:
-      assert(is_write);
-      audio_spec.freq = audio_base[reg_freq];
+      if (is_write) {
+        audio_spec.freq = audio_base[reg_freq];
+      }
       break;
     case reg_channels:
-      assert(is_write);
-      audio_spec.channels = audio_base[reg_channels];
+      if (is_write) {
+        audio_spec.channels = audio_base[reg_channels];
+      }
       break;
     case reg_samples:
-      assert(is_write);
-      audio_spec.samples = audio_base[reg_samples];
+      if (is_write) {
+        audio_spec.samples = audio_base[reg_samples];
+      }
       break;
     case reg_sbuf_size:
-      assert(!is_write);
-      audio_base[reg_sbuf_size] = CONFIG_SB_SIZE;
+      if (!is_write) {
+        audio_base[reg_sbuf_size] = CONFIG_SB_SIZE;
+      }
       break;
     case reg_init:
-      assert(is_write);
-      if (audio_base[reg_init]) {
+      if (is_write && audio_base[reg_init]) {
         do_sdl_audio_init();
         audio_base[reg_init] = 0;
       }
       break;
     case reg_count:
-      assert(!is_write);
-      audio_base[reg_count] = (uint32_t)sbuf_count;
+      if (!is_write) {
+        audio_base[reg_count] = (uint32_t)sbuf_count;
+      }
       break;
     case reg_commit:
-      assert(is_write);
-      if (audio_base[reg_commit]) {
+      if (is_write && audio_base[reg_commit]) {
         sbuf_count += audio_base[reg_commit];
         audio_base[reg_commit] = 0;
       }

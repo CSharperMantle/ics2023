@@ -35,13 +35,13 @@ void __am_audio_status(AM_AUDIO_STATUS_T *stat) {
 }
 
 void __am_audio_play(AM_AUDIO_PLAY_T *ctl) {
-  uint8_t *buf = ctl->buf.start;
-  uint32_t len = (uint8_t *)(ctl->buf.end) - buf;
+  const uint16_t *const buf = ctl->buf.start;
+  const uint32_t len = (uint16_t *)(ctl->buf.end) - buf;
 
   for (size_t i = 0; i < len; i++) {
-    outb(AUDIO_SBUF_ADDR + sbuf_pos, buf[i]);
-    sbuf_pos = (sbuf_pos + 1) % sbuf_size;
+    outw(AUDIO_SBUF_ADDR + sbuf_pos, buf[i]);
+    sbuf_pos = (sbuf_pos + 2) % sbuf_size;
   }
 
-  outl(AUDIO_ADDR_REG_COMMIT, len);
+  outl(AUDIO_ADDR_REG_COMMIT, len * 2);
 }

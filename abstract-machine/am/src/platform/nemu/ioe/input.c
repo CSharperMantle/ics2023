@@ -7,7 +7,7 @@
 #define KBD_ADDR_REG_KEY (KBD_ADDR + 0)
 
 void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
-  uint32_t key = inl(KBD_ADDR_REG_KEY);
+  const uint32_t key = inl(KBD_ADDR_REG_KEY);
 
   kbd->keydown = key & KEYDOWN_MASK;
   kbd->keycode = key & ~KEYDOWN_MASK;

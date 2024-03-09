@@ -8,8 +8,8 @@
 void __am_timer_init(void) {}
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  uint32_t us_l = inl(RTC_ADDR_REG_US_L);
-  uint32_t us_h = inl(RTC_ADDR_REG_US_H);
+  const uint32_t us_l = inl(RTC_ADDR_REG_US_L);
+  const uint32_t us_h = inl(RTC_ADDR_REG_US_H);
   uptime->us = ((uint64_t)us_h << 32) | ((uint64_t)us_l);
 }
 
