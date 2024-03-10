@@ -2,8 +2,8 @@
 #include <cpu/cpu.h>
 #include <cpu/sdb_interop.h>
 
-void eval_watchpoints(void) {
 #ifdef CONFIG_WATCHPOINT
+void eval_watchpoints(void) {
   WP *p = watchpoint_head();
   while (p != NULL) {
     bool success = false;
@@ -20,5 +20,5 @@ void eval_watchpoints(void) {
     }
     p = p->next;
   }
-#endif
 }
+#endif

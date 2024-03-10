@@ -18,9 +18,7 @@
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
-#ifdef CONFIG_WATCHPOINT
 #include <cpu/sdb_interop.h>
-#endif
 #ifdef CONFIG_IRINGBUF
 #include <cpu/iringbuf.h>
 #endif

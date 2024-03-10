@@ -37,6 +37,43 @@ enum {
 #define immU() do { *imm = SEXT(BITS(i, 31, 12), 20) << 12; } while (0)
 #define immJ() do { *imm = SEXT((BITS(i, 31, 31) << 20) | (BITS(i, 19, 12) << 12) | (BITS(i, 20, 20) << 11) | (BITS(i, 30, 21) << 1), 21); } while (0)
 
+static uint64_t carry_add_u64(uint64_t a, uint64_t b, bool *out_c) {
+  const uint64_t sum = a + b;
+  *out_c = sum < a || sum < b;
+  return sum;
+}
+
+static uint64_t full_mul_u64(uint64_t a, uint64_t b, uint64_t *out_h) {
+  const uint64_t al = a & 0xFFFFFFFF;
+  const uint64_t ah = a >> 32;
+  const uint64_t bl = b & 0xFFFFFFFF;
+  const uint64_t bh = b >> 32;
+
+  const uint64_t p0 = al * bl;
+  const uint64_t p1 = ah * bl;
+  const uint64_t p2 = al * bh;
+  const uint64_t p3 = ah * bh;
+
+  bool c0, c1;
+  uint64_t sum_l, sum_h;
+  sum_l = carry_add_u64(p0, p1 << 32, &c0);
+  sum_l = carry_add_u64(sum_l, p2 << 32, &c1);
+  sum_h = (uint64_t)c0 + (uint64_t)c1;
+  sum_h += p1 >> 32;
+  sum_h += p2 >> 32;
+  sum_h += p3;
+
+  *out_h = sum_h;
+  return sum_l;
+}
+
+static int64_t high_mul_i64(int64_t a, int64_t b) {
+  int64_t h;
+  full_mul_u64((uint64_t)a, (uint64_t)b, (uint64_t *)&h);
+  const int64_t t1 = (a >> 63) & b;
+  const int64_t t2 = (b >> 63) & a;
+  return h - t1 - t2;
+}
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst.val;
@@ -133,15 +170,27 @@ static int decode_exec(Decode *s) {
 
   // MEMORY ORDERING
   // Sync
+  // fence
+  // fence.i
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System
+  // ecall
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,  N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 
   // COUNTERS
+  // rdcycle
+  // rdcycleh
+  // rdtime
+  // rdtimeh
+  // rdinstret
+  // rdinstreth
 
   // -*- RV64M: Integer multiplication and division -*-
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul    ,  R, R(rd) = src1 * src2);
+  INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh   ,  R, R(rd) = high_mul_i64((sword_t)src1, (sword_t)src2));
+  // mulhsu
+  INSTPAT("0000001 ????? ????? 011 ????? 01100 11", mulhu  ,  R, word_t t; full_mul_u64(src1, src2, &t); R(rd) = t);
   INSTPAT("0000001 ????? ????? 000 ????? 01110 11", mulw   ,  R, R(rd) = SEXT((uint32_t)(src1 * src2), 32));
   INSTPAT("0000001 ????? ????? 100 ????? 01100 11", div    ,  R, R(rd) = (sword_t)src1 / (sword_t)src2);
   INSTPAT("0000001 ????? ????? 100 ????? 01110 11", divw   ,  R, R(rd) = SEXT((int32_t)src1 / (int32_t)src2, 32));
