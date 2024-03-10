@@ -57,7 +57,7 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   IFDEF(CONFIG_WATCHPOINT, eval_watchpoints());
 }
 
-#ifdef CONFIG_ITRACE
+#if defined(CONFIG_ITRACE) || defined(CONFIG_IRINGBUF)
 static void disasm_into_buf(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, uint8_t *inst) {
   char *p = buf;
   p += snprintf(p, buf_len, FMT_WORD ":", pc);

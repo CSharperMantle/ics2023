@@ -45,16 +45,16 @@ static AudioSpec_t audio_spec;
 
 static void callback_play(void *user_data, uint8_t *stream, int len) {
   memset(stream, 0, len);
-  len = len > sbuf_count ? sbuf_count : len;
-  if ((sbuf_pos + len) > CONFIG_SB_SIZE) {
+  const size_t chunk_len = (size_t)len > sbuf_count ? sbuf_count : (size_t)len;
+  if ((sbuf_pos + chunk_len) > CONFIG_SB_SIZE) {
     const uint32_t len_rem = CONFIG_SB_SIZE - sbuf_pos;
     SDL_MixAudio(stream, sbuf + sbuf_pos, len_rem, SDL_MIX_MAXVOLUME);
-    SDL_MixAudio(stream + len_rem, sbuf, len - len_rem, SDL_MIX_MAXVOLUME);
+    SDL_MixAudio(stream + len_rem, sbuf, chunk_len - len_rem, SDL_MIX_MAXVOLUME);
   } else {
-    SDL_MixAudio(stream, sbuf + sbuf_pos, len, SDL_MIX_MAXVOLUME);
+    SDL_MixAudio(stream, sbuf + sbuf_pos, chunk_len, SDL_MIX_MAXVOLUME);
   }
-  sbuf_pos = (sbuf_pos + len) % CONFIG_SB_SIZE;
-  sbuf_count -= len;
+  sbuf_pos = (sbuf_pos + chunk_len) % CONFIG_SB_SIZE;
+  sbuf_count -= chunk_len;
 }
 
 static void do_sdl_audio_init(void) {

@@ -309,13 +309,15 @@ static word_t eval(int p, int q, bool *success) {
       if (i_op == -1) {
         Log("(%d,%d): no main op found; check for unary op", p, q);
         switch (tokens[p].type) {
-          case TK_NEG:
+          case TK_NEG: {
             word_t val = eval(p + 1, q, success);
             return -val;
-          case TK_DEREF:
+          }
+          case TK_DEREF: {
             word_t addr = eval(p + 1, q, success);
             return *success ? vaddr_read((vaddr_t)addr, 4) : 0;
-          default:
+          }
+          default: {
             Log("(%d,%d): not even a unary op at token #%d (%s); reporting",
                 p,
                 q,
@@ -324,6 +326,7 @@ static word_t eval(int p, int q, bool *success) {
             printf("Bad expression at token #%d\n", p);
             *success = false;
             return 0;
+          }
         }
       }
       Log("(%d,%d): main op (%s) at token #%d", p, q, tokens[i_op].str, i_op);
