@@ -22,8 +22,10 @@
 
 static int is_batch_mode = false;
 
-void init_regex();
-void init_wp_pool();
+void init_regex(void);
+#ifdef CONFIG_WATCHPOINT
+void init_wp_pool(void);
+#endif
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
 static char *rl_gets() {
@@ -44,25 +46,16 @@ static char *rl_gets() {
 }
 
 static int cmd_c(char *args);
-
 static int cmd_q(char *args);
-
 static int cmd_help(char *args);
-
 static int cmd_si(char *args);
-
 static int cmd_info(char *args);
-
 static int cmd_x(char *args);
-
 static int cmd_p(char *args);
 
 #ifdef CONFIG_WATCHPOINT
-
 static int cmd_w(char *args);
-
 static int cmd_d(char *args);
-
 #endif
 
 static struct {
@@ -70,16 +63,16 @@ static struct {
   const char *description;
   int (*handler)(char *);
 } cmd_table[] = {
-    {"help", "Display information about all supported commands", cmd_help},
-    {"c", "Continue the execution of the program", cmd_c},
-    {"q", "Exit NEMU", cmd_q},
-    {"si", "Step N instructions", cmd_si},
-    {"info", "Display execution status and information", cmd_info},
-    {"x", "Print N dwords in memory starting from address EXPR", cmd_x},
-    {"p", "Evaluate EXPR", cmd_p},
+    {"help", "Display information about all supported commands",    cmd_help},
+    {"c",    "Continue the execution of the program",               cmd_c   },
+    {"q",    "Exit NEMU",                                           cmd_q   },
+    {"si",   "Step N instructions",                                 cmd_si  },
+    {"info", "Display execution status and information",            cmd_info},
+    {"x",    "Print N dwords in memory starting from address EXPR", cmd_x   },
+    {"p",    "Evaluate EXPR",                                       cmd_p   },
 #ifdef CONFIG_WATCHPOINT
-    {"w", "Set up watchpoint for EXPR", cmd_w},
-    {"d", "Delete watchpoint N", cmd_d},
+    {"w",    "Set up watchpoint for EXPR",                          cmd_w   },
+    {"d",    "Delete watchpoint N",                                 cmd_d   },
 #endif
 };
 
@@ -256,7 +249,5 @@ void init_sdb() {
   /* Compile the regular expressions. */
   init_regex();
 
-#ifdef CONFIG_WATCHPOINT
-  init_wp_pool();
-#endif
+  IFDEF(CONFIG_WATCHPOINT, init_wp_pool());
 }

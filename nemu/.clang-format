@@ -6,3 +6,5 @@ BinPackArguments: false
 BinPackParameters: false
 AllowShortFunctionsOnASingleLine: Inline
 AlignConsecutiveMacros: Consecutive
+AllowShortCaseLabelsOnASingleLine: true
+AlignArrayOfStructures: Left

@@ -112,8 +112,7 @@ static void audio_io_handler(uint32_t offset, int len, bool is_write) {
         audio_base[reg_commit] = 0;
       }
       break;
-    default:
-      panic("do not support offset = %d", offset);
+    default: panic("do not support offset = %d", offset);
   }
 }
 

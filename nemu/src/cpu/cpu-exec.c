@@ -36,28 +36,30 @@
 CPU_state cpu = {};
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
-static bool g_print_step = false;
 
 void device_update(void);
 
-#ifndef CONFIG_ISA_loongarch32r
-void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-#endif
+#if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
+static bool g_print_step = false;
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
-  if (ITRACE_COND) {
-    log_write("%s\n", _this->logbuf);
+  log_write("%s\n", _this->logbuf);
+#endif
+#ifdef CONFIG_ITRACE
+  if (g_print_step) {
+    puts(_this->logbuf);
   }
 #endif
-  if (g_print_step) {
-    IFDEF(CONFIG_ITRACE, puts(_this->logbuf));
-  }
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
   IFDEF(CONFIG_WATCHPOINT, eval_watchpoints());
 }
 
 #if defined(CONFIG_ITRACE) || defined(CONFIG_IRINGBUF)
+#ifndef CONFIG_ISA_loongarch32r
+void disasm(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+#endif
+
 static void disasm_into_buf(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, uint8_t *inst) {
   char *p = buf;
   p += snprintf(p, buf_len, FMT_WORD ":", pc);
@@ -75,11 +77,12 @@ static void disasm_into_buf(char *buf, int buf_len, vaddr_t pc, vaddr_t snpc, ui
   p += space_len;
 
 #ifndef CONFIG_ISA_loongarch32r
-  disassemble(p, buf + buf_len - p, MUXDEF(CONFIG_ISA_x86, snpc, pc), inst, inst_len);
+  disasm(p, buf + buf_len - p, MUXDEF(CONFIG_ISA_x86, snpc, pc), inst, inst_len);
 #else
   buf[0] = '\0'; // the upstream llvm does not support loongarch32r
 #endif
 }
+#endif
 #endif
 
 static void exec_once(Decode *s, vaddr_t pc) {
@@ -87,18 +90,21 @@ static void exec_once(Decode *s, vaddr_t pc) {
   s->snpc = pc;
   isa_exec_once(s);
   cpu.pc = s->dnpc;
-  IFDEF(CONFIG_ITRACE,
-        disasm_into_buf(s->logbuf, sizeof(s->logbuf), s->pc, s->snpc, (uint8_t *)&s->isa.inst.val));
+#ifdef CONFIG_ITRACE
+  disasm_into_buf(s->logbuf, sizeof(s->logbuf), s->pc, s->snpc, (uint8_t *)&s->isa.inst.val);
+#endif
 }
 
 static void execute(uint64_t n) {
   Decode s;
   for (; n > 0; n--) {
-    vaddr_t orig_pc = cpu.pc;
+    const vaddr_t orig_pc = cpu.pc;
     exec_once(&s, orig_pc);
     g_nr_guest_inst++;
     IFDEF(CONFIG_IRINGBUF, iringbuf_insert(orig_pc, s.isa.inst.val));
+#if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
     trace_and_difftest(&s, cpu.pc);
+#endif
     if (nemu_state.state != NEMU_RUNNING)
       break;
     IFDEF(CONFIG_DEVICE, device_update());
@@ -123,7 +129,7 @@ void assert_fail_msg() {
 
 #ifdef CONFIG_IRINGBUF
 static void print_iringbuf(void) {
-  Log("- - - %d recent instructions (bottom is newest)", IRINGBUF_NR_ELEM);
+  Log("- - - %d recent instructions (top: oldest)", IRINGBUF_NR_ELEM);
   size_t id_inst = iringbuf.tail;
   do {
     vaddr_t addr = iringbuf.insts[id_inst].addr;
@@ -136,33 +142,32 @@ static void print_iringbuf(void) {
     Log("%s", MUXNDEF(CONFIG_ISA_loongarch32r, buf, " Disasm N/A"));
     id_inst = (id_inst + 1) % IRINGBUF_NR_ELEM;
   } while (id_inst != iringbuf.head);
-  Log("- - -");
+  Log("- - - %d recent instructions (bottom: newest)", IRINGBUF_NR_ELEM);
 }
 #endif
 
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) {
+#if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
   g_print_step = (n < MAX_INST_TO_PRINT);
+#endif
   switch (nemu_state.state) {
     case NEMU_END:
     case NEMU_ABORT:
       printf("Program execution has ended. To restart the program, exit NEMU and run again.\n");
       return;
-    default:
-      nemu_state.state = NEMU_RUNNING;
+    default: nemu_state.state = NEMU_RUNNING; break;
   }
 
-  uint64_t timer_start = get_time();
+  const uint64_t timer_start = get_time();
 
   execute(n);
 
-  uint64_t timer_end = get_time();
+  const uint64_t timer_end = get_time();
   g_timer += timer_end - timer_start;
 
   switch (nemu_state.state) {
-    case NEMU_RUNNING:
-      nemu_state.state = NEMU_STOP;
-      break;
+    case NEMU_RUNNING: nemu_state.state = NEMU_STOP; break;
     case NEMU_END:
       Log("nemu: %s at pc = " FMT_WORD,
           nemu_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
@@ -180,8 +185,6 @@ void cpu_exec(uint64_t n) {
       IFDEF(CONFIG_IRINGBUF, print_iringbuf());
       statistic();
       break;
-    case NEMU_QUIT:
-      statistic();
-      break;
+    case NEMU_QUIT: statistic(); break;
   }
 }

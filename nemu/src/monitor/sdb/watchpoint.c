@@ -18,7 +18,7 @@
 static WP wp_pool[NR_WP] = {};
 static WP *head = NULL, *free_ = NULL;
 
-void init_wp_pool() {
+void init_wp_pool(void) {
   int i;
   for (i = 0; i < NR_WP; i++) {
     wp_pool[i] = (WP){
@@ -31,7 +31,7 @@ void init_wp_pool() {
   free_ = wp_pool;
 }
 
-static WP *new_wp() {
+static WP *new_wp(void) {
   if (free_ == NULL) {
     return NULL;
   }
@@ -78,9 +78,13 @@ static WP *watchpoint_find(int no) {
   return NULL;
 }
 
-static void watchpoint_print_banner(void) { puts("Num\tExpr"); }
+static void watchpoint_print_banner(void) {
+  puts("Num\tExpr");
+}
 
-WP *watchpoint_head(void) { return head; }
+WP *watchpoint_head(void) {
+  return head;
+}
 
 void watchpoint_print_all(void) {
   watchpoint_print_banner();
