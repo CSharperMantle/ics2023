@@ -15,10 +15,12 @@
 
 #include "sdb.h"
 #include <cpu/cpu.h>
+#include <errno.h>
 #include <isa.h>
 #include <memory/vaddr.h>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <stdio.h>
 
 static int is_batch_mode = false;
 
@@ -52,10 +54,12 @@ static int cmd_si(char *args);
 static int cmd_info(char *args);
 static int cmd_x(char *args);
 static int cmd_p(char *args);
-
 #ifdef CONFIG_WATCHPOINT
 static int cmd_w(char *args);
 static int cmd_d(char *args);
+#endif
+#ifdef CONFIG_FTRACE
+static int cmd_file(char *args);
 #endif
 
 static struct {
@@ -73,6 +77,9 @@ static struct {
 #ifdef CONFIG_WATCHPOINT
     {"w",    "Set up watchpoint for EXPR",                          cmd_w   },
     {"d",    "Delete watchpoint N",                                 cmd_d   },
+#endif
+#ifdef CONFIG_FTRACE
+    {"file", "Load symbols from FILENAME",                          cmd_file},
 #endif
 };
 
@@ -128,14 +135,18 @@ static int cmd_info(char *args) {
   }
   if (strcmp(arg, "r") == 0) {
     isa_reg_display();
-  } else if (strcmp(arg, "w") == 0) {
+  }
+#ifdef CONFIG_WATCHPOINT
+  else if (strcmp(arg, "w") == 0) {
     char *arg2 = strtok(NULL, " ");
     if (arg2 == NULL) {
       watchpoint_print_all();
     } else {
       watchpoint_print_at(atoi(arg2));
     }
-  } else {
+  }
+#endif
+  else {
     printf("Unknown argument '%s'\n", arg);
   }
 
@@ -175,7 +186,6 @@ static int cmd_p(char *args) {
 }
 
 #ifdef CONFIG_WATCHPOINT
-
 static int cmd_w(char *args) {
   if (args == NULL) {
     puts("One argument required");
@@ -194,7 +204,26 @@ static int cmd_d(char *args) {
   watchpoint_delete(no);
   return 0;
 }
+#endif
 
+#ifdef CONFIG_FTRACE
+static int cmd_file(char *args) {
+  if (args == NULL) {
+    has_elf = false;
+    puts("No symbol file now.");
+    return 0;
+  }
+
+  FILE *felf = fopen(args, "rb");
+  if (felf == NULL) {
+    printf("Cannot open ELF file \"%s\": errno %d: %s\n", args, errno, strerror(errno));
+    return 0;
+  }
+
+  fclose(felf);
+
+  return 0;
+}
 #endif
 
 void sdb_set_batch_mode() {

@@ -159,6 +159,11 @@ config IRINGBUF
   bool "Enable recent instruction ring buffer"
   default y
 
+config FTRACE
+  depends on TRACE
+  bool "Enable heuristic-based function call tracer"
+  default n
+
 config MTRACE
   depends on TRACE
   bool "Enable paddr memory access tracer"

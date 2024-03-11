@@ -1,24 +1,31 @@
 /***************************************************************************************
-* Copyright (c) 2014-2022 Zihao Yu, Nanjing University
-*
-* NEMU is licensed under Mulan PSL v2.
-* You can use this software according to the terms and conditions of the Mulan PSL v2.
-* You may obtain a copy of Mulan PSL v2 at:
-*          http://license.coscl.org.cn/MulanPSL2
-*
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-* EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-* MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-*
-* See the Mulan PSL v2 for more details.
-***************************************************************************************/
+ * Copyright (c) 2014-2022 Zihao Yu, Nanjing University
+ *
+ * NEMU is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ *
+ * See the Mulan PSL v2 for more details.
+ ***************************************************************************************/
 
 #ifndef __SDB_H__
 #define __SDB_H__
 
 #include <common.h>
 
-#define NR_WP 32
+word_t expr(char *e, bool *success);
+
+#ifdef CONFIG_FTRACE
+extern bool has_elf;
+#endif
+
+#ifdef CONFIG_WATCHPOINT
+#define NR_WP           32
 #define WP_MAX_EXPR_LEN 255
 
 typedef struct watchpoint {
@@ -28,12 +35,11 @@ typedef struct watchpoint {
   char expr[WP_MAX_EXPR_LEN + 1];
 } WP;
 
-word_t expr(char *e, bool *success);
-
 WP *watchpoint_head(void);
 void watchpoint_print_all(void);
 void watchpoint_print_at(int no);
 void watchpoint_add(const char *e);
 void watchpoint_delete(int no);
+#endif
 
 #endif

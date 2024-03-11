@@ -14,6 +14,7 @@
  ***************************************************************************************/
 
 #include "common.h"
+#include "isa.h"
 #include "macro.h"
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
@@ -38,19 +39,28 @@ static uint64_t g_timer = 0; // unit: us
 void device_update(void);
 
 #if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
+#ifdef CONFIG_ITRACE
 static bool g_print_step = false;
+#endif
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
-#ifdef CONFIG_ITRACE_COND
-  log_write("%s\n", _this->logbuf);
-#endif
 #ifdef CONFIG_ITRACE
+  log_write("%s\n", _this->logbuf);
   if (g_print_step) {
     puts(_this->logbuf);
   }
 #endif
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
   IFDEF(CONFIG_WATCHPOINT, eval_watchpoints());
+#ifdef CONFIG_FTRACE
+  assert(likely(!(_this->isa.is_call && _this->isa.is_ret)));
+  if (_this->isa.is_call) {
+    ftrace_queue_call(_this->pc, _this->dnpc);
+  }
+  if (_this->isa.is_ret) {
+    ftrace_queue_ret(_this->pc, _this->dnpc);
+  }
+#endif
 }
 
 #if defined(CONFIG_ITRACE) || defined(CONFIG_IRINGBUF)
@@ -96,10 +106,9 @@ static void exec_once(Decode *s, vaddr_t pc) {
 static void execute(uint64_t n) {
   Decode s;
   for (; n > 0; n--) {
-    const vaddr_t orig_pc = cpu.pc;
-    exec_once(&s, orig_pc);
+    exec_once(&s, cpu.pc);
     g_nr_guest_inst++;
-    IFDEF(CONFIG_IRINGBUF, iringbuf_insert(orig_pc, s.isa.inst.val));
+    IFDEF(CONFIG_IRINGBUF, iringbuf_insert(s.pc, s.isa.inst.val));
 #if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
     trace_and_difftest(&s, cpu.pc);
 #endif
@@ -146,7 +155,7 @@ static void print_iringbuf(void) {
 
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) {
-#if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
+#ifdef CONFIG_ITRACE
   g_print_step = (n < MAX_INST_TO_PRINT);
 #endif
   switch (nemu_state.state) {

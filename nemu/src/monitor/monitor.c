@@ -27,10 +27,14 @@ void init_disasm(const char *triple);
 static void welcome() {
   Log("Trace: %s",
       MUXDEF(CONFIG_TRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
-  Log("Instruction trace: %s",
+#ifdef CONFIG_TRACE
+  Log("\tInstruction trace: %s",
       MUXDEF(CONFIG_ITRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
-  Log("RI ringbuf: %s",
+  Log("\tRI ringbuf: %s",
       MUXDEF(CONFIG_IRINGBUF, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
+  Log("\tFunction call trace: %s",
+      MUXDEF(CONFIG_FTRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
+#endif
   Log("Watchpoints: %s",
       MUXDEF(CONFIG_WATCHPOINT, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
   Log("Build time: %s, %s", __TIME__, __DATE__);

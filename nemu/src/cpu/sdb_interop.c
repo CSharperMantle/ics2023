@@ -22,3 +22,9 @@ void eval_watchpoints(void) {
   }
 }
 #endif
+
+#ifdef CONFIG_FTRACE
+void ftrace_queue_call(vaddr_t pc, vaddr_t target) {}
+
+void ftrace_queue_ret(vaddr_t pc, vaddr_t target) {}
+#endif

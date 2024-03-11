@@ -15,6 +15,8 @@
 
 #include "sdb.h"
 
+#ifdef CONFIG_WATCHPOINT
+
 static WP wp_pool[NR_WP] = {};
 static WP *head = NULL, *free_ = NULL;
 
@@ -129,3 +131,5 @@ void watchpoint_delete(int no) {
   }
   free_wp(p);
 }
+
+#endif
