@@ -45,7 +45,7 @@ static WP *new_wp(void) {
 }
 
 static void free_wp(WP *wp) {
-  Assert(wp != NULL, "wp is not null");
+  assert(((void)"wp is not null", likely(wp != NULL)));
 
   if (head == wp) {
     head = head->next;
@@ -58,7 +58,7 @@ static void free_wp(WP *wp) {
       break;
     }
   }
-  Assert(p != NULL, "double free detected");
+  assert(((void)"double free detected", likely(p != NULL)));
   p->next = wp->next;
   if (free_ == NULL) {
     free_ = wp;

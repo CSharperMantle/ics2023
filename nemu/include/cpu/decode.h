@@ -37,8 +37,7 @@ static inline void pattern_decode(const char *str, int len,
   else { \
     char c = str[i]; \
     if (c != ' ') { \
-      Assert(c == '0' || c == '1' || c == '?', \
-          "invalid character '%c' in pattern string", c); \
+      assert(likely(c == '0' || c == '1' || c == '?')); \
       __key  = (__key  << 1) | (c == '1' ? 1 : 0); \
       __mask = (__mask << 1) | (c == '?' ? 0 : 1); \
       __shift = (c == '?' ? __shift + 1 : 0); \
@@ -69,8 +68,7 @@ static inline void pattern_decode_hex(const char *str, int len,
   else { \
     char c = str[i]; \
     if (c != ' ') { \
-      Assert((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || c == '?', \
-          "invalid character '%c' in pattern string", c); \
+      assert(likely((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || c == '?')); \
       __key  = (__key  << 4) | (c == '?' ? 0 : (c >= '0' && c <= '9') ? c - '0' : c - 'a' + 10); \
       __mask = (__mask << 4) | (c == '?' ? 0 : 0xf); \
       __shift = (c == '?' ? __shift + 4 : 0); \
