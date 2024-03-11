@@ -81,9 +81,7 @@ static int parse_args(int argc, char *argv[]) {
       {"log",   required_argument, NULL, 'l'},
       {"diff",  required_argument, NULL, 'd'},
       {"port",  required_argument, NULL, 'p'},
-#ifdef CONFIG_FTRACE
       {"elf",   required_argument, NULL, 'e'},
-#endif
       {"help",  no_argument,       NULL, 'h'},
       {0,       0,                 NULL, 0  },
   };
@@ -94,9 +92,7 @@ static int parse_args(int argc, char *argv[]) {
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
-#ifdef CONFIG_FTRACE
       case 'e': elf_file = optarg; break;
-#endif
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);
