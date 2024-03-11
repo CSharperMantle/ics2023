@@ -152,7 +152,7 @@ config TRACE_END
 config ITRACE
   depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER
   bool "Enable per-instruction tracer"
-  default y
+  default n
 
 config IRINGBUF
   depends on TRACE
