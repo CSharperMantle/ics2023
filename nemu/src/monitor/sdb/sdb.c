@@ -15,15 +15,19 @@
 
 #include "sdb.h"
 #include <cpu/cpu.h>
+#include <errno.h>
 #include <isa.h>
 #include <memory/vaddr.h>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <stdio.h>
 
 static int is_batch_mode = false;
 
-void init_regex();
-void init_wp_pool();
+void init_regex(void);
+#ifdef CONFIG_WATCHPOINT
+void init_wp_pool(void);
+#endif
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
 static char *rl_gets() {
@@ -44,25 +48,18 @@ static char *rl_gets() {
 }
 
 static int cmd_c(char *args);
-
 static int cmd_q(char *args);
-
 static int cmd_help(char *args);
-
 static int cmd_si(char *args);
-
 static int cmd_info(char *args);
-
 static int cmd_x(char *args);
-
 static int cmd_p(char *args);
-
 #ifdef CONFIG_WATCHPOINT
-
 static int cmd_w(char *args);
-
 static int cmd_d(char *args);
-
+#endif
+#ifdef CONFIG_FTRACE
+static int cmd_file(char *args);
 #endif
 
 static struct {
@@ -70,16 +67,19 @@ static struct {
   const char *description;
   int (*handler)(char *);
 } cmd_table[] = {
-    {"help", "Display information about all supported commands", cmd_help},
-    {"c", "Continue the execution of the program", cmd_c},
-    {"q", "Exit NEMU", cmd_q},
-    {"si", "Step N instructions", cmd_si},
-    {"info", "Display execution status and information", cmd_info},
-    {"x", "Print N dwords in memory starting from address EXPR", cmd_x},
-    {"p", "Evaluate EXPR", cmd_p},
+    {"help", "Display information about all supported commands",    cmd_help},
+    {"c",    "Continue the execution of the program",               cmd_c   },
+    {"q",    "Exit NEMU",                                           cmd_q   },
+    {"si",   "Step N instructions",                                 cmd_si  },
+    {"info", "Display execution status and information",            cmd_info},
+    {"x",    "Print N dwords in memory starting from address EXPR", cmd_x   },
+    {"p",    "Evaluate EXPR",                                       cmd_p   },
 #ifdef CONFIG_WATCHPOINT
-    {"w", "Set up watchpoint for EXPR", cmd_w},
-    {"d", "Delete watchpoint N", cmd_d},
+    {"w",    "Set up watchpoint for EXPR",                          cmd_w   },
+    {"d",    "Delete watchpoint N",                                 cmd_d   },
+#endif
+#ifdef CONFIG_FTRACE
+    {"file", "Load symbols from FILENAME",                          cmd_file},
 #endif
 };
 
@@ -90,7 +90,9 @@ static int cmd_c(char *args) {
   return 0;
 }
 
-static int cmd_q(char *args) { return -1; }
+static int cmd_q(char *args) {
+  return -1;
+}
 
 static int cmd_help(char *args) {
   char *arg = strtok(args, " ");
@@ -133,14 +135,18 @@ static int cmd_info(char *args) {
   }
   if (strcmp(arg, "r") == 0) {
     isa_reg_display();
-  } else if (strcmp(arg, "w") == 0) {
+  }
+#ifdef CONFIG_WATCHPOINT
+  else if (strcmp(arg, "w") == 0) {
     char *arg2 = strtok(NULL, " ");
     if (arg2 == NULL) {
       watchpoint_print_all();
     } else {
       watchpoint_print_at(atoi(arg2));
     }
-  } else {
+  }
+#endif
+  else {
     printf("Unknown argument '%s'\n", arg);
   }
 
@@ -180,7 +186,6 @@ static int cmd_p(char *args) {
 }
 
 #ifdef CONFIG_WATCHPOINT
-
 static int cmd_w(char *args) {
   if (args == NULL) {
     puts("One argument required");
@@ -199,10 +204,34 @@ static int cmd_d(char *args) {
   watchpoint_delete(no);
   return 0;
 }
-
 #endif
 
-void sdb_set_batch_mode() { is_batch_mode = true; }
+#ifdef CONFIG_FTRACE
+static int cmd_file(char *args) {
+  if (args == NULL) {
+    elf.valid = false;
+    puts("No symbol file now.");
+    return 0;
+  }
+
+  FILE *felf = fopen(args, "rb");
+  if (felf == NULL) {
+    printf("Cannot open ELF file \"%s\": errno %d: %s\n", args, errno, strerror(errno));
+    return 0;
+  }
+  printf("Reading symbols from \"%s\"\n", args);
+  if (elf_read(felf)) {
+    printf("Cannot parse ELF file \"%s\"\n", args);
+  };
+
+  fclose(felf);
+  return 0;
+}
+#endif
+
+void sdb_set_batch_mode() {
+  is_batch_mode = true;
+}
 
 void sdb_mainloop() {
   if (is_batch_mode) {
@@ -248,10 +277,15 @@ void sdb_mainloop() {
   }
 }
 
-void init_sdb() {
+void init_sdb(char *elf_file) {
   /* Compile the regular expressions. */
   init_regex();
 
-  /* Initialize the watchpoint pool. */
-  init_wp_pool();
+  IFDEF(CONFIG_WATCHPOINT, init_wp_pool());
+
+#ifdef CONFIG_FTRACE
+  cmd_file(elf_file);
+#else
+  (void)elf_file;
+#endif
 }

@@ -125,6 +125,11 @@ config CC_ASAN
   depends on MODE_SYSTEM
   bool "Enable address sanitizer"
   default n
+
+config CC_RPASS_MISSED
+  depends on CC_CLANG
+  bool "Enable remarks from optimization pass misses"
+  default n
 endmenu
 
 menu "Testing and Debugging"
@@ -146,14 +151,28 @@ config TRACE_END
 
 config ITRACE
   depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER
-  bool "Enable instruction tracer"
+  bool "Enable per-instruction tracer"
+  default n
+
+config IRINGBUF
+  depends on TRACE
+  bool "Enable recent instruction ring buffer"
   default y
 
-config ITRACE_COND
-  depends on ITRACE
-  string "Only trace instructions when the condition is true"
-  default "true"
+config FTRACE
+  depends on TRACE
+  bool "Enable heuristic-based function call tracer"
+  default n
 
+config MTRACE
+  depends on TRACE
+  bool "Enable paddr memory access tracer"
+  default n
+
+config DTRACE
+  depends on TRACE
+  bool "Enable device access tracer"
+  default n
 
 config DIFFTEST
   depends on TARGET_NATIVE_ELF

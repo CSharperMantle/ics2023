@@ -2,3 +2,11 @@ IndentWidth: 2
 IndentCaseLabels: true
 AlignOperands: Align
 ColumnLimit: 100
+BinPackArguments: false
+BinPackParameters: false
+AllowShortFunctionsOnASingleLine: Inline
+AlignConsecutiveMacros: Consecutive
+AllowShortCaseLabelsOnASingleLine: true
+AlignArrayOfStructures: Left
+AlignOperands: Align
+BreakBeforeBinaryOperators: NonAssignment
