@@ -19,16 +19,7 @@
 #include <device/map.h>
 #include <string.h>
 
-enum {
-  reg_freq = 0,
-  reg_channels,
-  reg_samples,
-  reg_sbuf_size,
-  reg_init,
-  reg_count,
-  reg_commit,
-  nr_reg
-};
+enum { reg_freq = 0, reg_channels, reg_samples, reg_sbuf_size, reg_init, reg_count, nr_reg };
 
 static uint8_t *sbuf = NULL;
 static size_t sbuf_pos = 0;
@@ -106,13 +97,13 @@ static void audio_io_handler(uint32_t offset, int len, bool is_write) {
         audio_base[reg_count] = (uint32_t)sbuf_count;
       }
       break;
-    case reg_commit:
-      if (is_write && audio_base[reg_commit]) {
-        sbuf_count += audio_base[reg_commit];
-        audio_base[reg_commit] = 0;
-      }
-      break;
     default: panic("do not support offset = %d", offset);
+  }
+}
+
+static void audio_sbuf_handler(uint32_t offset, int len, bool is_write) {
+  if (likely(is_write)) {
+    sbuf_count += len;
   }
 }
 
@@ -129,5 +120,5 @@ void init_audio() {
   sbuf_pos = 0;
   sbuf_count = 0;
   // sbuf_count_delta = 0;
-  add_mmio_map("audio-sbuf", CONFIG_SB_ADDR, sbuf, CONFIG_SB_SIZE, NULL);
+  add_mmio_map("audio-sbuf", CONFIG_SB_ADDR, sbuf, CONFIG_SB_SIZE, audio_sbuf_handler);
 }

@@ -42,6 +42,4 @@ void __am_audio_play(AM_AUDIO_PLAY_T *ctl) {
     outw(AUDIO_SBUF_ADDR + sbuf_pos, buf[i]);
     sbuf_pos = (sbuf_pos + 2) % sbuf_size;
   }
-
-  outl(AUDIO_ADDR_REG_COMMIT, len * 2);
 }
