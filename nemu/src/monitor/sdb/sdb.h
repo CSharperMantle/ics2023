@@ -21,7 +21,32 @@
 word_t expr(char *e, bool *success);
 
 #ifdef CONFIG_FTRACE
-extern bool has_elf;
+#include <elf.h>
+
+#define FTRACE_PRINT_MAX_DEPTH      64
+#define FTRACE_PRINT_WRAP_THRESHOLD 32
+
+typedef struct SdbElfFunc_ {
+  char *name;
+  Elf64_Addr start;
+  Elf64_Addr end;
+} SdbElfFunc_t;
+
+typedef struct SdbElf_ {
+  Elf64_Ehdr ehdr;
+  Elf64_Sym *symtab;
+  size_t nent_symtab;
+  char *strtab;
+  SdbElfFunc_t *funcs;
+  size_t nent_funcs;
+  bool valid;
+} SdbElf_t;
+
+extern SdbElf_t elf;
+extern int64_t ftrace_call_level;
+
+int elf_read(FILE *felf);
+char *elf_get_func_name(uint64_t addr, bool *at_start);
 #endif
 
 #ifdef CONFIG_WATCHPOINT

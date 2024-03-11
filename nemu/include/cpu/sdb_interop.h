@@ -9,8 +9,8 @@ void eval_watchpoints(void);
 
 #ifdef CONFIG_FTRACE
 // void ftrace_reset(void);
-void ftrace_queue_call(vaddr_t pc, vaddr_t target);
-void ftrace_queue_ret(vaddr_t pc, vaddr_t target);
+void ftrace_queue_jal(vaddr_t pc, vaddr_t target);
+void ftrace_queue_jalr(vaddr_t pc, vaddr_t target);
 #endif
 
 #endif /* SDB_INTEROP_H_INCLUDED_ */

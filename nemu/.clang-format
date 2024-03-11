@@ -8,3 +8,5 @@ AllowShortFunctionsOnASingleLine: Inline
 AlignConsecutiveMacros: Consecutive
 AllowShortCaseLabelsOnASingleLine: true
 AlignArrayOfStructures: Left
+AlignOperands: Align
+BreakBeforeBinaryOperators: NonAssignment

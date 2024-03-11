@@ -53,12 +53,12 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
   IFDEF(CONFIG_WATCHPOINT, eval_watchpoints());
 #ifdef CONFIG_FTRACE
-  assert(likely(!(_this->isa.is_call && _this->isa.is_ret)));
-  if (_this->isa.is_call) {
-    ftrace_queue_call(_this->pc, _this->dnpc);
+  assert(likely(!(_this->isa.is_jal && _this->isa.is_jalr)));
+  if (_this->isa.is_jal) {
+    ftrace_queue_jal(_this->pc, _this->dnpc);
   }
-  if (_this->isa.is_ret) {
-    ftrace_queue_ret(_this->pc, _this->dnpc);
+  if (_this->isa.is_jalr) {
+    ftrace_queue_jalr(_this->pc, _this->dnpc);
   }
 #endif
 }

@@ -209,7 +209,7 @@ static int cmd_d(char *args) {
 #ifdef CONFIG_FTRACE
 static int cmd_file(char *args) {
   if (args == NULL) {
-    has_elf = false;
+    elf.valid = false;
     puts("No symbol file now.");
     return 0;
   }
@@ -219,9 +219,12 @@ static int cmd_file(char *args) {
     printf("Cannot open ELF file \"%s\": errno %d: %s\n", args, errno, strerror(errno));
     return 0;
   }
+  printf("Reading symbols from \"%s\"\n", args);
+  if (elf_read(felf)) {
+    printf("Cannot parse ELF file \"%s\"\n", args);
+  };
 
   fclose(felf);
-
   return 0;
 }
 #endif
@@ -274,9 +277,15 @@ void sdb_mainloop() {
   }
 }
 
-void init_sdb() {
+void init_sdb(char *elf_file) {
   /* Compile the regular expressions. */
   init_regex();
 
   IFDEF(CONFIG_WATCHPOINT, init_wp_pool());
+
+#ifdef CONFIG_FTRACE
+  cmd_file(elf_file);
+#else
+  (void)elf_file;
+#endif
 }
