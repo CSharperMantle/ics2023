@@ -268,17 +268,17 @@ static int find_main_op(int p, int q) {
 
 static word_t eval(int p, int q, bool *success) {
   if (p > q) {
-    Log("(%d,%d): %s", p, q, "bad expression");
+    Warn("(%d,%d): %s", p, q, "bad expression");
     printf("Bad expression at token #%d\n", q);
     *success = false;
     return 0;
   } else if (p == q) {
     switch (tokens[p].type) {
       case TK_NUM:
-        Log("(%d,%d): single number token", p, q);
+        Warn("(%d,%d): single number token", p, q);
         return (word_t)strtoll(tokens[p].str, NULL, 0);
       case TK_REG: {
-        Log("(%d,%d): single register token", p, q);
+        Warn("(%d,%d): single register token", p, q);
         bool reg_succ = false;
         /* Remove prefix "$" */
         word_t val = isa_reg_str2val(tokens[p].str + 1, &reg_succ);
@@ -299,7 +299,7 @@ static word_t eval(int p, int q, bool *success) {
       Log("(%d,%d): parentheses reduction", p, q);
       return eval(p + 1, q - 1, success);
     case PAREN_UNMATCHED:
-      Log("(%d,%d): ill-formed parentheses", p, q);
+      Warn("(%d,%d): ill-formed parentheses", p, q);
       printf("Ill-formed parentheses at tokens #%d-#%d\n", p, q);
       *success = false;
       return 0;
@@ -318,7 +318,7 @@ static word_t eval(int p, int q, bool *success) {
             return *success ? vaddr_read((vaddr_t)addr, 4) : 0;
           }
           default: {
-            Log("(%d,%d): not even a unary op at token #%d (%s); reporting",
+            Warn("(%d,%d): not even a unary op at token #%d (%s); reporting",
                 p,
                 q,
                 p,

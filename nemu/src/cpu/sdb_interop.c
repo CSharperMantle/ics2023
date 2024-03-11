@@ -17,7 +17,7 @@ void eval_watchpoints(void) {
         p->prev_state = state;
       }
     } else {
-      Log("watchpoint %d: cannot eval", p->NO);
+      Warn("watchpoint %d: cannot eval", p->NO);
     }
     p = p->next;
   }

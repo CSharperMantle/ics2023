@@ -117,7 +117,7 @@ static void sdcard_io_handler(uint32_t offset, int len, bool is_write) {
        addr += 4;
        break;
     default:
-      Log("offset = 0x%x(idx = %d), is_write = %d, data = 0x%x", offset, idx, is_write, base[idx]);
+      Error("offset = 0x%x(idx = %d), is_write = %d, data = 0x%x", offset, idx, is_write, base[idx]);
       panic("unhandle offset = %d", offset);
   }
 }

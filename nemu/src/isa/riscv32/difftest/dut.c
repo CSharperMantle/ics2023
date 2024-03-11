@@ -18,7 +18,7 @@
 #include <isa.h>
 
 static void report_difftest_err(const char *name, vaddr_t pc, word_t expected, word_t actual) {
-  Log(FMT_WORD ": DIFF: %s, expected " FMT_WORD ", actual " FMT_WORD, pc, name, expected, actual);
+  Error(FMT_WORD ": DIFF: %s, expected " FMT_WORD ", actual " FMT_WORD, pc, name, expected, actual);
 }
 
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {

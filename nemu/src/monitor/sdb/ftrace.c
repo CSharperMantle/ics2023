@@ -88,10 +88,7 @@ int elf_read(FILE *felf) {
       elf.funcs[j].name = elf.strtab + sym_ent.st_name;
       elf.funcs[j].start = sym_ent.st_value;
       elf.funcs[j].end = sym_ent.st_value + sym_ent.st_size;
-      Log("found func %s (0x%016lx-0x%016lx)",
-          elf.funcs[j].name,
-          elf.funcs[j].start,
-          elf.funcs[j].end);
+      Log("found function %s@0x%016lx", elf.funcs[j].name, elf.funcs[j].start);
       j++;
     }
   }
