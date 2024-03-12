@@ -20,6 +20,15 @@
 
 #define NR_GPR MUXDEF(CONFIG_RVE, 16, 32)
 
+#define CSR_IDX_MSTATUS  0x300
+#define CSR_IDX_MIE      0x304
+#define CSR_IDX_MTVEC    0x305
+#define CSR_IDX_MSCRATCH 0x340
+#define CSR_IDX_MEPC     0x341
+#define CSR_IDX_MCAUSE   0x342
+#define CSR_IDX_MTVAL    0x343
+#define CSR_IDX_MIP      0x344
+
 static std::vector<std::pair<reg_t, abstract_device_t*>> difftest_plugin_devices;
 static std::vector<std::string> difftest_htif_args;
 static std::vector<std::pair<reg_t, mem_t*>> difftest_mem(
@@ -38,6 +47,7 @@ static debug_module_config_t difftest_dm_config = {
 
 struct diff_context_t {
   word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
+  word_t csr[4096];
   word_t pc;
 };
 
@@ -59,6 +69,13 @@ void sim_t::diff_get_regs(void* diff_context) {
   for (int i = 0; i < NR_GPR; i++) {
     ctx->gpr[i] = state->XPR[i];
   }
+  ctx->csr[CSR_IDX_MSTATUS] = state->mstatus->read();
+  ctx->csr[CSR_IDX_MIE] = state->mie->read();
+  ctx->csr[CSR_IDX_MTVEC] = state->mtvec->read();
+  ctx->csr[CSR_IDX_MEPC] = state->mepc->read();
+  ctx->csr[CSR_IDX_MCAUSE] = state->mcause->read();
+  ctx->csr[CSR_IDX_MTVAL] = state->mtval->read();
+  ctx->csr[CSR_IDX_MIP] = state->mip->read();
   ctx->pc = state->pc;
 }
 
@@ -67,6 +84,13 @@ void sim_t::diff_set_regs(void* diff_context) {
   for (int i = 0; i < NR_GPR; i++) {
     state->XPR.write(i, (sword_t)ctx->gpr[i]);
   }
+  state->mstatus->write(ctx->csr[CSR_IDX_MSTATUS]);
+  state->mie->write(ctx->csr[CSR_IDX_MIE]);
+  state->mtvec->write(ctx->csr[CSR_IDX_MTVEC]);
+  state->mepc->write(ctx->csr[CSR_IDX_MEPC]);
+  state->mcause->write(ctx->csr[CSR_IDX_MCAUSE]);
+  state->mtval->write(ctx->csr[CSR_IDX_MTVAL]);
+  state->mip->write(ctx->csr[CSR_IDX_MIP]);
   state->pc = ctx->pc;
 }
 

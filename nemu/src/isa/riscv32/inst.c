@@ -85,6 +85,14 @@ static int64_t high_mul_i64(int64_t a, int64_t b) {
   return h - t1 - t2;
 }
 
+#define MRET_UPD_MSTATUS()                                                                         \
+  do {                                                                                             \
+    bool mpie = CSR(CSR_IDX_MSTATUS) & MSTATUS_F_MPIE;                                             \
+    CSR(CSR_IDX_MSTATUS) =                                                                         \
+        mpie ? (CSR(CSR_IDX_MSTATUS) | MSTATUS_F_MIE) : (CSR(CSR_IDX_MSTATUS) & ~MSTATUS_F_MIE);   \
+    CSR(CSR_IDX_MSTATUS) |= MSTATUS_F_MPIE;                                                        \
+  } while (0)
+
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst.val;
   int rs1 = BITS(i, 19, 15);
@@ -197,7 +205,7 @@ static int decode_exec(Decode *s) {
   INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = isa_raise_intr(isa_reg_str2val("a7", NULL), s->pc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,    N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   // Trap-Return
-  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC) /* TODO: CSR mstatus? */);
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); MRET_UPD_MSTATUS());
 
   // COUNTERS
   // rdcycle
