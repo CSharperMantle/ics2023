@@ -136,6 +136,12 @@ static int vsnprintf_(putter_t put, char *buf, const size_t maxlen, const char *
         fmt++;
         break;
       }
+      case 'p': {
+        uintptr_t u = va_arg(ap, uintptr_t);
+        utoa_(put, buf, u, 16, &idx, maxlen, zpad_width);
+        fmt++;
+        break;
+      }
       case 'c': {
         char ch = (char)va_arg(ap, int);
         put(ch, buf, idx++, maxlen);
