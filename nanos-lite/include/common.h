@@ -3,14 +3,15 @@
 
 /* Uncomment these macros to enable corresponding functionality. */
 #define HAS_CTE
-#define CONFIG_STRACE
+//#define CONFIG_STRACE
 //#define HAS_VME
 //#define MULTIPROGRAM
 //#define TIME_SHARING
 
 #include <am.h>
-#include <klib.h>
 #include <klib-macros.h>
+#include <klib.h>
+
 #include <debug.h>
 
 #endif

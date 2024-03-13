@@ -7,6 +7,16 @@ static void print_strace(uintptr_t *a) {
 }
 #endif
 
+static int syscall_write(int fd, void *buf, size_t count) {
+  if (!(fd == 1 || fd == 2)) {
+    return 0;
+  }
+  for (size_t i = 0; i < count; i++) {
+    putchar(((char *)buf)[i]);
+  }
+  return count;
+}
+
 void do_syscall(Context *c) {
   uintptr_t a[4];
   a[0] = c->GPR1;
@@ -23,7 +33,11 @@ void do_syscall(Context *c) {
       yield();
       c->GPRx = 0;
       break;
-    case SYS_exit: halt(a[1]); break;
+    case SYS_exit:
+      halt(a[1]);
+      c->GPRx = 0;
+      break;
+    case SYS_write: c->GPRx = syscall_write((int)a[1], (void *)a[2], (size_t)a[3]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 }
