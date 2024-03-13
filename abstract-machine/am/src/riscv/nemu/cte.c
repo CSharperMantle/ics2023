@@ -2,20 +2,29 @@
 #include <klib.h>
 #include <riscv/riscv.h>
 
+#define BITMASK(bits)   ((1ull << (bits)) - 1)
+#define BITS(x, hi, lo) (((x) >> (lo)) & BITMASK((hi) - (lo) + 1))
+
 static Context *(*user_handler)(Event, Context *) = NULL;
 
 Context *__am_irq_handle(Context *c) {
   if (user_handler) {
     Event ev;
 
-    switch (c->mcause) {
-      case -1: ev = (Event){.event = EVENT_YIELD}; break;
-      default: ev = (Event){.event = EVENT_ERROR}; break;
+    if (!BITS(c->mcause, sizeof(c->mcause) * 8 - 1, sizeof(c->mcause) * 8 - 1)) {
+      ev = (Event){.event = EVENT_SYSCALL};
+    } else if (c->mcause == -1) {
+      ev = (Event){.event = EVENT_YIELD};
+    } else {
+      ev = (Event){.event = EVENT_ERROR};
     }
 
     c = user_handler(ev, c);
     assert(c != NULL);
   }
+
+  // TODO: distinguish int vs fault
+  c->mepc += 4;
 
   return c;
 }

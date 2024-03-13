@@ -21,9 +21,11 @@ struct Context {
 #define GPR1 gpr[17] // a7
 #endif
 
-#define GPR2 gpr[0]
-#define GPR3 gpr[0]
-#define GPR4 gpr[0]
-#define GPRx gpr[0]
+// Argument passing
+#define GPR2 gpr[4] // a0
+#define GPR3 gpr[5] // a1
+#define GPR4 gpr[6] // a2
+// Return value
+#define GPRx gpr[4] // a0
 
 #endif
