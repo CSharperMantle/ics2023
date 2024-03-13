@@ -4,6 +4,8 @@
 
 #define BITMASK(bits)   ((1ull << (bits)) - 1)
 #define BITS(x, hi, lo) (((x) >> (lo)) & BITMASK((hi) - (lo) + 1))
+#define SIGBIT_ID(x)    (sizeof(x) * 8 - 1)
+#define IS_INT(x)       (BITS(x, SIGBIT_ID(x), SIGBIT_ID(x)))
 
 static Context *(*user_handler)(Event, Context *) = NULL;
 
@@ -11,20 +13,27 @@ Context *__am_irq_handle(Context *c) {
   if (user_handler) {
     Event ev;
 
-    if (!BITS(c->mcause, sizeof(c->mcause) * 8 - 1, sizeof(c->mcause) * 8 - 1)) {
-      ev = (Event){.event = EVENT_SYSCALL};
-    } else if (c->mcause == -1) {
-      ev = (Event){.event = EVENT_YIELD};
-    } else {
-      ev = (Event){.event = EVENT_ERROR};
+    switch (c->mcause) {
+      case EXCP_M_ENV_CALL: {
+        if (!BITS(c->GPR1, SIGBIT_ID(c->GPR1), SIGBIT_ID(c->GPR1))) {
+          ev = (Event){.event = EVENT_SYSCALL};
+        } else if (c->GPR1 == -1) {
+          ev = (Event){.event = EVENT_YIELD};
+        } else {
+          ev = (Event){.event = EVENT_ERROR};
+        }
+        break;
+      }
+      default: ev = (Event){.event = EVENT_ERROR}; break;
     }
 
     c = user_handler(ev, c);
     assert(c != NULL);
   }
 
-  // TODO: distinguish int vs fault
-  c->mepc += 4;
+  if (!IS_INT(c->mcause)) {
+    c->mepc += 4;
+  }
 
   return c;
 }

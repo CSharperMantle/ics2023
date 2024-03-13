@@ -30,4 +30,30 @@ struct Context {
 // Return value
 #define GPRx gpr[10] // a0
 
+enum {
+  INTR_S_SOFT = 1,
+  INTR_M_SOFT = 3,
+  INTR_S_TIMR = 5,
+  INTR_M_TIMR = 7,
+  INTR_S_EXTN = 9,
+  INTR_M_EXTN = 11,
+};
+
+enum {
+  EXCP_INST_UNALIGNED = 0,
+  EXCP_INST_ACCESS = 1,
+  EXCP_INST = 2,
+  EXCP_BREAK = 3,
+  EXCP_READ_UNALIGNED = 4,
+  EXCP_READ_ACCESS = 5,
+  EXCP_STORE_UNALIGNED = 6,
+  EXCP_STORE_ACCESS = 7,
+  EXCP_U_ENV_CALL = 8,
+  EXCP_S_ENV_CALL = 9,
+  EXCP_M_ENV_CALL = 11,
+  EXCP_INST_PAGE = 12,
+  EXCP_READ_PAGE = 13,
+  EXCP_STORE_PAGE = 14,
+};
+
 #endif
