@@ -1,6 +1,12 @@
 #include "syscall.h"
 #include <common.h>
 
+#ifdef CONFIG_STRACE
+static void print_strace(uintptr_t *a) {
+  Log("syscall %u; args=[0x%p, 0x%p, 0x%p]", a[0], a[1], a[2], a[3]);
+}
+#endif
+
 void do_syscall(Context *c) {
   uintptr_t a[4];
   a[0] = c->GPR1;
@@ -9,7 +15,7 @@ void do_syscall(Context *c) {
   a[3] = c->GPR4;
 
 #ifdef CONFIG_STRACE
-  Log("syscall %u; args=[0x%p, 0x%p, 0x%p]", a[0], a[1], a[2], a[3]);
+  print_strace(a);
 #endif
 
   switch (a[0]) {
