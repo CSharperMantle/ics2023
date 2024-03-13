@@ -9,12 +9,17 @@ static void print_strace(uintptr_t *a) {
 
 static int syscall_write(int fd, void *buf, size_t count) {
   if (!(fd == 1 || fd == 2)) {
-    return 0;
+    return -1;
   }
   for (size_t i = 0; i < count; i++) {
     putchar(((char *)buf)[i]);
   }
   return count;
+}
+
+static int syscall_brk(void *ptr) {
+  (void)ptr; // TODO: single task OS; always succeed
+  return 0;
 }
 
 void do_syscall(Context *c) {
@@ -38,6 +43,7 @@ void do_syscall(Context *c) {
       c->GPRx = 0;
       break;
     case SYS_write: c->GPRx = syscall_write((int)a[1], (void *)a[2], (size_t)a[3]); break;
+    case SYS_brk: c->GPRx = (uintptr_t)syscall_brk((void *)a[0]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 }
