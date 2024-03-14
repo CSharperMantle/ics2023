@@ -1,6 +1,7 @@
 #include "syscall.h"
 #include <common.h>
 #include <fs.h>
+#include <sys/time.h>
 
 #ifdef CONFIG_STRACE
 static void print_strace(uintptr_t *a) {
@@ -8,8 +9,22 @@ static void print_strace(uintptr_t *a) {
 }
 #endif
 
+typedef struct timeval tv_t;
+typedef struct timezone tz_t;
+
 static int syscall_brk(void *ptr) {
   (void)ptr; // TODO: single task OS; always succeed
+  return 0;
+}
+
+static int syscall_gettimeofday(tv_t *tv, tz_t *tz) {
+  AM_TIMER_UPTIME_T reg;
+  ioe_read(AM_TIMER_UPTIME, &reg);
+  if (tv != NULL) {
+    tv->tv_sec = reg.us / 1000000;
+    tv->tv_usec = reg.us % 1000000;
+  }
+  // TODO: set timezone
   return 0;
 }
 
@@ -35,7 +50,8 @@ void do_syscall(Context *c) {
     case SYS_write: c->GPRx = fs_write((int)a[1], (const void *)a[2], (size_t)a[3]); break;
     case SYS_close: c->GPRx = fs_close((int)a[1]); break;
     case SYS_lseek: c->GPRx = fs_lseek((int)a[1], (off_t)a[2], (int)a[3]); break;
-    case SYS_brk: c->GPRx = (uintptr_t)syscall_brk((void *)a[0]); break;
+    case SYS_brk: c->GPRx = syscall_brk((void *)a[0]); break;
+    case SYS_gettimeofday: c->GPRx = syscall_gettimeofday((tv_t *)a[1], (tz_t *)a[2]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 }
