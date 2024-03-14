@@ -43,7 +43,7 @@ static Finfo file_table[] __attribute__((used)) = {
 #include "files.h"
 };
 
-void init_fs() {
+void init_fs(void) {
   // TODO: initialize the size of /dev/fb
 }
 

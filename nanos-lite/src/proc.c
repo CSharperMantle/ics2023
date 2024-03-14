@@ -7,7 +7,7 @@ static PCB pcb[MAX_NR_PROC] __attribute__((used)) = {};
 static PCB pcb_boot = {};
 PCB *current = NULL;
 
-void switch_boot_pcb() {
+void switch_boot_pcb(void) {
   current = &pcb_boot;
 }
 
@@ -20,7 +20,7 @@ void hello_fun(void *arg) {
   }
 }
 
-void init_proc() {
+void init_proc(void) {
   switch_boot_pcb();
 
   Log("Initializing processes...");

@@ -18,4 +18,7 @@ typedef union {
 
 extern PCB *current;
 
+void init_proc(void);
+void switch_boot_pcb(void);
+
 #endif
