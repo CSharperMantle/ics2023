@@ -18,11 +18,10 @@ static int syscall_brk(void *ptr) {
 }
 
 static int syscall_gettimeofday(tv_t *tv, tz_t *tz) {
-  AM_TIMER_UPTIME_T reg;
-  ioe_read(AM_TIMER_UPTIME, &reg);
+  AM_TIMER_UPTIME_T state = io_read(AM_TIMER_UPTIME);
   if (tv != NULL) {
-    tv->tv_sec = reg.us / 1000000;
-    tv->tv_usec = reg.us % 1000000;
+    tv->tv_sec = state.us / 1000000;
+    tv->tv_usec = state.us % 1000000;
   }
   // TODO: set timezone
   return 0;
