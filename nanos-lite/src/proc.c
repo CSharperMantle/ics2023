@@ -1,5 +1,5 @@
-#include <proc.h>
 #include <loader.h>
+#include <proc.h>
 
 #define MAX_NR_PROC 4
 
@@ -15,7 +15,7 @@ void hello_fun(void *arg) {
   int j = 1;
   while (1) {
     Log("Hello World from Nanos-lite with arg '%p' for the %dth time!", (uintptr_t)arg, j);
-    j ++;
+    j++;
     yield();
   }
 }
@@ -26,9 +26,9 @@ void init_proc() {
   Log("Initializing processes...");
 
   // TODO: load program here
-  naive_uload(NULL, NULL);
+  naive_uload(NULL, "/bin/file-test");
 }
 
-Context* schedule(Context *prev) {
+Context *schedule(Context *prev) {
   return NULL;
 }

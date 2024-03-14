@@ -14,4 +14,7 @@
 
 #include <debug.h>
 
+#define ARRLEN(arr_) (sizeof(arr_) / sizeof(arr_[0]))
+#define MIN(a_, b_)  ((a_) <= (b_) ? (a_) : (b_))
+
 #endif
