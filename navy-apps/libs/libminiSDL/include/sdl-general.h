@@ -2,6 +2,8 @@
 #define __SDL_GENERAL_H__
 
 #include <stdint.h>
+
+#include <stdint.h>
 #include <stdio.h>
 
 #define SDL_INIT_VIDEO       0x01

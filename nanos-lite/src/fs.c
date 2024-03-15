@@ -14,6 +14,7 @@ typedef struct {
   size_t disk_offset;
   ReadFn read;
   WriteFn write;
+  bool unseekable;
   size_t open_offset;
 } Finfo;
 
@@ -45,12 +46,12 @@ static size_t file_write(const void *buf, size_t offset, size_t len) {
 
 /* This is the information about all files in disk. */
 static Finfo file_table[] __attribute__((used)) = {
-    [FD_STDIN]    = {"stdin",          0, 0, NULL,          NULL        },
-    [FD_STDOUT]   = {"stdout",         0, 0, NULL,          serial_write},
-    [FD_STDERR]   = {"stderr",         0, 0, NULL,          serial_write},
-    [FD_EVENTS]   = {"/dev/events",    0, 0, events_read,   NULL        },
-    [FD_FB]       = {"/dev/fb",        0, 0, NULL,          fb_write    },
-    [FD_DISPINFO] = {"/proc/dispinfo", 0, 0, dispinfo_read, NULL        },
+    [FD_STDIN]    = {"stdin",          0, 0, NULL,          NULL,         true },
+    [FD_STDOUT]   = {"stdout",         0, 0, NULL,          serial_write, true },
+    [FD_STDERR]   = {"stderr",         0, 0, NULL,          serial_write, true },
+    [FD_EVENTS]   = {"/dev/events",    0, 0, events_read,   NULL,         true },
+    [FD_FB]       = {"/dev/fb",        0, 0, NULL,          fb_write,     false},
+    [FD_DISPINFO] = {"/proc/dispinfo", 0, 0, dispinfo_read, NULL,         true },
 #include "files.h"
 };
 
@@ -131,7 +132,7 @@ ssize_t fs_write(int fd, const void *buf, size_t len) {
 }
 
 off_t fs_lseek(int fd, off_t offset, int whence) {
-  if (fd < 0 || fd >= ARRLEN(file_table) || (is_special(fd) && file_table[fd].size == 0)) {
+  if (fd < 0 || fd >= ARRLEN(file_table) || (is_special(fd) && file_table[fd].unseekable)) {
     return -1;
   }
   switch (whence) {
@@ -148,8 +149,10 @@ int fs_close(int fd) {
   if (fd < 0 || fd >= ARRLEN(file_table)) {
     return -1;
   }
-  finfo->read = NULL;
-  finfo->write = NULL;
+  if (!is_special(fd)) {
+    finfo->read = NULL;
+    finfo->write = NULL;
+  }
   finfo->open_offset = 0;
   return 0;
 }
