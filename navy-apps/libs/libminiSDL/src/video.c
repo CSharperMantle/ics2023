@@ -4,19 +4,65 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void do_blit_surface_u8(SDL_Surface *s, SDL_Surface *d, SDL_Rect s_aoi, SDL_Rect d_loc) {
+  uint8_t *const s_pixels = s->pixels;
+  uint8_t *const d_pixels = d->pixels;
+  for (size_t i = 0; i < s_aoi.h; i++) {
+    uint8_t *const s_row = &s_pixels[(s_aoi.y + i) * s->w + s_aoi.x];
+    uint8_t *const d_row = &d_pixels[(d_loc.y + i) * d->w + d_loc.x];
+    memcpy(d_row, s_row, sizeof(uint8_t) * s_aoi.w);
+  }
+}
+
+static void do_blit_surface_u32(SDL_Surface *s, SDL_Surface *d, SDL_Rect s_aoi, SDL_Rect d_loc) {
+  uint32_t *const s_pixels = (uint32_t *)s->pixels;
+  uint32_t *const d_pixels = (uint32_t *)d->pixels;
+  for (size_t i = 0; i < s_aoi.h; i++) {
+    uint32_t *const s_row = &s_pixels[(s_aoi.y + i) * s->w + s_aoi.x];
+    uint32_t *const d_row = &d_pixels[(d_loc.y + i) * d->w + d_loc.x];
+    memcpy(d_row, s_row, sizeof(uint32_t) * s_aoi.w);
+  }
+}
+
 void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) {
   assert(dst && src);
   assert(dst->format->BitsPerPixel == src->format->BitsPerPixel);
+  assert(dst->format->BitsPerPixel == 32 || dst->format->BitsPerPixel == 8);
+  const SDL_Rect s_aoi = {
+      .x = srcrect != NULL ? srcrect->x : 0,
+      .y = srcrect != NULL ? srcrect->y : 0,
+      .w = srcrect != NULL ? srcrect->w : src->w,
+      .h = srcrect != NULL ? srcrect->h : src->h,
+  };
+  const SDL_Rect d_loc = {
+      .x = dstrect != NULL ? dstrect->x : 0,
+      .y = dstrect != NULL ? dstrect->y : 0,
+      .w = 0, // unused
+      .h = 0, // unused
+  };
+  switch (dst->format->BitsPerPixel) {
+    case 32: do_blit_surface_u32(src, dst, s_aoi, d_loc); break;
+    case 8: do_blit_surface_u8(src, dst, s_aoi, d_loc); break;
+    default: assert(0);
+  }
 }
 
-void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {}
-
-static void helper_update_rect_u32(SDL_Surface *s, int x, int y, int w, int h) {
-  uint32_t *const pixels = (uint32_t *)s->pixels;
-  if (x == 0 && y == 0 && w == 0 && h == 0) {
-    NDL_DrawRect(pixels, 0, 0, s->w, s->h);
-    return;
+void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {
+  uint32_t *const pixels = (uint32_t *)dst->pixels;
+  assert(dst->format->BitsPerPixel == 32);
+  const int area_h = dstrect != NULL ? dstrect->h : dst->h;
+  const int area_w = dstrect != NULL ? dstrect->w : dst->w;
+  const int area_x = dstrect != NULL ? dstrect->x : 0;
+  const int area_y = dstrect != NULL ? dstrect->y : 0;
+  for (size_t i = 0; i < area_h; i++) {
+    for (size_t j = 0; j < area_w; j++) {
+      pixels[(area_y + i) * dst->w + (area_x + j)] = color;
+    }
   }
+}
+
+static void do_update_rect_u32(SDL_Surface *s, int x, int y, int w, int h) {
+  uint32_t *const pixels = (uint32_t *)s->pixels;
   uint32_t *const buf = (uint32_t *)malloc(sizeof(uint32_t) * w * h);
   assert(buf != NULL);
   for (size_t i = 0; i < h; i++) {
@@ -26,13 +72,8 @@ static void helper_update_rect_u32(SDL_Surface *s, int x, int y, int w, int h) {
   free(buf);
 }
 
-static void helper_update_rect_u8(SDL_Surface *s, int x, int y, int w, int h) {
+static void do_update_rect_u8(SDL_Surface *s, int x, int y, int w, int h) {
   uint8_t *const pixels = s->pixels;
-  if (x == 0 && y == 0 && w == 0 && h == 0) {
-    x = y = 0;
-    w = s->w;
-    h = s->h;
-  }
   uint32_t *const buf = (uint32_t *)malloc(sizeof(uint32_t) * s->w * s->h);
   assert(buf != NULL);
   for (size_t i = 0; i < h; i++) {
@@ -40,8 +81,7 @@ static void helper_update_rect_u8(SDL_Surface *s, int x, int y, int w, int h) {
       const uint8_t c_val = pixels[(y + i) * s->w + x + j];
       assert(c_val < s->format->palette->ncolors);
       const SDL_Color c = s->format->palette->colors[c_val];
-      buf[i * w + j] =
-          ((uint32_t)c.a << 24) | ((uint32_t)c.r << 16) | ((uint32_t)c.g << 8) | ((uint32_t)c.b);
+      buf[i * w + j] = SDL_MapRGBA(s->format, c.r, c.g, c.b, c.a);
     }
   }
   NDL_DrawRect(buf, x, y, w, h);
@@ -49,13 +89,16 @@ static void helper_update_rect_u8(SDL_Surface *s, int x, int y, int w, int h) {
 }
 
 void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) {
-  if (s == NULL) {
-    return;
+  assert(s != NULL);
+  if (x == 0 && y == 0 && w == 0 && h == 0) {
+    x = y = 0;
+    w = s->w;
+    h = s->h;
   }
   switch (s->format->BitsPerPixel) {
-    case 32: helper_update_rect_u32(s, x, y, w, h); break;
-    case 8: helper_update_rect_u8(s, x, y, w, h); break;
-    default: return;
+    case 32: do_update_rect_u32(s, x, y, w, h); break;
+    case 8: do_update_rect_u8(s, x, y, w, h); break;
+    default: assert(0);
   }
 }
 
