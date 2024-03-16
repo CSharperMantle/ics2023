@@ -13,19 +13,15 @@ int SDL_PushEvent(SDL_Event *ev) {
 }
 
 int SDL_PollEvent(SDL_Event *ev) {
-  return 0;
-}
-
-int SDL_WaitEvent(SDL_Event *ev) {
   static char buf[32];
 
-  int len = -1;
-  do {
-    len = NDL_PollEvent(buf, sizeof(buf));
-  } while (len == 0);
+  int len = NDL_PollEvent(buf, sizeof(buf));
+  if (len <= 0) {
+    return 0;
+  }
 
-  if (ev == NULL || len <= 0) {
-    return !(len <= 0);
+  if (ev == NULL) {
+    return 1;
   }
 
   char type;
@@ -44,6 +40,14 @@ int SDL_WaitEvent(SDL_Event *ev) {
   }
 
   return 1;
+}
+
+int SDL_WaitEvent(SDL_Event *ev) {
+  int ret = 0;
+  do {
+    ret = SDL_PollEvent(ev);
+  } while (ret == 0);
+  return ret;
 }
 
 int SDL_PeepEvents(SDL_Event *ev, int numevents, int action, uint32_t mask) {

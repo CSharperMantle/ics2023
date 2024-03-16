@@ -6,9 +6,11 @@
 typedef void* SDL_TimerID;
 typedef uint32_t (*SDL_NewTimerCallback)(uint32_t interval, void *param);
 
+extern uint32_t sdl_init_ticks;
+
 SDL_TimerID SDL_AddTimer(uint32_t interval, SDL_NewTimerCallback callback, void *param);
 int SDL_RemoveTimer(SDL_TimerID id);
-uint32_t SDL_GetTicks();
+uint32_t SDL_GetTicks(void);
 void SDL_Delay(uint32_t ms);
 
 #endif

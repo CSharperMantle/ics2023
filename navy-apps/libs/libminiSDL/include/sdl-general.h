@@ -13,8 +13,8 @@
 #define SDL_INIT_JOYSTICK    0x10
 
 int SDL_Init(uint32_t flags);
-void SDL_Quit();
-char *SDL_GetError();
+void SDL_Quit(void);
+char *SDL_GetError(void);
 int SDL_SetError(const char* fmt, ...);
 int SDL_ShowCursor(int toggle);
 void SDL_WM_SetCaption(const char *title, const char *icon);
