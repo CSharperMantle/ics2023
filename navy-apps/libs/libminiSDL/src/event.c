@@ -21,6 +21,7 @@ int SDL_PollEvent(SDL_Event *ev) {
   }
 
   if (ev == NULL) {
+  // TODO: When ev is NULL, cache current event.
     return 1;
   }
 
