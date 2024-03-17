@@ -17,5 +17,5 @@ void call_main(uintptr_t *args) {
   __libc_init_array();
   exit(main(0, empty, empty));
 
-  assert(("unreachable", 0));
+  assert(((void)"unreachable", 0));
 }

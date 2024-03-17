@@ -26,7 +26,7 @@ void init_proc(void) {
   Log("Initializing processes...");
 
   // TODO: load program here
-  naive_uload(NULL, "/bin/pal");
+  naive_uload(NULL, "/bin/menu");
 }
 
 Context *schedule(Context *prev) {

@@ -1,6 +1,7 @@
 #include "syscall.h"
 #include <common.h>
 #include <fs.h>
+#include <loader.h>
 #include <sys/time.h>
 
 #ifdef CONFIG_STRACE
@@ -17,6 +18,15 @@ static int syscall_brk(void *ptr) {
   return 0;
 }
 
+static int syscall_execve(const char *filename, char *argv[], char *envp[]) {
+  (void)argv;
+  (void)envp;
+
+  Log("switching to \"%s\"", filename);
+  naive_uload(NULL, filename);
+  return -1;
+}
+
 static int syscall_gettimeofday(tv_t *tv, tz_t *tz) {
   AM_TIMER_UPTIME_T state = io_read(AM_TIMER_UPTIME);
   if (tv != NULL) {
@@ -24,6 +34,9 @@ static int syscall_gettimeofday(tv_t *tv, tz_t *tz) {
     tv->tv_usec = state.us % 1000000;
   }
   // TODO: set timezone
+  if (tz != NULL) {
+    assert(((void)"timezone not implemented", 0));
+  }
   return 0;
 }
 
@@ -49,7 +62,10 @@ void do_syscall(Context *c) {
     case SYS_write: c->GPRx = fs_write((int)a[1], (const void *)a[2], (size_t)a[3]); break;
     case SYS_close: c->GPRx = fs_close((int)a[1]); break;
     case SYS_lseek: c->GPRx = fs_lseek((int)a[1], (off_t)a[2], (int)a[3]); break;
-    case SYS_brk: c->GPRx = syscall_brk((void *)a[0]); break;
+    case SYS_brk: c->GPRx = syscall_brk((void *)a[1]); break;
+    case SYS_execve:
+      c->GPRx = syscall_execve((const char *)a[1], (char **)a[1], (char **)a[2]);
+      break;
     case SYS_gettimeofday: c->GPRx = syscall_gettimeofday((tv_t *)a[1], (tz_t *)a[2]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
