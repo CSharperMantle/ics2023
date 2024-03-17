@@ -26,7 +26,7 @@ void init_proc(void) {
   Log("Initializing processes...");
 
   // TODO: load program here
-  naive_uload(NULL, "/bin/nplayer");
+  naive_uload(NULL, "/bin/cpp-test");
 }
 
 Context *schedule(Context *prev) {
