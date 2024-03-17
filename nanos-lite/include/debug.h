@@ -1,8 +1,6 @@
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 
-#include <common.h>
-
 #define Log(format, ...)                                                                           \
   printf("\33[1;35m[%s,%d,%s]\33[0m " format "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 

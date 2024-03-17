@@ -14,9 +14,9 @@ void NDL_OpenCanvas(int *w, int *h);
 int NDL_PollEvent(char *buf, int len);
 void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h);
 void NDL_OpenAudio(int freq, int channels, int samples);
-void NDL_CloseAudio();
+void NDL_CloseAudio(void);
 int NDL_PlayAudio(void *buf, int len);
-int NDL_QueryAudio();
+int NDL_QueryAudio(void);
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,6 @@
 #define AUDIO_ADDR_REG_SBUF_SIZE (AUDIO_ADDR + 0x0c)
 #define AUDIO_ADDR_REG_INIT      (AUDIO_ADDR + 0x10)
 #define AUDIO_ADDR_REG_COUNT     (AUDIO_ADDR + 0x14)
-#define AUDIO_ADDR_REG_COMMIT    (AUDIO_ADDR + 0x18)
 
 static size_t sbuf_pos = 0;
 static uint32_t sbuf_size = 0;
@@ -20,6 +19,7 @@ void __am_audio_init(void) {
 
 void __am_audio_config(AM_AUDIO_CONFIG_T *cfg) {
   cfg->present = true;
+  cfg->bufsize = sbuf_size;
 }
 
 void __am_audio_ctrl(AM_AUDIO_CTRL_T *ctrl) {

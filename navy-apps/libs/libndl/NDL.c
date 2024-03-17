@@ -40,7 +40,7 @@ void NDL_OpenCanvas(int *w, int *h) {
     screen_w = *w;
     screen_h = *h;
     char buf[64];
-    int len = sprintf(buf, "%d %d", screen_w, screen_h);
+    int len = snprintf(buf, sizeof(buf), "%d %d", screen_w, screen_h);
     // let NWM resize the window and create the frame buffer
     write(fbctl, buf, len);
     while (1) {
@@ -57,7 +57,7 @@ void NDL_OpenCanvas(int *w, int *h) {
 }
 
 void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
-  int ffb = open("/dev/fb", O_WRONLY);
+  const int ffb = open("/dev/fb", O_WRONLY);
   for (int i_y = 0; i_y < h; i_y++) {
     lseek(ffb,
           ((canvas_off_y + y + i_y) * screen_w + (canvas_off_x + x)) * sizeof(uint32_t),
@@ -68,16 +68,47 @@ void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
   close(ffb);
 }
 
-void NDL_OpenAudio(int freq, int channels, int samples) {}
-
-void NDL_CloseAudio() {}
-
-int NDL_PlayAudio(void *buf, int len) {
-  return 0;
+void NDL_OpenAudio(int freq, int channels, int samples) {
+  const int fsbctl = open("/dev/sbctl", O_WRONLY);
+  const union {
+    struct fields_ {
+      int freq;
+      int channels;
+      int samples;
+    } __attribute__((packed)) fields;
+    uint8_t as_bytes[sizeof(struct fields_)];
+  } data = {
+      .fields = {
+                 .freq = freq,
+                 .channels = channels,
+                 .samples = samples,
+                 }
+  };
+  write(fsbctl, data.as_bytes, sizeof(data.as_bytes));
+  close(fsbctl);
 }
 
-int NDL_QueryAudio() {
-  return 0;
+void NDL_CloseAudio(void) {
+  // no-op
+  ;
+}
+
+int NDL_PlayAudio(void *buf, int len) {
+  const int fsb = open("/dev/sb", O_WRONLY);
+  const ssize_t ret = write(fsb, buf, len);
+  close(fsb);
+  return (int)ret;
+}
+
+int NDL_QueryAudio(void) {
+  const int fsbctl = open("/dev/sbctl", O_RDONLY);
+  int count;
+  const ssize_t ret = read(fsbctl, &count, sizeof(count));
+  if (ret < 0) {
+    return -1;
+  }
+  close(fsbctl);
+  return count;
 }
 
 int NDL_Init(uint32_t flags) {
@@ -88,8 +119,13 @@ int NDL_Init(uint32_t flags) {
   }
 
   int fdispinfo = open("/proc/dispinfo", O_RDONLY);
+
   char buf[64];
-  read(fdispinfo, buf, sizeof(buf));
+  ssize_t ret = read(fdispinfo, buf, sizeof(buf));
+  if (ret < 0) {
+    return -1;
+  }
+
   int width, height;
   int n_matches = sscanf(buf, "WIDTH: %d HEIGHT:%d", &width, &height);
   if (n_matches != 2) {
@@ -98,6 +134,7 @@ int NDL_Init(uint32_t flags) {
   }
   screen_w = width;
   screen_h = height;
+
   close(fdispinfo);
 
   return 0;

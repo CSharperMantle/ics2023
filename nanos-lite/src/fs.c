@@ -25,6 +25,8 @@ enum {
   FD_EVENTS,
   FD_FB,
   FD_DISPINFO,
+  FD_SB,
+  FD_SBCTL,
 };
 
 static const int LIST_FD_SPECIAL[] = {
@@ -34,6 +36,8 @@ static const int LIST_FD_SPECIAL[] = {
     FD_EVENTS,
     FD_FB,
     FD_DISPINFO,
+    FD_SB,
+    FD_SBCTL,
 };
 
 static size_t file_read(void *buf, size_t offset, size_t len) {
@@ -52,6 +56,8 @@ static Finfo file_table[] __attribute__((used)) = {
     [FD_EVENTS]   = {"/dev/events",    0, 0, events_read,   NULL,         true },
     [FD_FB]       = {"/dev/fb",        0, 0, NULL,          fb_write,     false},
     [FD_DISPINFO] = {"/proc/dispinfo", 0, 0, dispinfo_read, NULL,         true },
+    [FD_SB]       = {"/dev/sb",        0, 0, NULL,          sb_write,     true },
+    [FD_SBCTL]    = {"/dev/sbctl",     0, 0, sbctl_read,    sbctl_write,  true },
 #include "files.h"
 };
 
@@ -65,9 +71,14 @@ static bool is_special(int fd) {
 }
 
 void init_fs(void) {
-  const AM_GPU_CONFIG_T state = io_read(AM_GPU_CONFIG);
-  if (state.present) {
-    file_table[FD_FB].size = state.vmemsz;
+  const AM_GPU_CONFIG_T fb_state = io_read(AM_GPU_CONFIG);
+  if (fb_state.present) {
+    file_table[FD_FB].size = fb_state.vmemsz;
+  }
+  
+  const AM_AUDIO_CONFIG_T sb_state = io_read(AM_AUDIO_CONFIG);
+  if (sb_state.present) {
+    file_table[FD_SB].size = sb_state.bufsize;
   }
 }
 

@@ -13,7 +13,16 @@ int SDL_RemoveTimer(SDL_TimerID id) {
 }
 
 uint32_t SDL_GetTicks(void) {
+  extern void sdl_schedule_audio_callback(void);
+  sdl_schedule_audio_callback();
+  
   return NDL_GetTicks() - sdl_init_ticks;
 }
 
-void SDL_Delay(uint32_t ms) {}
+void SDL_Delay(uint32_t ms) {
+  const uint32_t start = SDL_GetTicks();
+  uint32_t now;
+  do {
+    now = SDL_GetTicks();
+  } while (now - start < ms);
+}
