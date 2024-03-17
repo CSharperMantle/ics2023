@@ -56,18 +56,15 @@ void SDL_UnlockAudio(void) {
 }
 
 void sdl_schedule_audio_callback(void) {
-  static bool reent = false;
-  if (reent || !sdl_audio_callback.valid || sdl_audio_callback.paused
-      || sdl_audio_callback.locked) {
+  if (!sdl_audio_callback.valid || sdl_audio_callback.paused || sdl_audio_callback.locked) {
     return;
   }
-  reent = true;
-  if (NDL_GetTicks() - sdl_audio_callback.last_called < sdl_audio_callback.interval) {
-    const int size = sdl_audio_callback.buf_size;
-    uint8_t *const buf = (uint8_t *)calloc(size, sizeof(uint8_t));
-    sdl_audio_callback.callback(sdl_audio_callback.userdata, buf, size);
-    NDL_PlayAudio(buf, size);
-    sdl_audio_callback.last_called = NDL_GetTicks();
+  if (!(NDL_GetTicks() - sdl_audio_callback.last_called < sdl_audio_callback.interval)) {
+    return;
   }
-  reent = false;
+  const int size = sdl_audio_callback.buf_size;
+  uint8_t *const buf = (uint8_t *)calloc(size, sizeof(uint8_t));
+  sdl_audio_callback.callback(sdl_audio_callback.userdata, buf, size);
+  NDL_PlayAudio(buf, size);
+  sdl_audio_callback.last_called = NDL_GetTicks();
 }

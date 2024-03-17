@@ -1,5 +1,6 @@
 #include <NDL.h>
 #include <sdl-timer.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 uint32_t sdl_init_ticks = 0;
@@ -13,9 +14,15 @@ int SDL_RemoveTimer(SDL_TimerID id) {
 }
 
 uint32_t SDL_GetTicks(void) {
-  extern void sdl_schedule_audio_callback(void);
-  sdl_schedule_audio_callback();
+  static bool reent = false;
   
+  if (!reent) {
+    reent = true;
+    extern void sdl_schedule_audio_callback(void);
+    sdl_schedule_audio_callback();
+    reent = false;
+  }
+
   return NDL_GetTicks() - sdl_init_ticks;
 }
 
