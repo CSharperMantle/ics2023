@@ -23,7 +23,8 @@ int NDL_PollEvent(char *buf, int len) {
 }
 
 void NDL_OpenCanvas(int *w, int *h) {
-  assert(*w >= 0 && *w <= screen_w && *h >= 0 && *h <= screen_h);
+  assert(*w >= 0 && *w <= screen_w);
+  assert(*h >= 0 && *h <= screen_h);
 
   const int orig_w = *w;
   const int orig_h = *h;

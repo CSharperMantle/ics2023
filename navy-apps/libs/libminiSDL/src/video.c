@@ -81,7 +81,19 @@ static void do_update_rect_u8(SDL_Surface *s, int x, int y, int w, int h) {
       const uint8_t c_val = pixels[(y + i) * s->w + x + j];
       assert(c_val < s->format->palette->ncolors);
       const SDL_Color c = s->format->palette->colors[c_val];
-      buf[i * w + j] = SDL_MapRGBA(s->format, c.r, c.g, c.b, c.a);
+      SDL_PixelFormat fmt = {
+          .BytesPerPixel = 4,
+          .BitsPerPixel = 32,
+          .Amask = 0,
+          .Ashift = 24,
+          .Rmask = 0x00FF0000,
+          .Rshift = 16,
+          .Gmask = 0x0000FF00,
+          .Gshift = 8,
+          .Bmask = 0x000000FF,
+          .Bshift = 0,
+      };
+      buf[i * w + j] = SDL_MapRGBA(&fmt, c.r, c.g, c.b, c.a);
     }
   }
   NDL_DrawRect(buf, x, y, w, h);
