@@ -5,8 +5,14 @@ bool ioe_init(void) {
 }
 
 void ioe_read(int reg, void *buf) {
-  assert(0);
+  int fioe = open("/dev/ioe_pt", O_RDONLY);
+  lseek(fioe, reg, SEEK_SET);
+  read(fioe, buf, -1);
+  close(fioe);
 }
 void ioe_write(int reg, void *buf) {
-  assert(0);
+  int fioe = open("/dev/ioe_pt", O_WRONLY);
+  lseek(fioe, reg, SEEK_SET);
+  write(fioe, buf, -1);
+  close(fioe);
 }

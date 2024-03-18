@@ -83,17 +83,28 @@ size_t sbctl_read(void *buf, size_t offset, size_t len) {
 size_t sbctl_write(const void *buf, size_t offset, size_t len) {
   (void)offset;
 
-  union {
-    struct fields_ {
-      int freq;
-      int channels;
-      int samples;
-    } __attribute__((packed)) fields;
-    char as_bytes[sizeof(struct fields_)];
-  } data;
+  struct {
+    int freq;
+    int channels;
+    int samples;
+  } __attribute__((packed)) data;
   len = MIN(len, sizeof(data));
-  memcpy(data.as_bytes, buf, len);
-  io_write(AM_AUDIO_CTRL, data.fields.freq, data.fields.channels, data.fields.samples);
+  memcpy(&data, buf, len);
+  io_write(AM_AUDIO_CTRL, data.freq, data.channels, data.samples);
+  return len;
+}
+
+size_t ioe_pt_read(void *buf, size_t offset, size_t len) {
+  (void)len;
+
+  ioe_read(offset, buf);
+  return 0;
+}
+
+size_t ioe_pt_write(const void *buf, size_t offset, size_t len) {
+  (void)len;
+
+  ioe_write(offset, (void *)buf);
   return len;
 }
 

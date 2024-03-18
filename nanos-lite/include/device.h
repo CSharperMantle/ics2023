@@ -10,6 +10,8 @@ size_t dispinfo_read(void *buf, size_t offset, size_t len);
 size_t sb_write(const void *buf, size_t offset, size_t len);
 size_t sbctl_read(void *buf, size_t offset, size_t len);
 size_t sbctl_write(const void *buf, size_t offset, size_t len);
+size_t ioe_pt_read(void *buf, size_t offset, size_t len);
+size_t ioe_pt_write(const void *buf, size_t offset, size_t len);
 void init_device(void);
 
 #endif

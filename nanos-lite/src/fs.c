@@ -27,6 +27,7 @@ enum {
   FD_DISPINFO,
   FD_SB,
   FD_SBCTL,
+  FD_IOE_PT,
 };
 
 static const int LIST_FD_SPECIAL[] = {
@@ -38,6 +39,7 @@ static const int LIST_FD_SPECIAL[] = {
     FD_DISPINFO,
     FD_SB,
     FD_SBCTL,
+    FD_IOE_PT,
 };
 
 static size_t file_read(void *buf, size_t offset, size_t len) {
@@ -58,6 +60,7 @@ static Finfo file_table[] __attribute__((used)) = {
     [FD_DISPINFO] = {"/proc/dispinfo", 0, 0, dispinfo_read, NULL,         true },
     [FD_SB]       = {"/dev/sb",        0, 0, NULL,          sb_write,     true },
     [FD_SBCTL]    = {"/dev/sbctl",     0, 0, sbctl_read,    sbctl_write,  true },
+    [FD_IOE_PT]   = {"/dev/ioe_pt",    0, 0, ioe_pt_read,   ioe_pt_write, false},
 #include "files.h"
 };
 
@@ -75,11 +78,13 @@ void init_fs(void) {
   if (fb_state.present) {
     file_table[FD_FB].size = fb_state.vmemsz;
   }
-  
+
   const AM_AUDIO_CONFIG_T sb_state = io_read(AM_AUDIO_CONFIG);
   if (sb_state.present) {
     file_table[FD_SB].size = sb_state.bufsize;
   }
+
+  file_table[FD_IOE_PT].size = -1;
 }
 
 int fs_open(const char *pathname, int flags, int mode) {
