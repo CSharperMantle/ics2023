@@ -64,7 +64,7 @@ void do_syscall(Context *c) {
     case SYS_lseek: c->GPRx = fs_lseek((int)a[1], (off_t)a[2], (int)a[3]); break;
     case SYS_brk: c->GPRx = syscall_brk((void *)a[1]); break;
     case SYS_execve:
-      c->GPRx = syscall_execve((const char *)a[1], (char **)a[1], (char **)a[2]);
+      c->GPRx = syscall_execve((const char *)a[1], (char **)a[2], (char **)a[3]);
       break;
     case SYS_gettimeofday: c->GPRx = syscall_gettimeofday((tv_t *)a[1], (tz_t *)a[2]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
