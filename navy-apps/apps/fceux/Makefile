@@ -14,6 +14,6 @@ libam: ;
 endif
 
 default $(MAKECMDGOALS): libam
-	AM_HOME=$(NAVY_HOME) LIBS=libam $(MAKE) -C $(FCEUX_PATH) $(MAKECMDGOALS)
+	AM_HOME=$(NAVY_HOME) LIBS=libam TARGET_AM=1 $(MAKE) -C $(FCEUX_PATH) $(MAKECMDGOALS)
 
 .PHONY: libam default $(MAKECMDGOALS)
