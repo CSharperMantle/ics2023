@@ -90,7 +90,7 @@ static int64_t high_mul_i64(int64_t a, int64_t b) {
     bool mpie = CSR(CSR_IDX_MSTATUS) & MSTATUS_F_MPIE;                                             \
     CSR(CSR_IDX_MSTATUS) =                                                                         \
         mpie ? (CSR(CSR_IDX_MSTATUS) | MSTATUS_F_MIE) : (CSR(CSR_IDX_MSTATUS) & ~MSTATUS_F_MIE);   \
-    CSR(CSR_IDX_MSTATUS) |= MSTATUS_F_MPIE;                                                        \
+    /* CSR(CSR_IDX_MSTATUS) |= MSTATUS_F_MPIE; */                                                  \
   } while (0)
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {

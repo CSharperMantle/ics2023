@@ -37,8 +37,8 @@ static inline int check_csr_reg(size_t idx) {
 #define CSR_IDX_MTVAL    0x343
 #define CSR_IDX_MIP      0x344
 
-#define MSTATUS_F_MIE  BITMASK(3)
-#define MSTATUS_F_MPIE BITMASK(7)
+#define MSTATUS_F_MIE  BIT(3)
+#define MSTATUS_F_MPIE BIT(7)
 
 #define gpr(idx) (cpu.gpr[check_gpr_idx(idx)])
 #define csr(idx) (cpu.csr[check_csr_reg(idx)])
