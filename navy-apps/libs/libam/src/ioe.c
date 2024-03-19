@@ -10,6 +10,7 @@ void ioe_read(int reg, void *buf) {
   read(fioe, buf, -1);
   close(fioe);
 }
+
 void ioe_write(int reg, void *buf) {
   int fioe = open("/dev/ioe_pt", O_WRONLY);
   lseek(fioe, reg, SEEK_SET);

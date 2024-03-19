@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-SdlAudioCallback_t sdl_audio_callback;
+SdlAudioCallback_t audio_callback;
 
 int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
   if (desired == NULL) {
@@ -18,26 +18,37 @@ int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
   if (obtained != NULL) {
     memcpy(obtained, desired, sizeof(SDL_AudioSpec));
   }
-  sdl_audio_callback = (SdlAudioCallback_t){
+  audio_callback = (SdlAudioCallback_t){
       .callback = desired->callback,
       .userdata = desired->userdata,
       .last_called = 0,
       .interval = desired->freq * 1000 / desired->samples,
       .buf_size = desired->samples * desired->channels,
+      .buf = NULL,
       .valid = true,
       .paused = false,
       .locked = false,
   };
+
+  audio_callback.buf = (uint8_t *)malloc(sizeof(uint8_t) * audio_callback.buf_size);
+  if (audio_callback.buf == NULL) {
+    return -1;
+  }
+
   return 0;
 }
 
 void SDL_CloseAudio(void) {
   NDL_CloseAudio();
-  sdl_audio_callback.valid = false;
+  audio_callback.valid = false;
+  if (audio_callback.buf != NULL) {
+    free(audio_callback.buf);
+    audio_callback.buf = NULL;
+  }
 }
 
 void SDL_PauseAudio(int pause_on) {
-  sdl_audio_callback.paused = pause_on != 0;
+  audio_callback.paused = pause_on != 0;
 }
 
 #define MIN(x_, y_) ((x_) <= (y_) ? (x_) : (y_))
@@ -80,7 +91,6 @@ SDL_AudioSpec *
 SDL_LoadWAV(const char *file, SDL_AudioSpec *spec, uint8_t **audio_buf, uint32_t *audio_len) {
   SDL_AudioSpec s = {0};
   FILE *f = fopen(file, "rb");
-  printf("%s: load wav \"%s\"\n", __FUNCTION__, file);
   rewind(f);
 
   RiffHeader_t riff_hdr;
@@ -104,12 +114,6 @@ SDL_LoadWAV(const char *file, SDL_AudioSpec *spec, uint8_t **audio_buf, uint32_t
       WavFmtChunk_t fmt;
       fread(&fmt, sizeof(WavFmtChunk_t), 1, f);
 
-      printf("%s: fmt: %huc, %hub, %uHz\n",
-             __FUNCTION__,
-             fmt.channels,
-             fmt.bits_per_sample,
-             fmt.samples_per_sec);
-
       assert(fmt.format_tag == 1);
       assert(fmt.bits_per_sample == 16);
 
@@ -117,8 +121,6 @@ SDL_LoadWAV(const char *file, SDL_AudioSpec *spec, uint8_t **audio_buf, uint32_t
       s.freq = fmt.samples_per_sec;
       s.format = AUDIO_S16SYS;
     } else if (!memcmp(&chunk_hdr.chunk_id, "data", sizeof(chunk_hdr.chunk_id))) {
-      printf("%s: data: size=%u\n", __FUNCTION__, chunk_hdr.chunk_size);
-
       uint8_t *buf = (uint8_t *)malloc(sizeof(uint8_t) * chunk_hdr.chunk_size);
       fread(buf, chunk_hdr.chunk_size, sizeof(uint8_t), f);
 
@@ -134,12 +136,6 @@ SDL_LoadWAV(const char *file, SDL_AudioSpec *spec, uint8_t **audio_buf, uint32_t
   s.samples = s.size / ((sizeof(uint16_t) / sizeof(uint8_t)) * s.channels);
 
   fclose(f);
-  printf("%s: final spec: %hhuc, %hu samples, %dHz, size=%u\n",
-         __FUNCTION__,
-         s.channels,
-         s.samples,
-         s.freq,
-         s.size);
   *spec = s;
   return spec;
 
@@ -153,23 +149,25 @@ void SDL_FreeWAV(uint8_t *audio_buf) {
 }
 
 void SDL_LockAudio(void) {
-  sdl_audio_callback.locked = true;
+  audio_callback.locked = true;
 }
 
 void SDL_UnlockAudio(void) {
-  sdl_audio_callback.locked = false;
+  audio_callback.locked = false;
 }
 
 void sdl_schedule_audio_callback(void) {
-  if (!sdl_audio_callback.valid || sdl_audio_callback.paused || sdl_audio_callback.locked) {
+  if (!audio_callback.valid || audio_callback.paused || audio_callback.locked) {
     return;
   }
-  if (!(NDL_GetTicks() - sdl_audio_callback.last_called < sdl_audio_callback.interval)) {
+  if (!(NDL_GetTicks() - audio_callback.last_called < audio_callback.interval)) {
     return;
   }
-  const int size = sdl_audio_callback.buf_size;
-  uint8_t *const buf = (uint8_t *)calloc(size, sizeof(uint8_t));
-  sdl_audio_callback.callback(sdl_audio_callback.userdata, buf, size);
-  NDL_PlayAudio(buf, size);
-  sdl_audio_callback.last_called = NDL_GetTicks();
+
+  const size_t size = audio_callback.buf_size;
+  memset(audio_callback.buf, 0, sizeof(uint8_t) * size);
+
+  audio_callback.callback(audio_callback.userdata, audio_callback.buf, size);
+  NDL_PlayAudio(audio_callback.buf, size);
+  audio_callback.last_called = NDL_GetTicks();
 }

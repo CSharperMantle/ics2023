@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct {
   int freq;
@@ -36,10 +37,11 @@ typedef struct SdlAudioCallbackArgs_ {
   uint32_t last_called;
   uint32_t interval;
   uint16_t buf_size;
+  uint8_t *buf;
   bool valid;
   bool paused;
   bool locked;
 } SdlAudioCallback_t;
-extern SdlAudioCallback_t sdl_audio_callback;
+extern SdlAudioCallback_t audio_callback;
 
 #endif
