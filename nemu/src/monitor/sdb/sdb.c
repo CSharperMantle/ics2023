@@ -17,6 +17,7 @@
 #include "ckpt.h"
 #include "utils.h"
 #include <cpu/cpu.h>
+#include <cpu/difftest.h>
 #include <errno.h>
 #include <isa.h>
 #include <memory/vaddr.h>
@@ -65,27 +66,35 @@ static int cmd_d(char *args);
 #ifdef CONFIG_FTRACE
 static int cmd_file(char *args);
 #endif
+#ifdef CONFIG_DIFFTEST
+static int cmd_attach(char *args);
+static int cmd_detach(char *args);
+#endif
 
 static const struct {
   const char *name;
   const char *description;
   int (*const handler)(char *);
 } CMD_TABLE[] = {
-    {"help", "Display information about all supported commands",    cmd_help},
-    {"c",    "Continue the execution of the program",               cmd_c   },
-    {"q",    "Exit NEMU",                                           cmd_q   },
-    {"si",   "Step N instructions",                                 cmd_si  },
-    {"info", "Display execution status and information",            cmd_info},
-    {"x",    "Print N dwords in memory starting from address EXPR", cmd_x   },
-    {"p",    "Evaluate EXPR",                                       cmd_p   },
-    {"save", "Save NEMU snapshot to FILENAME",                      cmd_save},
-    {"load", "Load NEMU snapshot from FILENAME",                    cmd_load},
+    {"help",   "Display information about all supported commands",    cmd_help  },
+    {"c",      "Continue the execution of the program",               cmd_c     },
+    {"q",      "Exit NEMU",                                           cmd_q     },
+    {"si",     "Step N instructions",                                 cmd_si    },
+    {"info",   "Display execution status and information",            cmd_info  },
+    {"x",      "Print N dwords in memory starting from address EXPR", cmd_x     },
+    {"p",      "Evaluate EXPR",                                       cmd_p     },
+    {"save",   "Save NEMU snapshot to FILENAME",                      cmd_save  },
+    {"load",   "Load NEMU snapshot from FILENAME",                    cmd_load  },
 #ifdef CONFIG_WATCHPOINT
-    {"w",    "Set up watchpoint for EXPR",                          cmd_w   },
-    {"d",    "Delete watchpoint N",                                 cmd_d   },
+    {"w",      "Set up watchpoint for EXPR",                          cmd_w     },
+    {"d",      "Delete watchpoint N",                                 cmd_d     },
 #endif
 #ifdef CONFIG_FTRACE
-    {"file", "Load symbols from FILENAME",                          cmd_file},
+    {"file",   "Load symbols from FILENAME",                          cmd_file  },
+#endif
+#ifdef CONFIG_DIFFTEST
+    {"attach", "Enable difftest",                                     cmd_attach},
+    {"detach", "Disable difftest",                                    cmd_detach},
 #endif
 };
 
@@ -245,6 +254,18 @@ static int cmd_file(char *args) {
     printf("Cannot parse ELF file \"%s\"\n", args);
   };
   fclose(felf);
+  return 0;
+}
+#endif
+
+#ifdef CONFIG_DIFFTEST
+static int cmd_attach(char *args) {
+  difftest_attach();
+  return 0;
+}
+
+static int cmd_detach(char *args) {
+  difftest_detach();
   return 0;
 }
 #endif
