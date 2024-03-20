@@ -26,7 +26,7 @@
 #define HAS_MAG_(e_, i_) (e_[EI_MAG##i_] == ELFMAG##i_)
 
 static uintptr_t loader(PCB *pcb, const char *filename) {
-  int f = fs_open(filename, 0, O_RDONLY);
+  int f = fs_open(filename, O_RDONLY, 0);
   assert(f >= 0);
 
   Elf_Ehdr ehdr;
@@ -48,7 +48,7 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
     fs_read(f, (void *)phdr.p_vaddr, phdr.p_filesz);
     memset((void *)(phdr.p_vaddr + phdr.p_filesz), 0, phdr.p_memsz - phdr.p_filesz);
   }
-  
+
   fs_close(f);
 
   return ehdr.e_entry;

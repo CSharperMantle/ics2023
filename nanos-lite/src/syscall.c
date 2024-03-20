@@ -1,5 +1,6 @@
 #include "syscall.h"
 #include <common.h>
+#include <fcntl.h>
 #include <fs.h>
 #include <loader.h>
 #include <sys/time.h>
@@ -23,6 +24,13 @@ static int syscall_execve(const char *filename, char *argv[], char *envp[]) {
   (void)envp;
 
   Log("switching to \"%s\"", filename);
+
+  int f = fs_open(filename, O_RDONLY, 0);
+  if (f < 0) {
+    return -1;
+  }
+  fs_close(f);
+
   naive_uload(NULL, filename);
   return -1;
 }
@@ -52,7 +60,7 @@ void do_syscall(Context *c) {
 #endif
 
   switch (a[0]) {
-    case SYS_exit: halt(a[1]); /* noreturn */
+    case SYS_exit: c->GPRx = syscall_execve("/bin/menu", NULL, NULL); break; /* noreturn */
     case SYS_yield:
       yield();
       c->GPRx = 0;

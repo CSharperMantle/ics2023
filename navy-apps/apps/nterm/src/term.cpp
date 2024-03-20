@@ -3,7 +3,7 @@
 #define EMPTY ' '
 
 enum Color {
-  BLACK = 0, 
+  BLACK = 0,
   RED,
   GREEN,
   YELLOW,
@@ -14,47 +14,51 @@ enum Color {
 };
 
 static int colors[] = {
-  [Color::BLACK  ] = 0x323232,
-  [Color::RED    ] = 0xe41b17,
-  [Color::GREEN  ] = 0x4aa02c,
-  [Color::YELLOW ] = 0xe8a317,
-  [Color::BLUE   ] = 0x0041c2,
-  [Color::MAGENTA] = 0xe3319d,
-  [Color::CYAN   ] = 0x77bfc7,
-  [Color::WHITE  ] = 0xf0f0f0,
+    [Color::BLACK] = 0x323232,
+    [Color::RED] = 0xe41b17,
+    [Color::GREEN] = 0x4aa02c,
+    [Color::YELLOW] = 0xe8a317,
+    [Color::BLUE] = 0x0041c2,
+    [Color::MAGENTA] = 0xe3319d,
+    [Color::CYAN] = 0x77bfc7,
+    [Color::WHITE] = 0xf0f0f0,
 };
 
 Terminal::Pattern Terminal::esc_seqs[] = {
-  {"\033[1t", &Terminal::esc_cookmode}, // added by us
-  {"\033[2t", &Terminal::esc_rawmode}, // added by us
+    {"\033[1t",     &Terminal::esc_cookmode }, // added by us
+    {"\033[2t",     &Terminal::esc_rawmode  }, // added by us
 
-  {"\033[s", &Terminal::esc_save},
-  {"\033[u", &Terminal::esc_restore},
-  {"\033[J", &Terminal::esc_clear},
-  {"\033[2J", &Terminal::esc_clear},
-  {"\033[K", &Terminal::esc_erase},
-  {"\033[f", &Terminal::esc_movefirst},
-  {"\033[H", &Terminal::esc_movefirst},
-  {"\033[#;#f", &Terminal::esc_move},
-  {"\033[#;#H", &Terminal::esc_move},
-  {"\033[#A", &Terminal::esc_moveup},
-  {"\033[#B", &Terminal::esc_movedown},
-  {"\033[#C", &Terminal::esc_moveright},
-  {"\033[#D", &Terminal::esc_moveleft},
-  {"\033[#m", &Terminal::esc_setattr1},
-  {"\033[#;#m", &Terminal::esc_setattr2},
-  {"\033[#;#;#m", &Terminal::esc_setattr3},
+    {"\033[s",      &Terminal::esc_save     },
+    {"\033[u",      &Terminal::esc_restore  },
+    {"\033[J",      &Terminal::esc_clear    },
+    {"\033[2J",     &Terminal::esc_clear    },
+    {"\033[K",      &Terminal::esc_erase    },
+    {"\033[f",      &Terminal::esc_movefirst},
+    {"\033[H",      &Terminal::esc_movefirst},
+    {"\033[#;#f",   &Terminal::esc_move     },
+    {"\033[#;#H",   &Terminal::esc_move     },
+    {"\033[#A",     &Terminal::esc_moveup   },
+    {"\033[#B",     &Terminal::esc_movedown },
+    {"\033[#C",     &Terminal::esc_moveright},
+    {"\033[#D",     &Terminal::esc_moveleft },
+    {"\033[#m",     &Terminal::esc_setattr1 },
+    {"\033[#;#m",   &Terminal::esc_setattr2 },
+    {"\033[#;#;#m", &Terminal::esc_setattr3 },
 };
 
-static inline int min(int x, int y) { return x < y ? x : y; }
-static inline int max(int x, int y) { return x > y ? x : y; }
+static inline int min(int x, int y) {
+  return x < y ? x : y;
+}
+static inline int max(int x, int y) {
+  return x > y ? x : y;
+}
 
 void Terminal::esc_move(int *args) {
-  cursor = { .x = args[1] - 1, .y = args[0] - 1 };
+  cursor = {.x = args[1] - 1, .y = args[0] - 1};
 }
 
 void Terminal::esc_movefirst(int *args) {
-  cursor = { .x = 0, .y = 0 };
+  cursor = {.x = 0, .y = 0};
 }
 
 void Terminal::esc_moveup(int *args) {
@@ -82,8 +86,8 @@ void Terminal::esc_restore(int *args) {
 }
 
 void Terminal::esc_clear(int *args) {
-  for (int i = 0; i < w; i ++)
-    for (int j = 0; j < h; j ++) {
+  for (int i = 0; i < w; i++)
+    for (int j = 0; j < h; j++) {
       putch(i, j, EMPTY);
     }
   cursor = {.x = 0, .y = 0};
@@ -92,7 +96,10 @@ void Terminal::esc_clear(int *args) {
 void Terminal::esc_setattr1(int *args) {
   int attr = args[0];
   switch (attr) {
-    case 0:  col_f = Color::BLACK; col_b = Color::WHITE; break; // reset
+    case 0:
+      col_f = Color::BLACK;
+      col_b = Color::WHITE;
+      break; // reset
     case 30: col_f = Color::BLACK; break;
     case 31: col_f = Color::RED; break;
     case 32: col_f = Color::GREEN; break;
@@ -124,7 +131,7 @@ void Terminal::esc_setattr3(int *args) {
 }
 
 void Terminal::esc_erase(int *args) {
-  for (int i = cursor.x; i < w; i ++) {
+  for (int i = cursor.x; i < w; i++) {
     putch(i, cursor.y, EMPTY);
   }
 }
@@ -138,7 +145,8 @@ void Terminal::esc_cookmode(int *args) {
 }
 
 Terminal::Terminal(int width, int height) {
-  w = width; h = height;
+  w = width;
+  h = height;
   mode = Mode::cook;
   cursor = {.x = 0, .y = 0};
   saved = cursor;
@@ -150,25 +158,26 @@ Terminal::Terminal(int width, int height) {
   col_b = Color::WHITE;
   input[0] = '\0';
 
-  for (int x = 0; x < w; x ++) {
-    for (int y = 0; y < h; y ++) {
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) {
       putch(x, y, EMPTY);
     }
   }
 }
 
 Terminal::~Terminal() {
-  delete [] buf;
-  delete [] color;
-  delete [] dirty;
+  delete[] buf;
+  delete[] color;
+  delete[] dirty;
 }
 
 void Terminal::backspace() {
-  cursor.x --;
+  cursor.x--;
   if (cursor.x < 0) {
     cursor.x = w - 1;
-    cursor.y --;
-    if (cursor.y < 0) cursor.x = cursor.y = 0;
+    cursor.y--;
+    if (cursor.y < 0)
+      cursor.x = cursor.y = 0;
   }
   buf[cursor.y * w + cursor.x] = EMPTY;
   dirty[cursor.y * w + cursor.x] = true;
@@ -177,48 +186,50 @@ void Terminal::backspace() {
 void Terminal::move_one() {
   auto &c = cursor;
   int ret = c.y * w + c.x;
-  c.x ++;
+  c.x++;
   if (c.x >= w) {
     c.x = 0;
-    c.y ++;
+    c.y++;
   }
   if (c.y >= h) {
     scroll_up();
     ret -= w;
-    c.y --;
+    c.y--;
   }
 }
 
 void Terminal::scroll_up() {
   memmove(buf, buf + w, w * (h - 1));
   memmove(color, color + w, w * (h - 1));
-  for (int i = 0; i < w; i ++) {
+  for (int i = 0; i < w; i++) {
     putch(i, h - 1, EMPTY);
   }
-  for (int i = 0; i < w * h; i ++) {
+  for (int i = 0; i < w * h; i++) {
     dirty[i] = true;
   }
 }
 
 size_t Terminal::write_escape(const char *str, size_t count) {
-  for (auto &p: esc_seqs) {
+  for (auto &p : esc_seqs) {
     bool match = false;
     int len = 0, args[4], narg = 0;
 
-    for (const char *cur = p.pattern, *s = str; ; cur ++) {
+    for (const char *cur = p.pattern, *s = str;; cur++) {
       if (*cur == '\0') { // found a match.
-        match = true; break;
+        match = true;
+        break;
       }
       if (*cur != '#') {
-        if (*s != *cur) break;
-        s ++;
-        len ++;
+        if (*s != *cur)
+          break;
+        s++;
+        len++;
       } else {
         int data = 0;
-        for (; *s >= '0' && *s <= '9' && s - str < count; s ++, len ++) {
+        for (; *s >= '0' && *s <= '9' && s - str < count; s++, len++) {
           data = data * 10 + *s - '0';
         }
-        args[narg ++] = data;
+        args[narg++] = data;
       }
     }
 
@@ -233,39 +244,35 @@ size_t Terminal::write_escape(const char *str, size_t count) {
 }
 
 void Terminal::write(const char *str, size_t count) {
-  for (size_t i = 0; i != count && str[i]; ) {
+  for (size_t i = 0; i != count && str[i];) {
     char ch = str[i];
     if (ch == '\033') {
-        i += write_escape(&str[i], count - i);
+      i += write_escape(&str[i], count - i);
     } else {
       switch (ch) {
-        case '\x07':
-          break;
+        case '\x07': break;
         case '\n':
           cursor.x = 0;
-          cursor.y ++;
+          cursor.y++;
           if (cursor.y >= h) {
             scroll_up();
-            cursor.y --;
+            cursor.y--;
           }
           break;
         case '\t':
           // TODO: implement it.
           break;
-        case '\r':
-          cursor.x = 0;
-          break;
-        default:
-          putch(cursor.x, cursor.y, ch);
-          move_one();
+        case '\r': cursor.x = 0; break;
+        default: putch(cursor.x, cursor.y, ch); move_one();
       }
-      i ++;
+      i++;
     }
   }
 }
 
 const char *Terminal::keypress(char ch) {
-  if (ch == '\0') return nullptr;
+  if (ch == '\0')
+    return nullptr;
   if (mode == Mode::raw) {
     input[0] = ch;
     input[1] = '\0';
@@ -273,8 +280,7 @@ const char *Terminal::keypress(char ch) {
   } else if (mode == Mode::cook) {
     const char *ret = nullptr;
     switch (ch) {
-      case '\033':
-        break;
+      case '\033': break;
       case '\n':
         strcpy(cooked, input);
         strcat(cooked, "\n");
@@ -284,13 +290,13 @@ const char *Terminal::keypress(char ch) {
         break;
       case '\b':
         if (inp_len > 0) {
-          inp_len --;
+          inp_len--;
           backspace();
         }
         break;
       default:
         if (inp_len + 1 < sizeof(input)) {
-          input[inp_len ++] = ch;
+          input[inp_len++] = ch;
           write(&ch, 1);
         }
     }
@@ -300,7 +306,7 @@ const char *Terminal::keypress(char ch) {
   return nullptr;
 }
 
-char Terminal::getch(int x, int y) {
+char Terminal::getch(int x, int y) const {
   return buf[x + y * w];
 }
 
@@ -310,20 +316,20 @@ void Terminal::putch(int x, int y, char ch) {
   dirty[x + y * w] = true;
 }
 
-uint32_t Terminal::foreground(int x, int y) {
+uint32_t Terminal::foreground(int x, int y) const {
   return colors[color[x + y * w] >> 4];
 }
 
-uint32_t Terminal::background(int x, int y) {
+uint32_t Terminal::background(int x, int y) const {
   return colors[color[x + y * w] & 0xf];
 }
 
-bool Terminal::is_dirty(int x, int y) {
+bool Terminal::is_dirty(int x, int y) const {
   return dirty[x + y * w];
 }
 
 void Terminal::clear() {
-  for (int i = 0; i < w * h; i ++) dirty[i] = false;
+  for (int i = 0; i < w * h; i++)
+    dirty[i] = false;
   dirty[cursor.x + cursor.y * w] = true;
 }
-

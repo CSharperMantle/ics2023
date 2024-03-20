@@ -60,12 +60,12 @@ public:
   Terminal(int width, int height);
   ~Terminal();
   void write(const char *str, size_t count);
-  bool is_dirty(int x, int y);
+  bool is_dirty(int x, int y) const;
 
   void putch(int x, int y, char ch);
-  char getch(int x, int y);
-  uint32_t foreground(int x, int y); // get color
-  uint32_t background(int x, int y);
+  char getch(int x, int y) const;
+  uint32_t foreground(int x, int y) const; // get color
+  uint32_t background(int x, int y) const;
 
   void clear(); // clear dirty states
   const char *keypress(char ch);
