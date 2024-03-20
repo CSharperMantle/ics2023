@@ -23,16 +23,16 @@ static int syscall_execve(const char *filename, char *argv[], char *envp[]) {
   (void)argv;
   (void)envp;
 
-  Log("switching to \"%s\"", filename);
-
   int f = fs_open(filename, O_RDONLY, 0);
   if (f < 0) {
     return -1;
   }
   fs_close(f);
 
+  Log("switching to \"%s\"", filename);
   naive_uload(NULL, filename);
-  return -1;
+
+  assert(((void)"unreachable", 0));
 }
 
 static int syscall_gettimeofday(tv_t *tv, tz_t *tz) {

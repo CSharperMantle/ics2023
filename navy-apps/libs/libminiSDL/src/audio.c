@@ -18,12 +18,13 @@ int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
   if (obtained != NULL) {
     memcpy(obtained, desired, sizeof(SDL_AudioSpec));
   }
+  const size_t sample_size = desired->format == AUDIO_S16 ? sizeof(uint16_t) : sizeof(uint8_t);
   audio_callback = (SdlAudioCallback_t){
       .callback = desired->callback,
       .userdata = desired->userdata,
       .last_called = 0,
-      .interval = desired->freq * 1000 / desired->samples,
-      .buf_size = desired->samples * desired->channels,
+      .interval = desired->samples / desired->freq / 1000,
+      .buf_size = desired->samples * desired->channels * sample_size,
       .buf = NULL,
       .valid = true,
       .paused = false,
@@ -48,7 +49,7 @@ void SDL_CloseAudio(void) {
 }
 
 void SDL_PauseAudio(int pause_on) {
-  audio_callback.paused = pause_on != 0;
+  audio_callback.paused = !!pause_on;
 }
 
 #define MIN(x_, y_) ((x_) <= (y_) ? (x_) : (y_))
@@ -160,7 +161,7 @@ void sdl_schedule_audio_callback(void) {
   if (!audio_callback.valid || audio_callback.paused || audio_callback.locked) {
     return;
   }
-  if (!(NDL_GetTicks() - audio_callback.last_called < audio_callback.interval)) {
+  if (NDL_GetTicks() - audio_callback.last_called < audio_callback.interval) {
     return;
   }
 

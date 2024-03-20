@@ -21,6 +21,8 @@
 
 enum { reg_freq = 0, reg_channels, reg_samples, reg_sbuf_size, reg_init, reg_count, nr_reg };
 
+static bool audio_opened = false;
+
 static uint8_t *sbuf = NULL;
 static size_t sbuf_pos = 0;
 static size_t sbuf_count = 0;
@@ -49,6 +51,9 @@ static void callback_play(void *user_data, uint8_t *stream, int len) {
 }
 
 static void do_sdl_audio_init(void) {
+  sbuf_pos = 0;
+  sbuf_count = 0;
+
   SDL_AudioSpec want = {
       .freq = audio_spec.freq,
       .channels = audio_spec.channels,
@@ -58,9 +63,22 @@ static void do_sdl_audio_init(void) {
       .callback = callback_play,
   };
 
-  SDL_InitSubSystem(SDL_INIT_AUDIO);
-  SDL_OpenAudio(&want, NULL);
+  if (SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+    Warn("%s", SDL_GetError());
+  }
+  if (SDL_OpenAudio(&want, NULL)) {
+    Warn("%s", SDL_GetError());
+  }
   SDL_PauseAudio(0);
+
+  audio_opened = true;
+}
+
+static void do_sdl_audio_shutdown(void) {
+  SDL_PauseAudio(1);
+  SDL_CloseAudio();
+  SDL_QuitSubSystem(SDL_INIT_AUDIO);
+  audio_opened = false;
 }
 
 static void audio_io_handler(uint32_t offset, int len, bool is_write) {
@@ -88,6 +106,9 @@ static void audio_io_handler(uint32_t offset, int len, bool is_write) {
       break;
     case reg_init:
       if (is_write && audio_base[reg_init]) {
+        if (audio_opened) {
+          do_sdl_audio_shutdown();
+        }
         do_sdl_audio_init();
         audio_base[reg_init] = 0;
       }
@@ -117,8 +138,5 @@ void init_audio() {
 #endif
 
   sbuf = (uint8_t *)new_space(CONFIG_SB_SIZE);
-  sbuf_pos = 0;
-  sbuf_count = 0;
-  // sbuf_count_delta = 0;
   add_mmio_map("audio-sbuf", CONFIG_SB_ADDR, sbuf, CONFIG_SB_SIZE, audio_sbuf_handler);
 }
