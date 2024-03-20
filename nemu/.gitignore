@@ -9,5 +9,6 @@
 !.clang-format
 !README.md
 !Kconfig
+!.vscode/
 include/config
 include/generated
