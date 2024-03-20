@@ -6,3 +6,5 @@
 !.gitignore
 !README.md
 !resources/logo.txt
+!.clang-format
+!.vscode/

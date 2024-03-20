@@ -22,3 +22,5 @@ libs/libc/
 !/fsimg/share/music/rhythm/Si.ogg
 !/fsimg/share/music/rhythm/empty.ogg
 !/fsimg/share/pictures/projectn.bmp
+!.clang-format
+!.vscode/
