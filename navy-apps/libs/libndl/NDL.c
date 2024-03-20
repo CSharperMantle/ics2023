@@ -70,21 +70,16 @@ void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
 
 void NDL_OpenAudio(int freq, int channels, int samples) {
   const int fsbctl = open("/dev/sbctl", O_WRONLY);
-  const union {
-    struct fields_ {
-      int freq;
-      int channels;
-      int samples;
-    } __attribute__((packed)) fields;
-    uint8_t as_bytes[sizeof(struct fields_)];
-  } data = {
-      .fields = {
-                 .freq = freq,
-                 .channels = channels,
-                 .samples = samples,
-                 }
+  struct {
+    int freq;
+    int channels;
+    int samples;
+  } __attribute__((packed)) data = {
+      .freq = freq,
+      .channels = channels,
+      .samples = samples,
   };
-  write(fsbctl, data.as_bytes, sizeof(data.as_bytes));
+  write(fsbctl, &data, sizeof(data));
   close(fsbctl);
 }
 
