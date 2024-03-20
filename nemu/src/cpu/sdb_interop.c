@@ -29,33 +29,26 @@ void eval_watchpoints(void) {
 #define MAX_(a_, b_)            ((a_) >= (b_) ? (a_) : (b_))
 #define WRAP_ABOVE_(v_, t_, m_) ((t_) + ((v_) - (t_)) % ((m_) - (t_)))
 
-static char *make_spaces(int64_t level) {
-  static char buf[FTRACE_PRINT_MAX_DEPTH + 1];
-  buf[0] = '\0';
-  char *p = buf;
+static int get_n_spaces(int64_t level) {
   level = MAX_(level, 0);
   level = level < FTRACE_PRINT_WRAP_THRESHOLD
               ? level
               : WRAP_ABOVE_(level, FTRACE_PRINT_WRAP_THRESHOLD, FTRACE_PRINT_MAX_DEPTH);
-
-  while (level--) {
-    strcpy(p, " ");
-    p += 1;
-  }
-  return buf;
+  return (int)level + 1;
 }
 
 static void print_ftrace(bool call, vaddr_t pc, vaddr_t target, const char *name) {
   if (call) {
-    Log("%04ld %scall [%s@" FMT_WORD "]",
+    Log("%04ld %*ccall %s@" FMT_WORD,
         ftrace_call_level,
-        make_spaces(ftrace_call_level),
+        get_n_spaces(ftrace_call_level),
+        ' ',
         name,
         target);
     ftrace_call_level += 1;
   } else {
     ftrace_call_level -= 1;
-    Log("%04ld %sret [%s]", ftrace_call_level, make_spaces(ftrace_call_level), name);
+    Log("%04ld %*cret -> %s", ftrace_call_level, get_n_spaces(ftrace_call_level), ' ', name);
   }
 }
 

@@ -7,7 +7,7 @@
 
 typedef void (*putter_t)(char ch, void *buf, size_t idx, size_t maxlen);
 
-static void putter_char_(char ch, void *buf, size_t idx, size_t maxlen) {
+static void putter_out_(char ch, void *buf, size_t idx, size_t maxlen) {
   (void)buf;
   (void)idx;
   (void)maxlen;
@@ -105,8 +105,7 @@ static int vsnprintf_(putter_t put, char *buf, const size_t maxlen, const char *
           fmt++;
         }
         break;
-      default:
-        break;
+      default: break;
     }
 
     switch (*fmt) {
@@ -136,6 +135,12 @@ static int vsnprintf_(putter_t put, char *buf, const size_t maxlen, const char *
         fmt++;
         break;
       }
+      case 'p': {
+        uintptr_t u = va_arg(ap, uintptr_t);
+        utoa_(put, buf, u, 16, &idx, maxlen, zpad_width);
+        fmt++;
+        break;
+      }
       case 'c': {
         char ch = (char)va_arg(ap, int);
         put(ch, buf, idx++, maxlen);
@@ -154,17 +159,20 @@ static int vsnprintf_(putter_t put, char *buf, const size_t maxlen, const char *
   return (int)idx;
 }
 
-int printf(const char *fmt, ...) {
+int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
+  return vsnprintf_(putter_buf_, out, n, fmt, ap);
+}
+
+int snprintf(char *out, size_t n, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  char buf[1];
-  int result = vsnprintf_(putter_char_, buf, (size_t)-1, fmt, args);
+  int result = vsnprintf(out, n, fmt, args);
   va_end(args);
   return result;
 }
 
 int vsprintf(char *out, const char *fmt, va_list ap) {
-  return vsnprintf_(putter_buf_, out, (size_t)-1, fmt, ap);
+  return vsnprintf(out, (size_t)-1, fmt, ap);
 }
 
 int sprintf(char *out, const char *fmt, ...) {
@@ -175,12 +183,18 @@ int sprintf(char *out, const char *fmt, ...) {
   return result;
 }
 
-int snprintf(char *out, size_t n, const char *fmt, ...) {
-  panic("Not implemented");
+int printf(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  char buf[1];
+  int result = vsnprintf_(putter_out_, buf, (size_t)-1, fmt, args);
+  va_end(args);
+  return result;
 }
 
-int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
-  panic("Not implemented");
+int putchar(int ch) {
+  putch((char)ch);
+  return ch;
 }
 
 #endif
