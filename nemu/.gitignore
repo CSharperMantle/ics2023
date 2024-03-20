@@ -10,5 +10,6 @@
 !README.md
 !Kconfig
 !.vscode/
+!src/isa/riscv64
 include/config
 include/generated
