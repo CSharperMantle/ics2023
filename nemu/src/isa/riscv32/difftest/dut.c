@@ -29,6 +29,10 @@ bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {
       equiv = false;
     }
   }
+  if (ref_r->pc != cpu.pc) {
+    report_difftest_err("pc", pc, ref_r->pc, cpu.pc);
+    equiv = false;
+  }
   return equiv;
 }
 
