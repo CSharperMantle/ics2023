@@ -15,12 +15,9 @@ Context *__am_irq_handle(Context *c) {
 
     switch (c->mcause) {
       case EXCP_M_ENV_CALL: {
-        if (!BITS(c->GPR1, SIGBIT_ID(c->GPR1), SIGBIT_ID(c->GPR1))) {
-          ev = (Event){.event = EVENT_SYSCALL};
-        } else if (c->GPR1 == -1) {
-          ev = (Event){.event = EVENT_YIELD};
-        } else {
-          ev = (Event){.event = EVENT_ERROR};
+        switch (c->GPR1) {
+          case -1: ev = (Event){.event = EVENT_YIELD}; break;
+          default: ev = (Event){.event = EVENT_SYSCALL}; break;
         }
         break;
       }
@@ -52,11 +49,11 @@ bool cte_init(Context *(*handler)(Event, Context *)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  Context *const context = (Context *)kstack.end - 1;
-  context->mstatus = 0xa00001800;
-  context->mepc = (uintptr_t)entry;
-  context->gpr[10] = (uintptr_t)arg; // a0
-  return context;
+  Context *const ctx = (Context *)kstack.end - 1;
+  ctx->mstatus = 0xa00001800;
+  ctx->mepc = (uintptr_t)entry;
+  ctx->GPRx = (uintptr_t)arg;
+  return ctx;
 }
 
 void yield() {
