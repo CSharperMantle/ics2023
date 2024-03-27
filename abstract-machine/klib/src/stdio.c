@@ -34,6 +34,14 @@ static void reverse_(char *str, int length) {
   }
 }
 
+static void put_literal_(putter_t put, void *buf, const char *str, size_t *p_idx, size_t maxlen) {
+  while (*str != '\0') {
+    put(*str, buf, *p_idx, maxlen);
+    str++;
+    (*p_idx)++;
+  }
+}
+
 static void
 itoa_(putter_t put, char *buf, int num, int base, size_t *p_idx, size_t maxlen, int zpad_width) {
   bool is_neg = false;
@@ -137,7 +145,12 @@ static int vsnprintf_(putter_t put, char *buf, const size_t maxlen, const char *
       }
       case 'p': {
         uintptr_t u = va_arg(ap, uintptr_t);
-        utoa_(put, buf, u, 16, &idx, maxlen, zpad_width);
+        if (u == (uintptr_t)NULL) {
+          put_literal_(put, buf, "(null)", &idx, maxlen);
+        } else {
+          put_literal_(put, buf, "0x", &idx, maxlen);
+          utoa_(put, buf, u, 16, &idx, maxlen, zpad_width);
+        }
         fmt++;
         break;
       }

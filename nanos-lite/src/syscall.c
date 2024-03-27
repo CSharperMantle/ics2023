@@ -1,25 +1,22 @@
 #include "syscall.h"
 #include <common.h>
+#include <memory.h>
 #include <fcntl.h>
 #include <fs.h>
 #include <loader.h>
+#include <proc.h>
 #include <sys/time.h>
 
 #ifdef CONFIG_STRACE
 static void print_strace(uintptr_t *a) {
-  Log("syscall %u; args=[0x%p, 0x%p, 0x%p]", a[0], a[1], a[2], a[3]);
+  Log("syscall %u; args=[%p, %p, %p]", a[0], a[1], a[2], a[3]);
 }
 #endif
 
 typedef struct timeval tv_t;
 typedef struct timezone tz_t;
 
-static int syscall_brk(void *ptr) {
-  (void)ptr; // TODO: single task OS; always succeed
-  return 0;
-}
-
-static int syscall_execve(const char *filename, char *argv[], char *envp[]) {
+static int syscall_execve(const char *filename, char *const argv[], char *const envp[]) {
   (void)argv;
   (void)envp;
 
@@ -30,7 +27,9 @@ static int syscall_execve(const char *filename, char *argv[], char *envp[]) {
   fs_close(f);
 
   Log("switching to \"%s\"", filename);
-  naive_uload(NULL, filename);
+  context_uload(current, filename, argv, envp);
+  switch_boot_pcb();
+  yield();
 
   assert(((void)"unreachable", 0));
 }
@@ -70,7 +69,7 @@ void do_syscall(Context *c) {
     case SYS_write: c->GPRx = fs_write((int)a[1], (const void *)a[2], (size_t)a[3]); break;
     case SYS_close: c->GPRx = fs_close((int)a[1]); break;
     case SYS_lseek: c->GPRx = fs_lseek((int)a[1], (off_t)a[2], (int)a[3]); break;
-    case SYS_brk: c->GPRx = syscall_brk((void *)a[1]); break;
+    case SYS_brk: c->GPRx = mm_brk(a[1]); break;
     case SYS_execve:
       c->GPRx = syscall_execve((const char *)a[1], (char **)a[2], (char **)a[3]);
       break;

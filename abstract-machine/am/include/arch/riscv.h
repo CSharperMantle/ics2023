@@ -29,6 +29,7 @@ struct Context {
 #define GPR4 gpr[12] // a2
 // Return value
 #define GPRx gpr[10] // a0
+#define GPRy gpr[11] // a0
 
 enum {
   INTR_S_SOFT = 1,

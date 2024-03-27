@@ -9,7 +9,6 @@
 typedef union {
   struct {
     uint8_t stack[STACK_SIZE] PG_ALIGN;
-    uintptr_t pad_;
   };
   struct {
     Context *cp;

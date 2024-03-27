@@ -1,7 +1,9 @@
+#include "memory.h"
 #include <elf.h>
 #include <fcntl.h>
 #include <fs.h>
 #include <proc.h>
+#include <string.h>
 
 #ifdef __LP64__
 #define Elf_Ehdr Elf64_Ehdr
@@ -56,11 +58,105 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 
 void naive_uload(PCB *pcb, const char *filename) {
   uintptr_t entry = loader(pcb, filename);
-  Log("Jump to entry = %p", entry);
+  Log("Jump to entry = %p", (void *)entry);
   ((void (*)())entry)();
 }
 
 void context_kload(PCB *pcb, void (*entry)(void *), void *arg) {
-  const Area stack = (Area){.start = pcb->stack, .end = (void *)pcb->stack + sizeof(pcb->stack)};
-  pcb->cp = kcontext(stack, entry, arg);
+  const Area kstack = (Area){.start = pcb->stack, .end = (void *)pcb->stack + sizeof(pcb->stack)};
+  pcb->cp = kcontext(kstack, entry, arg);
+}
+
+static size_t len_varargs(char *const varargs[]) {
+  if (varargs == NULL) {
+    return 0;
+  }
+
+  Log("scanning varargs list [%p]", varargs);
+  size_t len = 0;
+  while (varargs[len] != NULL) {
+    Log("+0x%x: %p -> %p -> %s", sizeof(char *) * len, &varargs[len], varargs[len], varargs[len]);
+    len++;
+  }
+  Log("+0x%x: %p -> %p", sizeof(char *) * len, &varargs[len], varargs[len]);
+  return len;
+}
+
+static size_t get_varargs_size(char *const varargs[], size_t len, size_t sizes[]) {
+  if (varargs == NULL) {
+    return 0;
+  }
+
+  size_t sz_str = 0;
+  for (size_t i = 0; i < len; i++) {
+    const size_t sz = strlen(varargs[i]) + 1;
+    sz_str += sz;
+    sizes[i] = sz;
+  }
+  return sz_str;
+}
+
+void context_uload(PCB *pcb, const char *filename, char *const argv[], char *const envp[]) {
+  const Area kstack = (Area){.start = pcb->stack, .end = (void *)pcb->stack + sizeof(pcb->stack)};
+
+  const int argc = (int)len_varargs(argv);
+  size_t argv_sizes[argc];
+  const size_t size_args = get_varargs_size(argv, argc, argv_sizes);
+
+  const size_t envc = len_varargs(envp);
+  size_t envp_sizes[envc];
+  const size_t size_envs = get_varargs_size(envp, envc, envp_sizes);
+
+  void *const ustack_start = new_page(8);
+  void *const ustack_end = ustack_start + sizeof(uint8_t) * PGSIZE * 8;
+
+  void *new_sp = ustack_end;
+
+  char *envp_table[envc + 1];
+  envp_table[envc] = NULL;
+  for (size_t i = 0; i < envc; i++) {
+    new_sp -= envp_sizes[i];
+    Log("copying envp %p <~ %p -> %s", new_sp, envp[i], envp[i]);
+    memcpy(new_sp, envp[i], envp_sizes[i]);
+    envp_table[i] = new_sp;
+  }
+
+  char *argv_table[argc + 1];
+  argv_table[argc] = NULL;
+  for (size_t i = 0; i < argc; i++) {
+    new_sp -= argv_sizes[i];
+    Log("copying argv %p <~ %p -> %s", new_sp, argv[i], argv[i]);
+    memcpy(new_sp, argv[i], argv_sizes[i]);
+    argv_table[i] = new_sp;
+  }
+
+  assert(ustack_end - new_sp == size_args + size_envs);
+
+  for (size_t i = envc + 1; i > 0; i--) {
+    new_sp -= sizeof(char *);
+    *(char **)new_sp = envp_table[i - 1];
+    Log("envp set: %p -> %p -> %s",
+        new_sp,
+        *(char **)new_sp,
+        *(char **)new_sp == NULL ? "(null)" : *(char **)new_sp);
+  }
+
+  for (size_t i = argc + 1; i > 0; i--) {
+    new_sp -= sizeof(char *);
+    *(char **)new_sp = argv_table[i - 1];
+    Log("argv set: %p -> %p -> %s",
+        new_sp,
+        *(char **)new_sp,
+        *(char **)new_sp == NULL ? "(null)" : *(char **)new_sp);
+  }
+
+  new_sp -= sizeof(int);
+  *(int *)new_sp = (int)argc;
+  Log("argc set: %p -> 0x%x", new_sp, *(int *)new_sp);
+
+  const uintptr_t entry = loader(pcb, filename);
+  Context *const ctx = ucontext(NULL, kstack, (void *)entry);
+
+  ctx->GPRx = (uintptr_t)new_sp;
+  pcb->cp = ctx;
 }

@@ -2,12 +2,16 @@
 
 static void *pf = NULL;
 
-void* new_page(size_t nr_page) {
-  return NULL;
+void *new_page(size_t nr_page) {
+  void *const old_pf = pf;
+  const size_t delta = nr_page * sizeof(uint8_t) * PGSIZE;
+  assert(pf + delta <= heap.end);
+  pf += delta;
+  return old_pf;
 }
 
 #ifdef HAS_VME
-static void* pg_alloc(int n) {
+static void *pg_alloc(int n) {
   return NULL;
 }
 #endif
@@ -21,7 +25,7 @@ int mm_brk(uintptr_t brk) {
   return 0;
 }
 
-void init_mm() {
+void init_mm(void) {
   pf = (void *)ROUNDUP(heap.start, PGSIZE);
   Log("free physical pages starting from %p", pf);
 

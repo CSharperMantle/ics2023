@@ -3,8 +3,8 @@
 #include <fs.h>
 #include <proc.h>
 #include <ramdisk.h>
+#include <memory.h>
 
-void init_mm(void);
 void init_irq(void);
 
 int main() {
