@@ -1,4 +1,5 @@
 #include <device.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <fs.h>
 #include <ramdisk.h>
@@ -52,15 +53,15 @@ static size_t file_write(const void *buf, size_t offset, size_t len) {
 
 /* This is the information about all files in disk. */
 static Finfo file_table[] __attribute__((used)) = {
-    [FD_STDIN]    = {"stdin",          0, 0, NULL,          NULL,         true },
-    [FD_STDOUT]   = {"stdout",         0, 0, NULL,          serial_write, true },
-    [FD_STDERR]   = {"stderr",         0, 0, NULL,          serial_write, true },
-    [FD_EVENTS]   = {"/dev/events",    0, 0, events_read,   NULL,         true },
-    [FD_FB]       = {"/dev/fb",        0, 0, NULL,          fb_write,     false},
+    [FD_STDIN] = {"stdin",          0, 0, NULL,          NULL,         true },
+    [FD_STDOUT] = {"stdout",         0, 0, NULL,          serial_write, true },
+    [FD_STDERR] = {"stderr",         0, 0, NULL,          serial_write, true },
+    [FD_EVENTS] = {"/dev/events",    0, 0, events_read,   NULL,         true },
+    [FD_FB] = {"/dev/fb",        0, 0, NULL,          fb_write,     false},
     [FD_DISPINFO] = {"/proc/dispinfo", 0, 0, dispinfo_read, NULL,         true },
-    [FD_SB]       = {"/dev/sb",        0, 0, NULL,          sb_write,     true },
-    [FD_SBCTL]    = {"/dev/sbctl",     0, 0, sbctl_read,    sbctl_write,  true },
-    [FD_IOE_PT]   = {"/dev/ioe_pt",    0, 0, ioe_pt_read,   ioe_pt_write, false},
+    [FD_SB] = {"/dev/sb",        0, 0, NULL,          sb_write,     true },
+    [FD_SBCTL] = {"/dev/sbctl",     0, 0, sbctl_read,    sbctl_write,  true },
+    [FD_IOE_PT] = {"/dev/ioe_pt",    0, 0, ioe_pt_read,   ioe_pt_write, false},
 #include "files.h"
 };
 
@@ -108,7 +109,7 @@ int fs_open(const char *pathname, int flags, int mode) {
             file_table[i].read = file_read;
             file_table[i].write = file_write;
             break;
-          default: return -1;
+          default: return -EACCES;
         }
         file_table[i].open_offset = 0;
       } else if (file_table[i].size != 0) {
@@ -117,13 +118,13 @@ int fs_open(const char *pathname, int flags, int mode) {
       return i;
     }
   }
-  return -1;
+  return -ENOENT;
 }
 
 ssize_t fs_read(int fd, void *buf, size_t len) {
   Finfo *const finfo = file_table + fd;
   if (fd < 0 || fd >= ARRLEN(file_table) || finfo->read == NULL) {
-    return -1;
+    return -EBADF;
   }
   if (!is_special(fd)) {
     len = MIN(finfo->size, finfo->open_offset + len) - finfo->open_offset;
@@ -136,7 +137,7 @@ ssize_t fs_read(int fd, void *buf, size_t len) {
 ssize_t fs_write(int fd, const void *buf, size_t len) {
   Finfo *const finfo = file_table + fd;
   if (fd < 0 || fd >= ARRLEN(file_table) || finfo->write == NULL) {
-    return -1;
+    return -EBADF;
   }
 
   if (!is_special(fd)) {
@@ -149,13 +150,13 @@ ssize_t fs_write(int fd, const void *buf, size_t len) {
 
 off_t fs_lseek(int fd, off_t offset, int whence) {
   if (fd < 0 || fd >= ARRLEN(file_table) || (is_special(fd) && file_table[fd].unseekable)) {
-    return -1;
+    return -EBADF;
   }
   switch (whence) {
     case SEEK_SET: file_table[fd].open_offset = offset; break;
     case SEEK_CUR: file_table[fd].open_offset += offset; break;
     case SEEK_END: file_table[fd].open_offset = file_table[fd].size + offset; break;
-    default: return -1;
+    default: return -EINVAL;
   }
   return file_table[fd].open_offset;
 }
@@ -163,7 +164,7 @@ off_t fs_lseek(int fd, off_t offset, int whence) {
 int fs_close(int fd) {
   Finfo *const finfo = file_table + fd;
   if (fd < 0 || fd >= ARRLEN(file_table)) {
-    return -1;
+    return -EBADF;
   }
   if (!is_special(fd)) {
     finfo->read = NULL;

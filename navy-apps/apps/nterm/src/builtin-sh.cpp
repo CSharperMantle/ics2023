@@ -111,7 +111,7 @@ char **argv_split(const char *str, int *argcp) {
 static void sh_handle_cmd(const char *cmd) {
   int argc;
   char **argv = argv_split(cmd, &argc);
-  
+
   if (argv == NULL) {
     sh_printf("Cannot split argv\n");
     return;
@@ -125,10 +125,10 @@ static void sh_handle_cmd(const char *cmd) {
     exit(0);
   }
 
-  setenv("PATH", "/bin", false);
+  setenv("PATH", "/usr/bin:/bin", false);
   const int ret = execvp(argv[0], argv);
   if (ret == -1) {
-    sh_printf("%s: cannot execvp\n", argv[0]);
+    sh_printf("%s: errno %d: %s\n", argv[0], errno, strerror(errno));
     argv_free(argv);
     return;
   }

@@ -1,9 +1,10 @@
 #include "syscall.h"
 #include <common.h>
-#include <memory.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <fs.h>
 #include <loader.h>
+#include <memory.h>
 #include <proc.h>
 #include <sys/time.h>
 
@@ -22,7 +23,7 @@ static int syscall_execve(const char *filename, char *const argv[], char *const 
 
   int f = fs_open(filename, O_RDONLY, 0);
   if (f < 0) {
-    return -1;
+    return -ENOENT;
   }
   fs_close(f);
 
