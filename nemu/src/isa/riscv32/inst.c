@@ -87,10 +87,10 @@ static int64_t high_mul_i64(int64_t a, int64_t b) {
 
 #define MRET_UPD_MSTATUS()                                                                         \
   do {                                                                                             \
-    const bool mpie = !!(CSR(CSR_IDX_MSTATUS) & MSTATUS_F_MPIE);                                   \
-    CSR(CSR_IDX_MSTATUS) =                                                                         \
-        mpie ? (CSR(CSR_IDX_MSTATUS) | MSTATUS_F_MIE) : (CSR(CSR_IDX_MSTATUS) & ~MSTATUS_F_MIE);   \
-    CSR(CSR_IDX_MSTATUS) |= MSTATUS_F_MPIE;                                                        \
+    CsrMstatus_t mstatus = {.packed = CSR(CSR_IDX_MSTATUS)};                                       \
+    mstatus.mie = mstatus.mpie;                                                                    \
+    mstatus.mpie = 1;                                                                              \
+    CSR(CSR_IDX_MSTATUS) = mstatus.packed;                                                         \
   } while (0)
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {

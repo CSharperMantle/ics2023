@@ -28,6 +28,29 @@ extern uint8_t *pmem;
 extern uint8_t pmem[CONFIG_MSIZE] PG_ALIGN;
 #endif
 
+typedef union Paddr_ {
+  struct {
+    word_t offset : 12;
+#ifdef CONFIG_RV64
+    word_t ppn0 : 9;
+    word_t ppn1 : 9;
+    word_t ppn2 : 26;
+#else
+    word_t ppn0 : 10;
+    word_t ppn1 : 12;
+#endif
+  };
+  struct {
+    word_t : 12;
+#ifdef CONFIG_RV64
+    word_t ppn : 44;
+#else
+    word_t ppn : 22;
+#endif
+  };
+  word_t packed;
+} Paddr_t;
+
 /* convert the guest physical address in the guest program to host virtual address in NEMU */
 uint8_t *guest_to_host(paddr_t paddr);
 /* convert the host virtual address in NEMU to guest physical address in the guest program */

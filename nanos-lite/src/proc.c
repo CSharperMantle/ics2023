@@ -11,24 +11,22 @@ void switch_boot_pcb(void) {
   current = &pcb_boot;
 }
 
-void hello_fun(void *arg) {
-  int j = 1;
+__attribute__((noreturn)) void hello_fun(void *arg) {
+  // int j = 1;
   while (1) {
     // Log("Hello World from Nanos-lite with arg '%p' for the %dth time!", (uintptr_t)arg, j);
-    j++;
+    // j++;
     yield();
   }
 }
 
 void init_proc(void) {
-  static char *const EMPTY[] = {NULL};
+  static char *const EMPTY[] __attribute__((used)) = {NULL};
 
   Log("Initializing processes...");
   context_kload(&pcb[0], hello_fun, (void *)1);
-  context_uload(&pcb[1], "/bin/menu", EMPTY, EMPTY);
+  context_uload(&pcb[1], "/bin/menu", NULL, NULL);
   switch_boot_pcb();
-
-  // naive_uload(NULL, "/bin/menu");
 }
 
 Context *schedule(Context *ctx) {

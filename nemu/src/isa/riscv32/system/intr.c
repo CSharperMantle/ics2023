@@ -19,9 +19,9 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   /* Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
    */
-  const bool mie = !!(csr(CSR_IDX_MSTATUS) & MSTATUS_F_MIE);
-  csr(CSR_IDX_MSTATUS) =
-      mie ? csr(CSR_IDX_MSTATUS) | MSTATUS_F_MPIE : csr(CSR_IDX_MSTATUS) & ~MSTATUS_F_MPIE;
+  CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
+  mstatus.mpie = mstatus.mie;
+  csr(CSR_IDX_MSTATUS) = mstatus.packed;
   csr(CSR_IDX_MCAUSE) = NO;
   csr(CSR_IDX_MEPC) = epc;
   const word_t vector = csr(CSR_IDX_MTVEC);

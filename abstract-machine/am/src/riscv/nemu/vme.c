@@ -7,13 +7,17 @@ static void *(*pgalloc_usr)(int) = NULL;
 static void (*pgfree_usr)(void *) = NULL;
 static int vme_enable = 0;
 
-static Area segments[] = { // Kernel memory mappings
-    NEMU_PADDR_SPACE};
+// Kernel memory mappings
+static Area segments[] = {NEMU_PADDR_SPACE};
 
 #define USER_SPACE RANGE(0x40000000, 0x80000000)
 
 static inline void set_satp(void *pdir) {
-  uintptr_t mode = 1ul << (__riscv_xlen - 1);
+#ifdef __ISA_RISCV64__
+  const uintptr_t mode = 8ul << 60; // Sv39
+#else
+  const uintptr_t mode = 1ul << 31; // Sv32
+#endif
   asm volatile("csrw satp, %0" : : "r"(mode | ((uintptr_t)pdir >> 12)));
 }
 
@@ -28,13 +32,21 @@ bool vme_init(void *(*pgalloc_f)(int), void (*pgfree_f)(void *)) {
   pgfree_usr = pgfree_f;
 
   kas.ptr = pgalloc_f(PGSIZE);
+  assert(kas.ptr != NULL);
 
-  int i;
-  for (i = 0; i < LENGTH(segments); i++) {
+  for (size_t i = 0; i < LENGTH(segments); i++) {
+    printf("%s:%d: map segment %u [%p-%p]\n",
+           __FUNCTION__,
+           __LINE__,
+           (unsigned)i,
+           segments[i].start,
+           segments[i].end);
     void *va = segments[i].start;
     for (; va < segments[i].end; va += PGSIZE) {
-      map(&kas, va, va, 0);
+      map(&kas, va, va, PTE_R | PTE_W | PTE_X);
     }
+    printf("[%p, %p]\n", va, segments[i].start, segments[i].end);
+    printf("Done.\n");
   }
 
   set_satp(kas.ptr);
@@ -64,7 +76,39 @@ void __am_switch(Context *c) {
   }
 }
 
-void map(AddrSpace *as, void *va, void *pa, int prot) {}
+void map(AddrSpace *as, void *va, void *pa, int prot) {
+#ifndef __ISA_RISCV64__
+  assert(((void)"mapping only implemented for RV64", 0));
+#endif
+  assert(as->ptr != NULL);
+
+  const Paddr_t pa_ = {.packed = (uintptr_t)pa};
+  const Vaddr_t va_ = {.packed = (uintptr_t)va};
+
+  Pte_t *const pt_2 = (Pte_t *)as->ptr;
+  Pte_t *const pte_2 = &pt_2[va_.vpn2];
+  if (!pte_2->v) {
+    pte_2->ppn = (uintptr_t)pgalloc_usr(PGSIZE) >> 12;
+    pte_2->v = 1;
+  }
+
+  Pte_t *const pt_1 = (Pte_t *)((uintptr_t)pte_2->ppn << 12);
+  Pte_t *const pte_1 = &pt_1[va_.vpn1];
+  if (!pte_1->v) {
+    pte_1->ppn = (uintptr_t)pgalloc_usr(PGSIZE) >> 12;
+    pte_1->v = 1;
+  }
+
+  Pte_t *const pt_0 = (Pte_t *)((uintptr_t)pte_1->ppn << 12);
+  Pte_t *const pte_0 = &pt_0[va_.vpn0];
+  if (!pte_0->v) {
+    pte_0->flags = prot;
+    pte_0->ppn = pa_.ppn;
+    pte_0->v = 1;
+  } else {
+    assert(((void)"remap existing address", 0));
+  }
+}
 
 Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   Context *const ctx = (Context *)kstack.end - 1;
