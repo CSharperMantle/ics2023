@@ -27,7 +27,6 @@ Context *__am_irq_handle(Context *c) {
     assert(c != NULL);
   }
 
-  // TODO: interrupt or fault?
   if (!IS_INT(c->mcause)) {
     c->mepc += 4;
   }
@@ -52,6 +51,7 @@ Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
   ctx->mstatus = 0xa00001800;
   ctx->mepc = (uintptr_t)entry - 4;
   ctx->GPRx = (uintptr_t)arg;
+  ctx->pdir = NULL;
   return ctx;
 }
 

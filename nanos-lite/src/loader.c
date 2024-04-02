@@ -1,7 +1,7 @@
-#include "memory.h"
 #include <elf.h>
 #include <fcntl.h>
 #include <fs.h>
+#include <memory.h>
 #include <proc.h>
 #include <string.h>
 
@@ -27,9 +27,18 @@
 
 #define HAS_MAG_(e_, i_) (e_[EI_MAG##i_] == ELFMAG##i_)
 
+static uintptr_t calc_aligned_pages(uintptr_t start, size_t len, size_t *out_n) {
+  const uintptr_t start_aligned = start & ~(uintptr_t)(PGSIZE - 1);
+  const uintptr_t end_aligned = (start + len) + (((start + len) & (PGSIZE - 1)) == 0 ? 0 : PGSIZE);
+  *out_n = (end_aligned - start_aligned) / PGSIZE;
+  return start_aligned;
+}
+
 static uintptr_t loader(PCB *pcb, const char *filename) {
   int f = fs_open(filename, O_RDONLY, 0);
   assert(f >= 0);
+
+  Log("loading \"%s\"", filename);
 
   Elf_Ehdr ehdr;
   fs_read(f, &ehdr, sizeof(ehdr));
@@ -46,9 +55,23 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
     if (phdr.p_type != PT_LOAD) {
       continue;
     }
+
+    size_t n_pages;
+    const uintptr_t start_aligned = calc_aligned_pages(phdr.p_vaddr, phdr.p_memsz, &n_pages);
+    void *const pages = new_page(n_pages);
+    void *const pages_start = pages + (phdr.p_vaddr - start_aligned);
+    assert(n_pages * PGSIZE >= phdr.p_memsz);
+
     fs_lseek(f, phdr.p_offset, SEEK_SET);
-    fs_read(f, (void *)phdr.p_vaddr, phdr.p_filesz);
-    memset((void *)(phdr.p_vaddr + phdr.p_filesz), 0, phdr.p_memsz - phdr.p_filesz);
+    fs_read(f, pages_start, phdr.p_filesz);
+    memset(pages_start + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+
+    for (size_t j = 0; j < n_pages; j++) {
+      map(&pcb->as,
+          (void *)start_aligned + PGSIZE * j,
+          pages + PGSIZE * j,
+          PTE_R | PTE_W | PTE_X | PTE_U);
+    }
   }
 
   fs_close(f);
@@ -108,7 +131,7 @@ void context_uload(PCB *pcb, const char *filename, char *const argv[], char *con
   const size_t size_envs = get_varargs_size(envp, envc, envp_sizes);
 
   void *const ustack_start = new_page(8);
-  void *const ustack_end = ustack_start + sizeof(uint8_t) * PGSIZE * 8;
+  void *const ustack_end = ustack_start + PGSIZE * 8;
 
   void *new_sp = ustack_end;
 
@@ -154,9 +177,17 @@ void context_uload(PCB *pcb, const char *filename, char *const argv[], char *con
   *(int *)new_sp = (int)argc;
   Log("argc set: %p -> 0x%x", new_sp, *(int *)new_sp);
 
-  const uintptr_t entry = loader(pcb, filename);
-  Context *const ctx = ucontext(NULL, kstack, (void *)entry);
+  protect(&pcb->as);
 
-  ctx->GPRx = (uintptr_t)new_sp;
+  const uintptr_t entry = loader(pcb, filename);
+  Context *const ctx = ucontext(&pcb->as, kstack, (void *)entry);
+
+  for (size_t i = 8; i > 0; i--) {
+    map(&pcb->as, pcb->as.area.end - PGSIZE * i, ustack_end - PGSIZE * i, PTE_R | PTE_W | PTE_U);
+  }
+  ctx->GPRx = (uintptr_t)(pcb->as.area.end - (ustack_end - new_sp));
+
   pcb->cp = ctx;
+
+  Log("user stack: %p; ctx: %p", ctx->GPRx, ctx);
 }

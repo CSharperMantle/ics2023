@@ -14,17 +14,17 @@ static Area segments[] = {NEMU_PADDR_SPACE};
 
 static inline void set_satp(void *pdir) {
 #ifdef __ISA_RISCV64__
-  const uintptr_t mode = 8ul << 60; // Sv39
+  const CsrSatp_t satp = {.mode = MEM_PAGING_SV39, .ppn = (uintptr_t)pdir >> 12};
 #else
-  const uintptr_t mode = 1ul << 31; // Sv32
+  const CsrSatp_t satp = {.mode = MEM_PAGING_SV32, .ppn = (uintptr_t)pdir >> 12};
 #endif
-  asm volatile("csrw satp, %0" : : "r"(mode | ((uintptr_t)pdir >> 12)));
+  asm volatile("csrw satp, %0" : : "r"(satp.packed));
 }
 
 static inline uintptr_t get_satp() {
-  uintptr_t satp;
-  asm volatile("csrr %0, satp" : "=r"(satp));
-  return satp << 12;
+  CsrSatp_t satp;
+  asm volatile("csrr %0, satp" : "=r"(satp.packed));
+  return satp.ppn << 12;
 }
 
 bool vme_init(void *(*pgalloc_f)(int), void (*pgfree_f)(void *)) {
@@ -35,18 +35,10 @@ bool vme_init(void *(*pgalloc_f)(int), void (*pgfree_f)(void *)) {
   assert(kas.ptr != NULL);
 
   for (size_t i = 0; i < LENGTH(segments); i++) {
-    printf("%s:%d: map segment %u [%p-%p]\n",
-           __FUNCTION__,
-           __LINE__,
-           (unsigned)i,
-           segments[i].start,
-           segments[i].end);
     void *va = segments[i].start;
     for (; va < segments[i].end; va += PGSIZE) {
       map(&kas, va, va, PTE_R | PTE_W | PTE_X);
     }
-    printf("[%p, %p]\n", va, segments[i].start, segments[i].end);
-    printf("Done.\n");
   }
 
   set_satp(kas.ptr);
@@ -66,14 +58,16 @@ void protect(AddrSpace *as) {
 
 void unprotect(AddrSpace *as) {}
 
-void __am_get_cur_as(Context *c) {
+Context *__am_get_cur_as(Context *c) {
   c->pdir = (vme_enable ? (void *)get_satp() : NULL);
+  return c;
 }
 
-void __am_switch(Context *c) {
-  if (vme_enable && c->pdir != NULL) {
+Context *__am_switch(Context *c) {
+  if (vme_enable && c->pdir != NULL && c->pdir != kas.ptr) { // TODO: Hack, fix this last comp
     set_satp(c->pdir);
   }
+  return c;
 }
 
 void map(AddrSpace *as, void *va, void *pa, int prot) {
@@ -115,5 +109,6 @@ Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   ctx->mstatus = 0xa00000000;
   ctx->mepc = (uintptr_t)entry - 4;
   // ctx->GPRx = (uintptr_t)heap.end; // user-mode stack base; to be set by OS.
+  ctx->pdir = as->ptr;
   return ctx;
 }

@@ -18,16 +18,6 @@
 
 #include <common.h>
 
-static inline int check_gpr_idx(size_t idx) {
-  IFDEF(CONFIG_RT_CHECK, assert(likely(idx < MUXDEF(CONFIG_RVE, 16, 32))));
-  return idx;
-}
-
-static inline int check_csr_reg(size_t idx) {
-  IFDEF(CONFIG_RT_CHECK, assert(likely(idx < 4096)));
-  return idx;
-}
-
 #define CSR_IDX_SATP     0x180
 #define CSR_IDX_MSTATUS  0x300
 #define CSR_IDX_MIE      0x304
@@ -37,6 +27,16 @@ static inline int check_csr_reg(size_t idx) {
 #define CSR_IDX_MCAUSE   0x342
 #define CSR_IDX_MTVAL    0x343
 #define CSR_IDX_MIP      0x344
+
+static inline int check_gpr_idx(size_t idx) {
+  IFDEF(CONFIG_RT_CHECK, assert(likely(idx < MUXDEF(CONFIG_RVE, 16, 32))));
+  return idx;
+}
+
+static inline int check_csr_reg(size_t idx) {
+  IFDEF(CONFIG_RT_CHECK, assert(likely(idx < 4096)));
+  return idx;
+}
 
 typedef union CsrMstatus_ {
   struct {
