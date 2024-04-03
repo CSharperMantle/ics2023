@@ -63,6 +63,7 @@ enum {
   PTE_W = 0x04,
   PTE_X = 0x08,
   PTE_U = 0x10,
+  PTE_G = 0x20,
   PTE_A = 0x40,
   PTE_D = 0x80,
 };

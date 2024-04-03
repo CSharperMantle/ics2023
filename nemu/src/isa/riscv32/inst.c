@@ -86,13 +86,23 @@ static int64_t high_mul_i64(int64_t a, int64_t b) {
   return h - t1 - t2;
 }
 
-#define MRET_UPD_MSTATUS()                                                                         \
-  do {                                                                                             \
-    CsrMstatus_t mstatus = {.packed = CSR(CSR_IDX_MSTATUS)};                                       \
-    mstatus.mie = mstatus.mpie;                                                                    \
-    mstatus.mpie = 1;                                                                              \
-    CSR(CSR_IDX_MSTATUS) = mstatus.packed;                                                         \
-  } while (0)
+static void mret_adj_mstatus(void) {
+  CsrMstatus_t reg = {.packed = CSR(CSR_IDX_MSTATUS)};
+  reg.mie = reg.mpie;
+  reg.mpie = 1;
+  cpu.priv = reg.mpp;
+  CSR(CSR_IDX_MSTATUS) = reg.packed;
+}
+
+static word_t ecall_do_call(word_t epc) {
+  int code;
+  switch (cpu.priv) {
+    case PRIV_MODE_M: code = EXCP_M_ENV_CALL; break;
+    case PRIV_MODE_U: code = EXCP_U_ENV_CALL; break;
+    default: panic("ecall for priv=%d not implemented", cpu.priv);
+  }
+  return isa_raise_intr(((CsrMcause_t){.intr = false, .code = code}).packed, epc);
+}
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst.val;
@@ -203,10 +213,10 @@ static int decode_exec(Decode *s) {
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = isa_raise_intr(((CsrMcause_t){.intr = false, .code = EXCP_M_ENV_CALL}).packed, s->pc));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = ecall_do_call(s->pc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,    N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   // Trap-Return
-  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); MRET_UPD_MSTATUS());
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); mret_adj_mstatus());
 
   // COUNTERS
   // rdcycle

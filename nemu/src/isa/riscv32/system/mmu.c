@@ -40,6 +40,41 @@ int isa_mmu_check(vaddr_t vaddr, int len, int type) {
            ##__VA_ARGS__);                                                                         \
   } while (0)
 
+static void check_priv(const Pte_t *pte, vaddr_t vaddr, int len, int type) {
+  const CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
+  switch (cpu.priv) {
+    case PRIV_MODE_M: return;
+    case PRIV_MODE_S:
+      MMU_ASSERT_(!pte->u || (mstatus.sum && pte->u),
+                  "pte " FMT_PADDR ": %s",
+                  host_to_guest((void *)pte),
+                  pte->u ? "U" : "!U");
+      break;
+    case PRIV_MODE_U:
+      MMU_ASSERT_(pte->u, "pte " FMT_PADDR ": %s", host_to_guest((void *)pte), pte->u ? "U" : "!U");
+      break;
+    default: panic("unknown priv %d", cpu.priv);
+  }
+}
+
+static void check_prot(const Pte_t *pte, vaddr_t vaddr, int len, int type) {
+  const CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
+  switch (type) {
+    case MEM_TYPE_READ:
+      MMU_ASSERT_(pte->r || (mstatus.mxr && pte->x),
+                  "pte " FMT_PADDR ": !R && (!mstatus.MXR || !X)",
+                  host_to_guest((void *)pte));
+      break;
+    case MEM_TYPE_WRITE:
+      MMU_ASSERT_(pte->w, "pte " FMT_PADDR ": !W", host_to_guest((void *)pte));
+      break;
+    case MEM_TYPE_IFETCH:
+      MMU_ASSERT_(pte->x, "pte " FMT_PADDR ": !X", host_to_guest((void *)pte));
+      break;
+    default: panic("unknown type %d", type);
+  }
+}
+
 paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
   const CsrSatp_t satp = {.packed = csr(CSR_IDX_SATP)};
   const Vaddr_t va = {.packed = (word_t)vaddr};
@@ -50,43 +85,26 @@ paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
   table[2] = (Pte_t *)guest_to_host(satp.ppn << 12);
   MMU_ASSERT_(table[2] != NULL, "page table 2 is NULL");
   pte = &table[2][va.vpn2];
-  MMU_ASSERT_(pte->v && !(pte->r == 0 && pte->w == 1),
-              "invalid pte " FMT_PADDR " (flags=%d); table=[" FMT_PADDR ", " FMT_PADDR
-              ", " FMT_PADDR "], satp=%p",
-              host_to_guest((void *)pte),
-              pte->flags,
-              table[2] != NULL ? host_to_guest((void *)table[2]) : 0,
-              table[1] != NULL ? host_to_guest((void *)table[1]) : 0,
-              table[0] != NULL ? host_to_guest((void *)table[0]) : 0,
-              (void *)(satp.ppn << 12));
+  MMU_ASSERT_(pte->v, "pte " FMT_PADDR ": !V", host_to_guest((void *)pte));
+  MMU_ASSERT_(
+      !(pte->r == 0 && pte->w == 1), "pte " FMT_PADDR ": R && !W", host_to_guest((void *)pte));
+  check_priv(pte, vaddr, len, type);
 
   table[1] = (Pte_t *)guest_to_host(pte->ppn << 12);
   MMU_ASSERT_(table != NULL, "page table 1 is NULL");
   pte = &table[1][va.vpn1];
-  MMU_ASSERT_(pte->v && !(pte->r == 0 && pte->w == 1),
-              "invalid pte " FMT_PADDR " (flags=%d); table=[" FMT_PADDR ", " FMT_PADDR
-              ", " FMT_PADDR "]",
-              host_to_guest((void *)pte),
-              pte->flags,
-              table[2] != NULL ? host_to_guest((void *)table[2]) : 0,
-              table[1] != NULL ? host_to_guest((void *)table[1]) : 0,
-              table[0] != NULL ? host_to_guest((void *)table[0]) : 0);
+  MMU_ASSERT_(pte->v, "pte " FMT_PADDR ": !V", host_to_guest((void *)pte));
+  check_priv(pte, vaddr, len, type);
 
   table[0] = (Pte_t *)guest_to_host(pte->ppn << 12);
   MMU_ASSERT_(table != NULL, "page table 0 is NULL");
   pte = &table[0][va.vpn0];
-  MMU_ASSERT_(pte->v && !(pte->r == 0 && pte->w == 1),
-              "invalid pte " FMT_PADDR " (flags=%d); table=[" FMT_PADDR ", " FMT_PADDR
-              ", " FMT_PADDR "]",
-              host_to_guest((void *)pte),
-              pte->flags,
-              table[2] != NULL ? host_to_guest((void *)table[2]) : 0,
-              table[1] != NULL ? host_to_guest((void *)table[1]) : 0,
-              table[0] != NULL ? host_to_guest((void *)table[0]) : 0);
+  MMU_ASSERT_(pte->v, "pte " FMT_PADDR ": !V", host_to_guest((void *)pte));
+  MMU_ASSERT_(
+      !(pte->r == 0 && pte->w == 1), "pte " FMT_PADDR ": R && !W", host_to_guest((void *)pte));
+  check_priv(pte, vaddr, len, type);
 
-  MMU_ASSERT_(!(type == MEM_TYPE_READ && !pte->r), "invalid access perm");
-  MMU_ASSERT_(!(type == MEM_TYPE_WRITE && !pte->w), "invalid access perm");
-  MMU_ASSERT_(!(type == MEM_TYPE_IFETCH && !pte->x), "invalid access perm");
+  check_prot(pte, vaddr, len, type);
 
   if (!pte->a || (type == MEM_TYPE_WRITE && !pte->d)) {
     pte->a = 1;
@@ -98,8 +116,6 @@ paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
   Paddr_t pa = {0};
   pa.offset = va.offset;
   pa.ppn = pte->ppn;
-
-  // Log("xlate " FMT_WORD "v -> " FMT_WORD "p", vaddr, pa.packed);
 
   return pa.packed;
 }

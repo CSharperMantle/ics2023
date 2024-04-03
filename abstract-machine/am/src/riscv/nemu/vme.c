@@ -37,7 +37,7 @@ bool vme_init(void *(*pgalloc_f)(int), void (*pgfree_f)(void *)) {
   for (size_t i = 0; i < LENGTH(segments); i++) {
     void *va = segments[i].start;
     for (; va < segments[i].end; va += PGSIZE) {
-      map(&kas, va, va, PTE_R | PTE_W | PTE_X);
+      map(&kas, va, va, PTE_R | PTE_W | PTE_X | PTE_G);
     }
   }
 
@@ -82,6 +82,7 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
   Pte_t *const pt_2 = (Pte_t *)as->ptr;
   Pte_t *const pte_2 = &pt_2[va_.vpn2];
   if (!pte_2->v) {
+    pte_2->flags = prot;
     pte_2->ppn = (uintptr_t)pgalloc_usr(PGSIZE) >> 12;
     pte_2->v = 1;
   }
@@ -89,6 +90,7 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
   Pte_t *const pt_1 = (Pte_t *)((uintptr_t)pte_2->ppn << 12);
   Pte_t *const pte_1 = &pt_1[va_.vpn1];
   if (!pte_1->v) {
+    pte_1->flags = prot;
     pte_1->ppn = (uintptr_t)pgalloc_usr(PGSIZE) >> 12;
     pte_1->v = 1;
   }
@@ -106,7 +108,8 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
 
 Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   Context *const ctx = (Context *)kstack.end - 1;
-  ctx->mstatus = ((CsrMstatus_t){.mpp = PRIV_MODE_U, .resv_5 = 0x1400, .mpie = 1}).packed;
+  ctx->mstatus =
+      ((CsrMstatus_t){.mpp = PRIV_MODE_U, .resv_5 = 0x1400, .mpie = 1, .sum = 1, .mxr = 1}).packed;
   ctx->mepc = (uintptr_t)entry - 4;
   // ctx->GPRx = (uintptr_t)heap.end; // user-mode stack base; to be set by OS.
   ctx->pdir = as->ptr;

@@ -22,7 +22,9 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
   mstatus.mpie = mstatus.mie;
   mstatus.mie = 0;
+  mstatus.mpp = cpu.priv;
   csr(CSR_IDX_MSTATUS) = mstatus.packed;
+  cpu.priv = PRIV_MODE_M;
   csr(CSR_IDX_MCAUSE) = NO;
   csr(CSR_IDX_MEPC) = epc;
   const word_t vector = csr(CSR_IDX_MTVEC);

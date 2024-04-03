@@ -196,6 +196,4 @@ void context_uload(PCB *pcb, const char *filename, char *const argv[], char *con
   ctx->GPRx = (uintptr_t)(pcb->as.area.end - (ustack_end - new_sp));
 
   pcb->cp = ctx;
-
-  Log("user stack: %p; ctx: %p", ctx->GPRx, ctx);
 }

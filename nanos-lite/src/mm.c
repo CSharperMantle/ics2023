@@ -37,7 +37,7 @@ int mm_brk(uintptr_t brk) {
       map(&current->as,
           (void *)current->max_brk + i * PGSIZE,
           pages + i * PGSIZE,
-          PTE_R | PTE_W | PTE_U /* U or not? */);
+          PTE_R | PTE_W | PTE_U /* TODO: U or not? */);
     }
     current->max_brk = new_brk;
   }

@@ -25,13 +25,13 @@ Context *__am_irq_handle(Context *c) {
     } else {
       // Exception handlers
       switch (mcause.code) {
-        case EXCP_M_ENV_CALL: {
+        case EXCP_U_ENV_CALL:
+        case EXCP_M_ENV_CALL:
           switch (c->GPR1) {
             case -1: ev.event = EVENT_YIELD; break;
             default: ev.event = EVENT_SYSCALL; break;
           }
           break;
-        }
         default: ev.event = EVENT_ERROR; break;
       }
     }
