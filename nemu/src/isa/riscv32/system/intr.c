@@ -21,6 +21,7 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
    */
   CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
   mstatus.mpie = mstatus.mie;
+  mstatus.mie = 0;
   csr(CSR_IDX_MSTATUS) = mstatus.packed;
   csr(CSR_IDX_MCAUSE) = NO;
   csr(CSR_IDX_MEPC) = epc;
@@ -31,6 +32,10 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   return vector;
 }
 
-word_t isa_query_intr() {
+word_t isa_query_intr(void) {
+  if (cpu.intr && ((CsrMstatus_t){.packed = csr(CSR_IDX_MSTATUS)}).mie) {
+    cpu.intr = false;
+    return ((CsrMcause_t){.intr = true, .code = INTR_M_TIMR}).packed;
+  }
   return INTR_EMPTY;
 }

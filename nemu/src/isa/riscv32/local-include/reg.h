@@ -69,6 +69,18 @@ typedef union CsrMstatus_ {
   word_t packed;
 } CsrMstatus_t;
 
+typedef union CsrMcause_ {
+  struct {
+#ifdef CONFIG_RV64
+    word_t code : 63;
+#else
+    word_t code : 31;
+#endif
+    word_t intr : 1;
+  };
+  word_t packed;
+} CsrMcause_t;
+
 typedef union CsrSatp_ {
   struct {
 #ifdef CONFIG_RV64

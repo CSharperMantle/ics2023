@@ -10,24 +10,38 @@
 static Context *(*user_handler)(Event, Context *) = NULL;
 
 Context *__am_irq_handle(Context *c) {
+  CsrMcause_t mcause;
+
   if (user_handler) {
     Event ev = {0};
-    switch (c->mcause) {
-      case EXCP_M_ENV_CALL: {
-        switch (c->GPR1) {
-          case -1: ev = (Event){.event = EVENT_YIELD}; break;
-          default: ev = (Event){.event = EVENT_SYSCALL}; break;
-        }
-        break;
+
+    mcause.packed = c->mcause;
+    if (mcause.intr) {
+      // Interrupt handlers
+      switch (mcause.code) {
+        case INTR_M_TIMR: ev.event = EVENT_IRQ_TIMER; break;
+        default: ev.event = EVENT_ERROR; break;
       }
-      default: ev = (Event){.event = EVENT_ERROR}; break;
+    } else {
+      // Exception handlers
+      switch (mcause.code) {
+        case EXCP_M_ENV_CALL: {
+          switch (c->GPR1) {
+            case -1: ev.event = EVENT_YIELD; break;
+            default: ev.event = EVENT_SYSCALL; break;
+          }
+          break;
+        }
+        default: ev.event = EVENT_ERROR; break;
+      }
     }
 
     c = user_handler(ev, c);
     assert(c != NULL);
   }
 
-  if (!IS_INT(c->mcause)) {
+  mcause.packed = c->mcause;
+  if (!mcause.intr) {
     c->mepc += 4;
   }
 
@@ -48,7 +62,7 @@ bool cte_init(Context *(*handler)(Event, Context *)) {
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
   Context *const ctx = (Context *)kstack.end - 1;
-  ctx->mstatus = 0xa00001800;
+  ctx->mstatus = ((CsrMstatus_t){.mpp = PRIV_MODE_M, .resv_5 = 0x1400, .mpie = 1}).packed;
   ctx->mepc = (uintptr_t)entry - 4;
   ctx->GPRx = (uintptr_t)arg;
   ctx->pdir = NULL;

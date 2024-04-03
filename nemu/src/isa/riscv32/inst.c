@@ -14,6 +14,7 @@
 ***************************************************************************************/
 
 #include "common.h"
+#include "include/isa-def.h"
 #include "isa.h"
 #include "local-include/reg.h"
 #include <cpu/cpu.h>
@@ -202,7 +203,7 @@ static int decode_exec(Decode *s) {
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = isa_raise_intr(EXCP_M_ENV_CALL, s->pc));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = isa_raise_intr(((CsrMcause_t){.intr = false, .code = EXCP_M_ENV_CALL}).packed, s->pc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,    N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   // Trap-Return
   INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); MRET_UPD_MSTATUS());

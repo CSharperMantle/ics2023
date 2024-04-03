@@ -106,7 +106,7 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
 
 Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   Context *const ctx = (Context *)kstack.end - 1;
-  ctx->mstatus = 0xa00000000;
+  ctx->mstatus = ((CsrMstatus_t){.mpp = PRIV_MODE_U, .resv_5 = 0x1400, .mpie = 1}).packed;
   ctx->mepc = (uintptr_t)entry - 4;
   // ctx->GPRx = (uintptr_t)heap.end; // user-mode stack base; to be set by OS.
   ctx->pdir = as->ptr;

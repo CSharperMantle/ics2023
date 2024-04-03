@@ -49,6 +49,8 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
   Elf_Phdr phdr;
   assert(ehdr.e_phentsize == sizeof(phdr));
 
+  uintptr_t max_end = 0;
+
   for (size_t i = 0; i < ehdr.e_phnum; i++) {
     fs_lseek(f, ehdr.e_phoff + sizeof(phdr) * i, SEEK_SET);
     fs_read(f, &phdr, sizeof(phdr));
@@ -66,6 +68,10 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
     fs_read(f, pages_start, phdr.p_filesz);
     memset(pages_start + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
 
+    if (phdr.p_vaddr + phdr.p_memsz > max_end) {
+      max_end = phdr.p_vaddr + phdr.p_memsz;
+    }
+
     for (size_t j = 0; j < n_pages; j++) {
       map(&pcb->as,
           (void *)start_aligned + PGSIZE * j,
@@ -75,6 +81,8 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
   }
 
   fs_close(f);
+
+  pcb->max_brk = (max_end % PGSIZE == 0) ? max_end : (max_end / PGSIZE + 1) * PGSIZE;
 
   return ehdr.e_entry;
 }
