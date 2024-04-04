@@ -64,9 +64,7 @@ void do_syscall(Context *c) {
 #endif
 
   switch (a[0]) {
-    case SYS_exit:
-      halt((int)a[1]); /* c->GPRx = syscall_execve("/bin/menu", NULL, NULL); */
-      break;           /* noreturn */
+    case SYS_exit: c->GPRx = syscall_execve("/bin/menu", NULL, NULL); break; /* noreturn */
     case SYS_yield:
       yield();
       c->GPRx = 0;

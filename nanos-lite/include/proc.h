@@ -7,7 +7,7 @@
 #define MAX_NR_PROC 4
 #define STACK_SIZE (8 * PGSIZE)
 
-#define SCHED_FG_SLICES 30
+#define SCHED_FG_SLICES 60
 
 typedef union {
   struct {
@@ -25,6 +25,7 @@ extern PCB *current;
 
 void init_proc(void);
 void switch_boot_pcb(void);
+void change_proc_fg(int idx);
 Context *schedule(Context *ctx);
 
 #endif

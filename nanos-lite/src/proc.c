@@ -26,9 +26,11 @@ void init_proc(void) {
 
   Log("Initializing processes...");
   // context_kload(&pcb[0], hello_fun, (void *)1);
-  //  context_kload(&pcb[1], hello_fun, (void *)2);
+  // context_kload(&pcb[1], hello_fun, (void *)2);
   context_uload(&procs[0], "/bin/hello", NULL, NULL);
   context_uload(&procs[1], "/bin/nterm", NULL, NULL);
+  context_uload(&procs[2], "/bin/nslider", NULL, NULL);
+  context_uload(&procs[3], "/bin/bird", NULL, NULL);
   proc_fg = &procs[1];
   proc_bg = &procs[0];
   switch_boot_pcb();
@@ -74,4 +76,10 @@ Context *schedule(Context *ctx) {
   }
 
   return current->cp;
+}
+
+void change_proc_fg(int idx) {
+  assert(idx >= 1 && idx <= MAX_NR_PROC - 1);
+
+  proc_fg = &procs[idx];
 }
