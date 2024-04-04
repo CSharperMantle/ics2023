@@ -4,7 +4,10 @@
 #include <common.h>
 #include <memory.h>
 
+#define MAX_NR_PROC 4
 #define STACK_SIZE (8 * PGSIZE)
+
+#define SCHED_FG_SLICES 30
 
 typedef union {
   struct {

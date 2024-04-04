@@ -3,8 +3,6 @@
 
 extern void do_syscall(Context *c);
 
-extern PCB pcb[4];
-
 static Context *do_event(Event e, Context *c) {
   switch (e.event) {
     case EVENT_YIELD: c = schedule(c); break;
