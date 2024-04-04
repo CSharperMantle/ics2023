@@ -34,7 +34,7 @@ static void restart() {
   cpu.gpr[0] = 0;
   cpu.csr[CSR_IDX_MSTATUS] = 0xa00001800;
 
-  cpu.intr = 0;
+  cpu.intr = false;
   cpu.priv = PRIV_MODE_M;
 }
 

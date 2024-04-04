@@ -37,7 +37,7 @@ bool vme_init(void *(*pgalloc_f)(int), void (*pgfree_f)(void *)) {
   for (size_t i = 0; i < LENGTH(segments); i++) {
     void *va = segments[i].start;
     for (; va < segments[i].end; va += PGSIZE) {
-      map(&kas, va, va, PTE_R | PTE_W | PTE_X | PTE_G);
+      map(&kas, va, va, PTE_R | PTE_W | PTE_X | PTE_U | PTE_G);
     }
   }
 
@@ -108,10 +108,19 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
 
 Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   Context *const ctx = (Context *)kstack.end - 1;
-  ctx->mstatus =
-      ((CsrMstatus_t){.mpp = PRIV_MODE_U, .resv_5 = 0x1400, .mpie = 1, .sum = 1, .mxr = 1}).packed;
+  const CsrMstatus_t mstatus = {
+      .mpp = PRIV_MODE_U,
+      .resv_5 = 0x1400,
+      .mpie = 1,
+      .mie = 0,
+      .sum = 1,
+      .mxr = 1,
+  };
+  ctx->mstatus = mstatus.packed;
   ctx->mepc = (uintptr_t)entry - 4;
   // ctx->GPRx = (uintptr_t)heap.end; // user-mode stack base; to be set by OS.
+  ctx->GPRx = (uintptr_t)kstack.end;
   ctx->pdir = as->ptr;
+  ctx->np = PRIV_MODE_U;
   return ctx;
 }

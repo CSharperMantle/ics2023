@@ -13,13 +13,12 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-#include "common.h"
-#include "include/isa-def.h"
-#include "isa.h"
-#include "local-include/reg.h"
+#include <common.h>
 #include <cpu/cpu.h>
-#include <cpu/ifetch.h>
 #include <cpu/decode.h>
+#include <cpu/ifetch.h>
+#include <cpu/iringbuf.h>
+#include <isa.h>
 
 #define R(i)   gpr(i)
 #define CSR(i) csr(i)
@@ -261,5 +260,6 @@ static int decode_exec(Decode *s) {
 
 int isa_exec_once(Decode *s) {
   s->isa.inst.val = inst_fetch(&s->snpc, 4);
+  IFDEF(CONFIG_IRINGBUF, iringbuf_insert(s->pc, s->isa.inst.val));
   return decode_exec(s);
 }

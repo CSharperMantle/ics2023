@@ -28,10 +28,10 @@ void init_i8042();
 void init_audio();
 void init_disk();
 void init_sdcard();
-void init_alarm();
+void init_alarm(void);
 
 void send_key(uint8_t, bool);
-void vga_update_screen();
+void vga_update_screen(void);
 
 void device_update() {
   static uint64_t last = 0;

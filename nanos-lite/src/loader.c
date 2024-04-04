@@ -96,6 +96,12 @@ void naive_uload(PCB *pcb, const char *filename) {
 void context_kload(PCB *pcb, void (*entry)(void *), void *arg) {
   const Area kstack = (Area){.start = pcb->stack, .end = (void *)pcb->stack + sizeof(pcb->stack)};
   pcb->cp = kcontext(kstack, entry, arg);
+
+  Log("context: %p (p=%d, a0=%p, sp=%p)",
+      pcb->cp,
+      pcb->cp->np,
+      (void *)pcb->cp->GPRx,
+      (void *)pcb->cp->gpr[2]);
 }
 
 static size_t len_varargs(char *const varargs[]) {
@@ -193,7 +199,13 @@ void context_uload(PCB *pcb, const char *filename, char *const argv[], char *con
   for (size_t i = 8; i > 0; i--) {
     map(&pcb->as, pcb->as.area.end - PGSIZE * i, ustack_end - PGSIZE * i, PTE_R | PTE_W | PTE_U);
   }
-  ctx->GPRx = (uintptr_t)(pcb->as.area.end - (ustack_end - new_sp));
+  ctx->gpr[2] = (uintptr_t)(pcb->as.area.end - (ustack_end - new_sp));
 
   pcb->cp = ctx;
+
+  Log("context: %p (p=%d, a0=%p, sp=%p)",
+      pcb->cp,
+      pcb->cp->np,
+      (void *)pcb->cp->GPRx,
+      (void *)pcb->cp->gpr[2]);
 }

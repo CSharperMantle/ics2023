@@ -8,8 +8,8 @@ void iringbuf_insert(vaddr_t addr, uint32_t inst_val) {
       .inst_val = inst_val,
   };
   if (iringbuf.full) {
-    iringbuf.tail = (iringbuf.tail + 1) % IRINGBUF_NR_ELEM;
+    iringbuf.tail = (iringbuf.tail + 1) % CONFIG_IRINGBUF_NR_ELEM;
   }
-  iringbuf.head = (iringbuf.head + 1) % IRINGBUF_NR_ELEM;
+  iringbuf.head = (iringbuf.head + 1) % CONFIG_IRINGBUF_NR_ELEM;
   iringbuf.full = iringbuf.head == iringbuf.tail;
 }

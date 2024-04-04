@@ -9,8 +9,12 @@
 #include <sys/time.h>
 
 #ifdef CONFIG_STRACE
-static void print_strace(uintptr_t *a) {
-  Log("syscall %u; args=[%p, %p, %p]", a[0], a[1], a[2], a[3]);
+static void print_senter(uintptr_t *a) {
+  Log("enter syscall %u; args=[%p, %p, %p]", a[0], a[1], a[2], a[3]);
+}
+
+static void print_sleave(uintptr_t *a, uintptr_t ret) {
+  Log("leave syscall %u; retval=0x%x", a[0], (int)ret);
 }
 #endif
 
@@ -56,11 +60,13 @@ void do_syscall(Context *c) {
   a[3] = c->GPR4;
 
 #ifdef CONFIG_STRACE
-  print_strace(a);
+  print_senter(a);
 #endif
 
   switch (a[0]) {
-    case SYS_exit: halt((int)a[1]); /* c->GPRx = syscall_execve("/bin/menu", NULL, NULL); */ break; /* noreturn */
+    case SYS_exit:
+      halt((int)a[1]); /* c->GPRx = syscall_execve("/bin/menu", NULL, NULL); */
+      break;           /* noreturn */
     case SYS_yield:
       yield();
       c->GPRx = 0;
@@ -77,4 +83,8 @@ void do_syscall(Context *c) {
     case SYS_gettimeofday: c->GPRx = syscall_gettimeofday((tv_t *)a[1], (tz_t *)a[2]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
+
+#ifdef CONFIG_STRACE
+  print_sleave(a, c->GPRx);
+#endif
 }

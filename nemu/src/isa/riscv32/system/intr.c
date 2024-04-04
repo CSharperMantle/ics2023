@@ -29,13 +29,19 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   csr(CSR_IDX_MEPC) = epc;
   const word_t vector = csr(CSR_IDX_MTVEC);
 #ifdef CONFIG_ETRACE
-  Log("int " FMT_WORD "; mepc=" FMT_WORD "; handler=" FMT_WORD, NO, epc, vector);
+  const CsrMcause_t mcause = {.packed = NO};
+  if (mcause.intr) {
+    Log("INTR " FMT_WORD "; mepc=" FMT_WORD, mcause.code, epc);
+  } else {
+    Log("EXCP " FMT_WORD "; mepc=" FMT_WORD, mcause.code, epc);
+  }
 #endif
   return vector;
 }
 
 word_t isa_query_intr(void) {
-  if (cpu.intr && ((CsrMstatus_t){.packed = csr(CSR_IDX_MSTATUS)}).mie) {
+  const CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
+  if (cpu.intr && mstatus.mie) {
     cpu.intr = false;
     return ((CsrMcause_t){.intr = true, .code = INTR_M_TIMR}).packed;
   }

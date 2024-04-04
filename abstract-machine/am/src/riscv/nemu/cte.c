@@ -62,10 +62,18 @@ bool cte_init(Context *(*handler)(Event, Context *)) {
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
   Context *const ctx = (Context *)kstack.end - 1;
-  ctx->mstatus = ((CsrMstatus_t){.mpp = PRIV_MODE_M, .resv_5 = 0x1400, .mpie = 1}).packed;
+  const CsrMstatus_t mstatus = {
+      .mpp = PRIV_MODE_M,
+      .resv_5 = 0x1400,
+      .mpie = 1,
+      .mie = 0,
+  };
+  ctx->mstatus = mstatus.packed;
   ctx->mepc = (uintptr_t)entry - 4;
   ctx->GPRx = (uintptr_t)arg;
+  ctx->gpr[2] = (uintptr_t)kstack.end;
   ctx->pdir = NULL;
+  ctx->np = PRIV_MODE_M;
   return ctx;
 }
 

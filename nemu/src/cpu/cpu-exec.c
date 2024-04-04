@@ -103,7 +103,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #endif
 }
 
-static void check_intr(void) {
+static void deliver_intr(void) {
   const word_t intr = isa_query_intr();
   if (intr != INTR_EMPTY) {
     cpu.pc = isa_raise_intr(intr, cpu.pc);
@@ -115,14 +115,13 @@ static void execute(uint64_t n) {
   for (; n > 0; n--) {
     exec_once(&s, cpu.pc);
     g_nr_guest_inst++;
-    IFDEF(CONFIG_IRINGBUF, iringbuf_insert(s.pc, s.isa.inst.val));
 #if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
     trace_and_difftest(&s, cpu.pc);
 #endif
     if (nemu_state.state != NEMU_RUNNING)
       break;
     IFDEF(CONFIG_DEVICE, device_update());
-    check_intr();
+    deliver_intr();
   }
 }
 
@@ -139,7 +138,7 @@ static void statistic(void) {
 
 #ifdef CONFIG_IRINGBUF
 static void print_iringbuf(void) {
-  Log("- - - %d recent instructions (top: oldest)", IRINGBUF_NR_ELEM);
+  Log("- - - %d recent instructions (top: oldest)", CONFIG_IRINGBUF_NR_ELEM);
   size_t id_inst = iringbuf.tail;
   do {
     vaddr_t addr = iringbuf.insts[id_inst].addr;
@@ -150,9 +149,9 @@ static void print_iringbuf(void) {
     disasm_into_buf(buf, sizeof(buf), addr, addr + sizeof(val), (uint8_t *)&val);
 #endif
     Log("%s", MUXNDEF(CONFIG_ISA_loongarch32r, buf, " Disasm N/A"));
-    id_inst = (id_inst + 1) % IRINGBUF_NR_ELEM;
+    id_inst = (id_inst + 1) % CONFIG_IRINGBUF_NR_ELEM;
   } while (id_inst != iringbuf.head);
-  Log("- - - %d recent instructions (bottom: newest)", IRINGBUF_NR_ELEM);
+  Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
 }
 #endif
 

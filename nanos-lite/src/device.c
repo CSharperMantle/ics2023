@@ -15,7 +15,7 @@ static const char *KEYNAME[256] = {[AM_KEY_NONE] = "NONE", AM_KEYS(NAME)};
 size_t serial_write(const void *buf, size_t offset, size_t len) {
   (void)offset;
 
-  yield();
+  //yield();
 
   for (size_t i = 0; i < len; i++) {
     putchar(((char *)buf)[i]);
@@ -26,7 +26,7 @@ size_t serial_write(const void *buf, size_t offset, size_t len) {
 size_t events_read(void *buf, size_t offset, size_t len) {
   (void)offset;
 
-  yield();
+  //yield();
 
   const AM_INPUT_KEYBRD_T state = io_read(AM_INPUT_KEYBRD);
   if (state.keycode == AM_KEY_NONE) {
@@ -38,7 +38,7 @@ size_t events_read(void *buf, size_t offset, size_t len) {
 }
 
 size_t fb_write(const void *buf, size_t offset, size_t len) {
-  yield();
+  //yield();
 
   io_write(AM_GPU_MEMCPY, offset, (void *)buf, len);
   io_write(AM_GPU_FBDRAW, 0, 0, NULL, 0, 0, true);
