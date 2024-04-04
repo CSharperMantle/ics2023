@@ -159,6 +159,11 @@ config IRINGBUF
   bool "Enable recent instruction ring buffer"
   default y
 
+config IRINGBUF_NR_ELEM
+  depends on IRINGBUF
+  int "Number of instructions in iringbuf"
+  default 16
+
 config FTRACE
   depends on TRACE
   bool "Enable heuristic-based function call tracer"

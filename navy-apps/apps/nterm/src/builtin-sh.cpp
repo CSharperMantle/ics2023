@@ -1,5 +1,7 @@
 #include "sys/unistd.h"
 #include <SDL.h>
+#include <cstdint>
+#include <ctype.h>
 #include <errno.h>
 #include <nterm.h>
 #include <stdarg.h>
@@ -25,47 +27,110 @@ static void sh_prompt() {
   sh_printf("sh> ");
 }
 
-static void sh_handle_cmd(const char *cmd) {
-  static char bin_name[256];
+// https://github.com/torvalds/linux/blob/36ee98b555c00c5b360d9cd63dce490f4dac2290/lib/argv_split.c
+static int count_argc(const char *str) {
+  int count = 0;
+  bool was_space;
 
-  const size_t len = strlen(cmd);
-  char *const buf = (char *)malloc(sizeof(char) * (len + 1));
-  strcpy(buf, cmd);
-
-  size_t n_args = 0;
-  char *tok = strtok(buf, " ");
-  while (tok != NULL) {
-    if (n_args == 0) {
-      // bin name
-      const size_t nonwhite_seg = strcspn(tok, " \f\n\r\t\v");
-      if (nonwhite_seg > sizeof(bin_name) - 1) {
-        sh_printf("Binary name too long: %zu; %zu max\n", nonwhite_seg, sizeof(bin_name) - 1);
-      } else if (nonwhite_seg == 0) {
-        // blank line
-        free(buf);
-        return;
-      }
-      memcpy(bin_name, tok, nonwhite_seg);
-      bin_name[nonwhite_seg] = '\0';
-    } else {
-      // args
-      // TODO: args
+  for (was_space = true; *str; str++) {
+    if (isspace(*str)) {
+      was_space = true;
+    } else if (was_space) {
+      was_space = false;
+      count++;
     }
-
-    n_args++;
-    tok = strtok(NULL, " ");
   }
 
-  free(buf);
+  return count;
+}
+/**
+ * argv_free - free an argv
+ * @argv: the argument vector to be freed
+ *
+ * Frees an argv and the strings it points to.
+ */
+void argv_free(char **argv) {
+  argv--;
+  free(argv[0]);
+  free(argv);
+}
 
-  if (!strcmp(bin_name, "exit")) {
+/**
+ * argv_split - split a string at whitespace, returning an argv
+ * @gfp: the GFP mask used to allocate memory
+ * @str: the string to be split
+ * @argcp: returned argument count
+ *
+ * Returns: an array of pointers to strings which are split out from
+ * @str.  This is performed by strictly splitting on white-space; no
+ * quote processing is performed.  Multiple whitespace characters are
+ * considered to be a single argument separator.  The returned array
+ * is always NULL-terminated.  Returns NULL on memory allocation
+ * failure.
+ *
+ * The source string at `str' may be undergoing concurrent alteration via
+ * userspace sysctl activity (at least).  The argv_split() implementation
+ * attempts to handle this gracefully by taking a local copy to work on.
+ */
+char **argv_split(const char *str, int *argcp) {
+  char *argv_str;
+  bool was_space;
+  char **argv, **argv_ret;
+  int argc;
+
+  argv_str = (char *)malloc(strlen(str) + 1);
+  if (!argv_str)
+    return NULL;
+  strcpy(argv_str, str);
+
+  argc = count_argc(argv_str);
+  argv = (char **)calloc(argc + 2, sizeof(*argv));
+  if (!argv) {
+    free(argv_str);
+    return NULL;
+  }
+
+  *argv = argv_str;
+  argv_ret = ++argv;
+  for (was_space = true; *argv_str; argv_str++) {
+    if (isspace(*argv_str)) {
+      was_space = true;
+      *argv_str = 0;
+    } else if (was_space) {
+      was_space = false;
+      *argv++ = argv_str;
+    }
+  }
+  *argv = NULL;
+
+  if (argcp)
+    *argcp = argc;
+  return argv_ret;
+}
+
+static void sh_handle_cmd(const char *cmd) {
+  int argc;
+  char **argv = argv_split(cmd, &argc);
+
+  if (argv == NULL) {
+    sh_printf("Cannot split argv\n");
+    return;
+  }
+  if (argc == 0) {
+    argv_free(argv);
+    return;
+  }
+
+  if (!strcmp(argv[0], "exit")) {
     exit(0);
   }
 
-  setenv("PATH", "/bin", false);
-  const int ret = execvp(bin_name, NULL);
+  setenv("PATH", "/usr/bin:/bin", false);
+  const int ret = execvp(argv[0], argv);
   if (ret == -1) {
-    sh_printf("%s: cannot execvp\n", bin_name);
+    sh_printf("%s: errno %d: %s\n", argv[0], errno, strerror(errno));
+    argv_free(argv);
+    return;
   }
 }
 

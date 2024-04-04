@@ -2,6 +2,10 @@
 #define concat(x, y) concat_temp(x, y)
 #define MAP(c, f) c(f)
 
+#define PRIV_MODE_U 0
+#define PRIV_MODE_S 1
+#define PRIV_MODE_M 3
+
 #if __riscv_xlen == 32
 #define LOAD  lw
 #define STORE sw
@@ -31,18 +35,47 @@ f(30) f(31)
 #define PUSH(n) STORE concat(x, n), (n * XLEN)(sp);
 #define POP(n)  LOAD  concat(x, n), (n * XLEN)(sp);
 
-#define CONTEXT_SIZE  ((NR_REGS + 3 + 1) * XLEN)
-#define OFFSET_SP     ( 2 * XLEN)
-#define OFFSET_CAUSE  ((NR_REGS + 0) * XLEN)
-#define OFFSET_STATUS ((NR_REGS + 1) * XLEN)
-#define OFFSET_EPC    ((NR_REGS + 2) * XLEN)
+#define CONTEXT_SIZE    ((NR_REGS + 3 + 2) * XLEN)
+
+#define OFFSET_SP       (2 * XLEN)
+#define OFFSET_CAUSE    ((NR_REGS + 0) * XLEN)
+#define OFFSET_STATUS   ((NR_REGS + 1) * XLEN)
+#define OFFSET_EPC      ((NR_REGS + 2) * XLEN)
+#define OFFSET_NP       ((NR_REGS + 4) * XLEN)
 
 .align 3
 .globl __am_asm_trap
 __am_asm_trap:
+  csrrw sp, mscratch, sp  # (1) atomically exchange `sp` and `mscratch` (aka `ksp`)
+  bnez sp, L_SAVE_CTX     # (2) take the branch if we trapped from user
+  csrrw sp, mscratch, sp  # (3) if we trapped from kernel, restore the original `sp`
+
+L_SAVE_CTX:
   addi sp, sp, -CONTEXT_SIZE
 
-  MAP(REGS, PUSH)
+  MAP(REGS_LO16, PUSH)
+  
+  # c->np = (ksp == 0) ? KERNEL : USER;
+  csrr t0, mscratch
+  beqz t0, L_SAVE_KERNEL
+
+  li t0, PRIV_MODE_U
+  csrr t1, mscratch  # in this case, original running stack is in `mscratch`
+  j L_SAVE_HI16
+
+L_SAVE_KERNEL:
+  li t0, PRIV_MODE_M
+  mv t1, sp  # in this case, original running stack is in `sp` with `-CONTEXT_SIZE` added
+  addi t1, t1, CONTEXT_SIZE
+
+L_SAVE_HI16:
+  STORE t0, OFFSET_NP(sp)
+  STORE t1, OFFSET_SP(sp)
+
+  # ksp = 0;
+  csrw mscratch, zero
+
+  MAP(REGS_HI16, PUSH)
 
   csrr t0, mcause
   csrr t1, mstatus
@@ -58,14 +91,28 @@ __am_asm_trap:
   csrw mstatus, t1
 
   mv a0, sp
+  jal __am_get_cur_as
   jal __am_irq_handle
+  jal __am_switch
+  mv sp, a0
+  
+  # `if (c->np != USER)` ...
+  LOAD t0, OFFSET_NP(sp)
+  li t1, PRIV_MODE_U
+  bne t0, t1, L_RESTORE_CTX  # ... then we restore original `sp` from context
 
+  # otherwise, we run `ksp = $sp` first
+  addi t0, sp, CONTEXT_SIZE
+  csrw mscratch, t0
+  
+L_RESTORE_CTX:
   LOAD t1, OFFSET_STATUS(sp)
   LOAD t2, OFFSET_EPC(sp)
   csrw mstatus, t1
   csrw mepc, t2
 
-  MAP(REGS, POP)
+  MAP(REGS_HI16, POP)
+  MAP(REGS_LO16, POP)
 
-  addi sp, sp, CONTEXT_SIZE
+  LOAD sp, OFFSET_SP(sp)
   mret

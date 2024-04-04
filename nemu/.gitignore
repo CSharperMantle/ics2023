@@ -9,7 +9,7 @@
 !.clang-format
 !README.md
 !Kconfig
-!.vscode/
+!.vscode/**
 !src/isa/riscv64
 include/config
 include/generated

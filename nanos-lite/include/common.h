@@ -4,7 +4,8 @@
 /* Uncomment these macros to enable corresponding functionality. */
 #define HAS_CTE
 //#define CONFIG_STRACE
-//#define HAS_VME
+//#define CONFIG_SCHEDTRACE
+#define HAS_VME
 //#define MULTIPROGRAM
 //#define TIME_SHARING
 

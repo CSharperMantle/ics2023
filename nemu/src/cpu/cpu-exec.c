@@ -32,7 +32,7 @@
  */
 #define MAX_INST_TO_PRINT 10
 
-CPU_state cpu = {};
+CPU_state cpu = {0};
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
 
@@ -103,18 +103,25 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #endif
 }
 
+static void deliver_intr(void) {
+  const word_t intr = isa_query_intr();
+  if (intr != INTR_EMPTY) {
+    cpu.pc = isa_raise_intr(intr, cpu.pc);
+  }
+}
+
 static void execute(uint64_t n) {
   Decode s;
   for (; n > 0; n--) {
     exec_once(&s, cpu.pc);
     g_nr_guest_inst++;
-    IFDEF(CONFIG_IRINGBUF, iringbuf_insert(s.pc, s.isa.inst.val));
 #if defined(CONFIG_TRACE) || defined(CONFIG_DIFFTEST)
     trace_and_difftest(&s, cpu.pc);
 #endif
     if (nemu_state.state != NEMU_RUNNING)
       break;
     IFDEF(CONFIG_DEVICE, device_update());
+    deliver_intr();
   }
 }
 
@@ -129,14 +136,9 @@ static void statistic(void) {
     Warn("Finish running in less than 1 us and can not calculate the simulation frequency");
 }
 
-void assert_fail_msg() {
-  isa_reg_display();
-  statistic();
-}
-
 #ifdef CONFIG_IRINGBUF
 static void print_iringbuf(void) {
-  Log("- - - %d recent instructions (top: oldest)", IRINGBUF_NR_ELEM);
+  Log("- - - %d recent instructions (top: oldest)", CONFIG_IRINGBUF_NR_ELEM);
   size_t id_inst = iringbuf.tail;
   do {
     vaddr_t addr = iringbuf.insts[id_inst].addr;
@@ -147,11 +149,17 @@ static void print_iringbuf(void) {
     disasm_into_buf(buf, sizeof(buf), addr, addr + sizeof(val), (uint8_t *)&val);
 #endif
     Log("%s", MUXNDEF(CONFIG_ISA_loongarch32r, buf, " Disasm N/A"));
-    id_inst = (id_inst + 1) % IRINGBUF_NR_ELEM;
+    id_inst = (id_inst + 1) % CONFIG_IRINGBUF_NR_ELEM;
   } while (id_inst != iringbuf.head);
-  Log("- - - %d recent instructions (bottom: newest)", IRINGBUF_NR_ELEM);
+  Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
 }
 #endif
+
+void assert_fail_msg() {
+  IFDEF(CONFIG_IRINGBUF, print_iringbuf());
+  isa_reg_display();
+  statistic();
+}
 
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) {
@@ -176,16 +184,15 @@ void cpu_exec(uint64_t n) {
   switch (nemu_state.state) {
     case NEMU_RUNNING: nemu_state.state = NEMU_STOP; break;
     case NEMU_END:
-      Log("nemu: %s at pc = " FMT_WORD,
-          nemu_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
-                                   : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
-          nemu_state.halt_pc);
-#ifdef CONFIG_IRINGBUF
-      if (nemu_state.halt_ret != 0) {
-        print_iringbuf();
+      if (nemu_state.halt_ret == 0) {
+        Log("nemu: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
+            nemu_state.halt_pc);
+        statistic();
+      } else {
+        Log("nemu: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
+            nemu_state.halt_pc);
+        assert_fail_msg();
       }
-#endif
-      statistic();
       break;
     case NEMU_ABORT:
       Log("nemu: %s at pc = " FMT_WORD, ANSI_FMT("ABORT", ANSI_FG_RED), nemu_state.halt_pc);

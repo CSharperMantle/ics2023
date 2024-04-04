@@ -23,6 +23,8 @@ typedef struct {
   word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
   word_t csr[4096];
   vaddr_t pc;
+  int priv;
+  bool intr;
 } MUXDEF(CONFIG_RV64, riscv64_CPU_state, riscv32_CPU_state);
 
 // decode
@@ -36,8 +38,6 @@ typedef struct {
   vaddr_t target;
 #endif
 } MUXDEF(CONFIG_RV64, riscv64_ISADecodeInfo, riscv32_ISADecodeInfo);
-
-#define isa_mmu_check(vaddr, len, type) (MMU_DIRECT)
 
 enum {
   INTR_S_SOFT = 1,
@@ -64,5 +64,56 @@ enum {
   EXCP_READ_PAGE = 13,
   EXCP_STORE_PAGE = 14,
 };
+
+enum {
+  MEM_PAGING_BARE = 0,
+#ifdef CONFIG_RV64
+  MEM_PAGING_SV39 = 8,
+  MEM_PAGING_SV48 = 9,
+#else
+  MEM_PAGING_SV32 = 1,
+#endif
+};
+
+enum {
+  PRIV_MODE_U = 0,
+  PRIV_MODE_S = 1,
+  PRIV_MODE_M = 3,
+};
+
+typedef union Pte_ {
+  struct {
+    word_t v : 1;
+    word_t r : 1;
+    word_t w : 1;
+    word_t x : 1;
+    word_t u : 1;
+    word_t g : 1;
+    word_t a : 1;
+    word_t d : 1;
+    word_t rsw : 2;
+#ifdef CONFIG_RV64
+    word_t ppn0 : 9;
+    word_t ppn1 : 9;
+    word_t ppn2 : 26;
+    word_t resv0_ : 7;
+    word_t pbmt : 2;
+    word_t n : 1;
+#else
+    word_t ppn0 : 10;
+    word_t ppn1 : 12;
+#endif
+  };
+  struct {
+    word_t flags : 8;
+    word_t : 2;
+#ifdef CONFIG_RV64
+    word_t ppn : 44;
+#else
+    word_t ppn : 22;
+#endif
+  };
+  word_t packed;
+} Pte_t;
 
 #endif

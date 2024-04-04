@@ -1,5 +1,6 @@
 #include "syscall.h"
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -56,6 +57,10 @@ uintptr_t _syscall_(uintptr_t type, uintptr_t a0, uintptr_t a1, uintptr_t a2) {
   register uintptr_t _gpr4 asm(GPR4) = a2;
   register uintptr_t ret asm(GPRx);
   asm volatile(SYSCALL : "=r"(ret) : "r"(_gpr1), "r"(_gpr2), "r"(_gpr3), "r"(_gpr4));
+  if ((intptr_t)ret < 0) {
+    errno = (int)(-(intptr_t)ret);
+    ret = (uintptr_t)-1;
+  }
   return ret;
 }
 

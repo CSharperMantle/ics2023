@@ -25,14 +25,14 @@ const char *regs[] = {"$0", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s
 void isa_reg_display() {
   for (int i = 0; i < ARRLEN(regs); i++) {
     printf("%-*s " FMT_WORD " " FMT_INT_LADJ_W_ "%c",
-           16,
+           8,
            reg_name(i),
            gpr(i),
-           16,
+           24,
            gpr(i),
            i % 2 == 0 ? ' ' : '\n');
   }
-  printf("%-*s " FMT_WORD "\n", 16, "pc", cpu.pc);
+  printf("%-*s " FMT_WORD "\n", 8, "pc", cpu.pc);
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {

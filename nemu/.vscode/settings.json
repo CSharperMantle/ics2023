@@ -1,0 +1,24 @@
+{
+    "github.copilot.enable": {
+        "*": false
+    },
+    "cSpell.words": [
+        "etrace",
+        "ftrace",
+        "kcontext",
+        "kload",
+        "kstack",
+        "mcause",
+        "mepc",
+        "mret",
+        "mstatus",
+        "mtrace",
+        "satp",
+        "uload",
+        "jalr",
+        "ebreak",
+        "ecall",
+        "nemu",
+        "nanos",
+    ]
+}

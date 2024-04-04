@@ -3,14 +3,13 @@
 #include <fs.h>
 #include <proc.h>
 #include <ramdisk.h>
+#include <memory.h>
 
-void init_mm(void);
 void init_irq(void);
 
 int main() {
   extern const char logo[];
   printf("%s", logo);
-  Log("'Hello World!' from Nanos-lite");
   Log("Build time: %s, %s", __TIME__, __DATE__);
 
   init_mm();

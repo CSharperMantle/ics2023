@@ -4,12 +4,12 @@
 #include <common.h>
 #include <string.h>
 
-#define IRINGBUF_NR_ELEM 16
-
-#define IRINGBUF_ITER_BEGIN(ident_)  do {
+#define IRINGBUF_ITER_BEGIN(ident_) do {
 #define IRINGBUF_ITER_END(ident_)                                                                  \
-    ident_ = (ident_ + 1) % IRINGBUF_NR_ELEM;                                                      \
-  } while (ident_ != iringbuf.head);
+  ident_ = (ident_ + 1) % CONFIG_IRINGBUF_NR_ELEM;                                                 \
+  }                                                                                                \
+  while (ident_ != iringbuf.head)                                                                  \
+    ;
 
 typedef struct IRingBuf_Inst_ {
   vaddr_t addr;
@@ -17,7 +17,7 @@ typedef struct IRingBuf_Inst_ {
 } IRingBuf_Inst_t;
 
 typedef struct IRingBuf_ {
-  IRingBuf_Inst_t insts[IRINGBUF_NR_ELEM + 1];
+  IRingBuf_Inst_t insts[CONFIG_IRINGBUF_NR_ELEM + 1];
   size_t head;
   size_t tail;
   bool full;

@@ -13,12 +13,12 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-#include "common.h"
-#include "isa.h"
-#include "local-include/reg.h"
+#include <common.h>
 #include <cpu/cpu.h>
-#include <cpu/ifetch.h>
 #include <cpu/decode.h>
+#include <cpu/ifetch.h>
+#include <cpu/iringbuf.h>
+#include <isa.h>
 
 #define R(i)   gpr(i)
 #define CSR(i) csr(i)
@@ -85,13 +85,23 @@ static int64_t high_mul_i64(int64_t a, int64_t b) {
   return h - t1 - t2;
 }
 
-#define MRET_UPD_MSTATUS()                                                                         \
-  do {                                                                                             \
-    const bool mpie = !!(CSR(CSR_IDX_MSTATUS) & MSTATUS_F_MPIE);                                   \
-    CSR(CSR_IDX_MSTATUS) =                                                                         \
-        mpie ? (CSR(CSR_IDX_MSTATUS) | MSTATUS_F_MIE) : (CSR(CSR_IDX_MSTATUS) & ~MSTATUS_F_MIE);   \
-    CSR(CSR_IDX_MSTATUS) |= MSTATUS_F_MPIE;                                                        \
-  } while (0)
+static void mret_adj_mstatus(void) {
+  CsrMstatus_t reg = {.packed = CSR(CSR_IDX_MSTATUS)};
+  reg.mie = reg.mpie;
+  reg.mpie = 1;
+  cpu.priv = reg.mpp;
+  CSR(CSR_IDX_MSTATUS) = reg.packed;
+}
+
+static word_t ecall_do_call(word_t epc) {
+  int code;
+  switch (cpu.priv) {
+    case PRIV_MODE_M: code = EXCP_M_ENV_CALL; break;
+    case PRIV_MODE_U: code = EXCP_U_ENV_CALL; break;
+    default: panic("ecall for priv=%d not implemented", cpu.priv);
+  }
+  return isa_raise_intr(((CsrMcause_t){.intr = false, .code = code}).packed, epc);
+}
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst.val;
@@ -202,10 +212,10 @@ static int decode_exec(Decode *s) {
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = isa_raise_intr(EXCP_M_ENV_CALL, s->pc));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = ecall_do_call(s->pc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,    N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   // Trap-Return
-  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); MRET_UPD_MSTATUS());
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); mret_adj_mstatus());
 
   // COUNTERS
   // rdcycle
@@ -231,7 +241,7 @@ static int decode_exec(Decode *s) {
   INSTPAT("0000001 ????? ????? 111 ????? 01110 11", remuw  ,    R, R(rd) = SEXT((uint32_t)src1 % (uint32_t)src2, 32));
 
   // -*- RV64Zicsr: Control and status register (CSR), version 2.0 -*-
-  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , ICSR, word_t t = CSR(imm); CSR(imm) = src1; R(rd) = t;);
+  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , ICSR, word_t t = CSR(imm); CSR(imm) = src1; R(rd) = t);
   // csrrwi
   INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , ICSR, word_t t = CSR(imm); CSR(imm) = t | src1; R(rd) = t);
   // csrrsi
@@ -250,5 +260,6 @@ static int decode_exec(Decode *s) {
 
 int isa_exec_once(Decode *s) {
   s->isa.inst.val = inst_fetch(&s->snpc, 4);
+  IFDEF(CONFIG_IRINGBUF, iringbuf_insert(s->pc, s->isa.inst.val));
   return decode_exec(s);
 }
