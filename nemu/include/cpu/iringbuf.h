@@ -4,6 +4,10 @@
 #include <common.h>
 #include <string.h>
 
+#ifndef CONFIG_IRINGBUF_NR_ELEM
+#define CONFIG_IRINGBUF_NR_ELEM 1
+#endif
+
 #define IRINGBUF_ITER_BEGIN(ident_) do {
 #define IRINGBUF_ITER_END(ident_)                                                                  \
   ident_ = (ident_ + 1) % CONFIG_IRINGBUF_NR_ELEM;                                                 \
