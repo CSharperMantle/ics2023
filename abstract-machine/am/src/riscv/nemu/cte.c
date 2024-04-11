@@ -64,7 +64,9 @@ Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
   Context *const ctx = (Context *)kstack.end - 1;
   const CsrMstatus_t mstatus = {
       .mpp = PRIV_MODE_M,
+#ifdef __ISA_RISCV64__
       .resv_5 = 0x1400,
+#endif
       .mpie = 1,
       .mie = 0,
   };

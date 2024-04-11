@@ -32,7 +32,8 @@ static void restart() {
 
   /* The zero register is always 0. */
   cpu.gpr[0] = 0;
-  cpu.csr[CSR_IDX_MSTATUS] = 0xa00001800;
+  cpu.csr[CSR_IDX_MSTATUS] = MUXDEF(CONFIG_RV64, 0xa00001800, 0x1800);
+
 
   cpu.intr = false;
   cpu.priv = PRIV_MODE_M;

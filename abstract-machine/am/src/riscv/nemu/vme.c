@@ -73,7 +73,7 @@ Context *__am_switch(Context *c) {
 void map(AddrSpace *as, void *va, void *pa, int prot) {
 #ifndef __ISA_RISCV64__
   assert(((void)"mapping only implemented for RV64", 0));
-#endif
+#else
   assert(as->ptr != NULL);
 
   const Paddr_t pa_ = {.packed = (uintptr_t)pa};
@@ -104,13 +104,16 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
   } else {
     assert(((void)"remap existing address", 0));
   }
+#endif
 }
 
 Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   Context *const ctx = (Context *)kstack.end - 1;
   const CsrMstatus_t mstatus = {
       .mpp = PRIV_MODE_U,
+#ifdef __ISA_RISCV64__
       .resv_5 = 0x1400,
+#endif
       .mpie = 1,
       .mie = 0,
       .sum = 1,

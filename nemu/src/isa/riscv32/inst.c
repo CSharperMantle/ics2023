@@ -47,6 +47,8 @@ enum {
 #define immU()    do { *imm = SEXT(BITS(i, 31, 12), 20) << 12; } while (0)
 #define immJ()    do { *imm = SEXT((BITS(i, 31, 31) << 20) | (BITS(i, 19, 12) << 12) | (BITS(i, 20, 20) << 11) | (BITS(i, 30, 21) << 1), 21); } while (0)
 
+#ifdef CONFIG_RV64
+
 static uint64_t carry_add_u64(uint64_t a, uint64_t b, bool *out_c) {
   const uint64_t sum = a + b;
   *out_c = sum < a || sum < b;
@@ -73,7 +75,9 @@ static uint64_t full_mul_u64(uint64_t a, uint64_t b, uint64_t *out_h) {
   sum_h += p2 >> 32;
   sum_h += p3;
 
-  *out_h = sum_h;
+  if (sum_h != NULL) {}
+    *out_h = sum_h;
+  }
   return sum_l;
 }
 
@@ -84,6 +88,23 @@ static int64_t high_mul_i64(int64_t a, int64_t b) {
   const int64_t t2 = (b >> 63) & a;
   return h - t1 - t2;
 }
+
+#else
+
+static uint64_t full_mul_u32(uint32_t a, uint32_t b, uint32_t *out_h) {
+  const uint64_t result = (uint64_t)a * (uint64_t)b;
+  if (out_h != NULL) {
+    *out_h = (uint32_t)(result >> 32);
+  }
+  return (uint32_t)(result & 0xFFFFFFFF);
+}
+
+static int32_t high_mul_i32(int32_t a, int32_t b) {
+  const int64_t result = (int64_t)a * (int64_t)b;
+  return (int32_t)(result >> 32);
+}
+
+#endif
 
 static void mret_adj_mstatus(void) {
   CsrMstatus_t reg = {.packed = CSR(CSR_IDX_MSTATUS)};
@@ -137,7 +158,7 @@ static int decode_exec(Decode *s) {
 
   INSTPAT_START();
 
-  // -*- RV64I: Integer base instructions -*-
+  // -*- RV64I/RV32I: Integer base instructions -*-
   // INTEGER COMPUTATIONAL INSTRUCTIONS
   // Arithmetic
   INSTPAT("0000000 ????? ????? 000 ????? 01100 11", add    ,    R, R(rd) = src1 + src2);
@@ -227,9 +248,15 @@ static int decode_exec(Decode *s) {
 
   // -*- RV64M: Integer multiplication and division -*-
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul    ,    R, R(rd) = src1 * src2);
+#ifdef CONFIG_RV64
   INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh   ,    R, R(rd) = high_mul_i64((sword_t)src1, (sword_t)src2));
   // mulhsu
   INSTPAT("0000001 ????? ????? 011 ????? 01100 11", mulhu  ,    R, word_t t; full_mul_u64(src1, src2, &t); R(rd) = t);
+#else
+  INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh   ,    R, R(rd) = high_mul_i32((sword_t)src1, (sword_t)src2));
+  // mulhsu
+  INSTPAT("0000001 ????? ????? 011 ????? 01100 11", mulhu  ,    R, word_t t; full_mul_u32(src1, src2, &t); R(rd) = t);
+#endif
   INSTPAT("0000001 ????? ????? 000 ????? 01110 11", mulw   ,    R, R(rd) = SEXT((uint32_t)(src1 * src2), 32));
   INSTPAT("0000001 ????? ????? 100 ????? 01100 11", div    ,    R, R(rd) = (sword_t)src1 / (sword_t)src2);
   INSTPAT("0000001 ????? ????? 100 ????? 01110 11", divw   ,    R, R(rd) = SEXT((int32_t)src1 / (int32_t)src2, 32));
@@ -240,7 +267,7 @@ static int decode_exec(Decode *s) {
   INSTPAT("0000001 ????? ????? 111 ????? 01100 11", remu   ,    R, R(rd) = src1 % src2);
   INSTPAT("0000001 ????? ????? 111 ????? 01110 11", remuw  ,    R, R(rd) = SEXT((uint32_t)src1 % (uint32_t)src2, 32));
 
-  // -*- RV64Zicsr: Control and status register (CSR), version 2.0 -*-
+  // -*- RV64Zicsr/RV32Zicsr: Control and status register (CSR), version 2.0 -*-
   INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , ICSR, word_t t = CSR(imm); CSR(imm) = src1; R(rd) = t);
   // csrrwi
   INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , ICSR, word_t t = CSR(imm); CSR(imm) = t | src1; R(rd) = t);

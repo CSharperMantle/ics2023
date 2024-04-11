@@ -122,7 +122,7 @@ paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
 
 #else
 int isa_mmu_check(vaddr_t vaddr, int len, int type) {
-  panic("unimplemented");
+  return MMU_DIRECT;
 }
 
 paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
