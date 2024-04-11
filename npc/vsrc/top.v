@@ -3,5 +3,5 @@ module top(
     input b,
     output f
 );
-    assign f =  a ^ b;
+    assign f = a ^ b;
 endmodule
