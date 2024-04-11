@@ -55,6 +55,20 @@ case $1 in
   navy-apps)
     init NJU-ProjectN/navy-apps ics2023 navy-apps true NAVY_HOME
     ;;
+  nvboard)
+    init NJU-ProjectN/nvboard master nvboard false NVBOARD_HOME
+    ;;
+  npc-chisel)
+    if [ -d npc/playground ]; then
+      echo "chisel repo is already initialized, skipping..."
+    else
+      rm -rf npc
+      init OSCPU/chisel-playground master npc true NPC_HOME
+    fi
+    ;;
+  npc)
+    addenv NPC_HOME npc
+    ;;
   *)
     echo "Invalid input..."
     exit
