@@ -21,7 +21,7 @@ static inline void set_satp(void *pdir) {
   asm volatile("csrw satp, %0" : : "r"(satp.packed));
 }
 
-static inline uintptr_t get_satp() {
+static inline uintptr_t get_satp(void) {
   CsrSatp_t satp;
   asm volatile("csrr %0, satp" : "=r"(satp.packed));
   return satp.ppn << 12;
@@ -71,14 +71,12 @@ Context *__am_switch(Context *c) {
 }
 
 void map(AddrSpace *as, void *va, void *pa, int prot) {
-#ifndef __ISA_RISCV64__
-  assert(((void)"mapping only implemented for RV64", 0));
-#else
   assert(as->ptr != NULL);
 
   const Paddr_t pa_ = {.packed = (uintptr_t)pa};
   const Vaddr_t va_ = {.packed = (uintptr_t)va};
 
+#ifdef __ISA_RISCV64__
   Pte_t *const pt_2 = (Pte_t *)as->ptr;
   Pte_t *const pte_2 = &pt_2[va_.vpn2];
   if (!pte_2->v) {
@@ -94,6 +92,15 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
     pte_1->ppn = (uintptr_t)pgalloc_usr(PGSIZE) >> 12;
     pte_1->v = 1;
   }
+#else
+  Pte_t *const pt_1 = (Pte_t *)as->ptr;
+  Pte_t *const pte_1 = &pt_1[va_.vpn1];
+  if (!pte_1->v) {
+    pte_1->flags = prot;
+    pte_1->ppn = (uintptr_t)pgalloc_usr(PGSIZE) >> 12;
+    pte_1->v = 1;
+  }
+#endif
 
   Pte_t *const pt_0 = (Pte_t *)((uintptr_t)pte_1->ppn << 12);
   Pte_t *const pte_0 = &pt_0[va_.vpn0];
@@ -104,7 +111,6 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
   } else {
     assert(((void)"remap existing address", 0));
   }
-#endif
 }
 
 Context *ucontext(AddrSpace *as, Area kstack, void *entry) {

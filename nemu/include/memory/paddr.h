@@ -37,7 +37,7 @@ typedef union Paddr_ {
     word_t ppn2 : 26;
 #else
     word_t ppn0 : 10;
-    word_t ppn1 : 12;
+    word_t ppn1 : 10; // FIXME: 12
 #endif
   };
   struct {
@@ -45,7 +45,7 @@ typedef union Paddr_ {
 #ifdef CONFIG_RV64
     word_t ppn : 44;
 #else
-    word_t ppn : 22;
+    word_t ppn : 20; // FIXME: 22
 #endif
   };
   word_t packed;

@@ -142,7 +142,7 @@ typedef union Paddr_ {
     uintptr_t ppn2 : 26;
 #else
     uintptr_t ppn0 : 10;
-    uintptr_t ppn1 : 12;
+    uintptr_t ppn1 : 10; // FIXME: 12
 #endif
   };
   struct {
@@ -150,7 +150,7 @@ typedef union Paddr_ {
 #ifdef __ISA_RISCV64__
     uintptr_t ppn : 44;
 #else
-    uintptr_t ppn : 22;
+    uintptr_t ppn : 20; // FIXME: 22
 #endif
   };
   uintptr_t packed;

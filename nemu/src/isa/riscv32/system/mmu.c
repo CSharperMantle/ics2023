@@ -17,17 +17,6 @@
 #include <memory/paddr.h>
 #include <memory/vaddr.h>
 
-#ifdef CONFIG_RV64
-
-int isa_mmu_check(vaddr_t vaddr, int len, int type) {
-  const CsrSatp_t satp = {.packed = csr(CSR_IDX_SATP)};
-  switch (satp.mode) {
-    case MEM_PAGING_BARE: return MMU_DIRECT;
-    case MEM_PAGING_SV39: return MMU_TRANSLATE;
-    default: panic("satp mode unimplemented: %d", satp.mode);
-  }
-}
-
 #define MMU_ASSERT_(cond_, fmt_, ...)                                                              \
   do {                                                                                             \
     Assert((cond_),                                                                                \
@@ -75,12 +64,26 @@ static void check_prot(const Pte_t *pte, vaddr_t vaddr, int len, int type) {
   }
 }
 
+int isa_mmu_check(vaddr_t vaddr, int len, int type) {
+  const CsrSatp_t satp = {.packed = csr(CSR_IDX_SATP)};
+  switch (satp.mode) {
+    case MEM_PAGING_BARE: return MMU_DIRECT;
+#ifdef CONFIG_RV64
+    case MEM_PAGING_SV39: return MMU_TRANSLATE;
+#else
+    case MEM_PAGING_SV32: return MMU_TRANSLATE;
+#endif
+    default: panic("satp mode unimplemented: %d", satp.mode);
+  }
+}
+
 paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
   const CsrSatp_t satp = {.packed = csr(CSR_IDX_SATP)};
   const Vaddr_t va = {.packed = (word_t)vaddr};
-
-  Pte_t *table[3] = {0};
   Pte_t *pte = NULL;
+
+#ifdef CONFIG_RV64
+  Pte_t *table[3] = {NULL};
 
   table[2] = (Pte_t *)guest_to_host(satp.ppn << 12);
   MMU_ASSERT_(table[2] != NULL, "page table 2 is NULL");
@@ -95,6 +98,15 @@ paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
   pte = &table[1][va.vpn1];
   MMU_ASSERT_(pte->v, "pte " FMT_PADDR ": !V", host_to_guest((void *)pte));
   check_priv(pte, vaddr, len, type);
+#else
+  Pte_t *table[2] = {NULL};
+
+  table[1] = (Pte_t *)guest_to_host(satp.ppn << 12);
+  MMU_ASSERT_(table != NULL, "page table 1 is NULL");
+  pte = &table[1][va.vpn1];
+  MMU_ASSERT_(pte->v, "pte " FMT_PADDR ": !V", host_to_guest((void *)pte));
+  check_priv(pte, vaddr, len, type);
+#endif
 
   table[0] = (Pte_t *)guest_to_host(pte->ppn << 12);
   MMU_ASSERT_(table != NULL, "page table 0 is NULL");
@@ -119,13 +131,3 @@ paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
 
   return pa.packed;
 }
-
-#else
-int isa_mmu_check(vaddr_t vaddr, int len, int type) {
-  return MMU_DIRECT;
-}
-
-paddr_t isa_mmu_translate(vaddr_t vaddr, int len, int type) {
-  panic("unimplemented");
-}
-#endif
