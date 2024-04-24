@@ -171,7 +171,7 @@ static int cmd_x(char *args) {
     return 0;
   }
   int n = atoi(arg1);
-  vaddr_t addr = strtol(arg2, NULL, 16);
+  vaddr_t addr = strtoul(arg2, NULL, 16);
   for (int i = 0; i < n; i++) {
     int offset = i * 4;
     printf(FMT_WORD ": " FMT_WORD "\n", addr + offset, vaddr_read(addr + offset, 4));
