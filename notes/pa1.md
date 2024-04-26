@@ -70,9 +70,9 @@
 
 ## 2. 理解基础设施
 
-**不使用SDB:** $500 \times 90\% \times 30\mathrm{s} \times 20 = 270000\mathrm{s} = 75\mathrm{h}.$
+**不使用SDB:** $500 \times 0.9 \times 30\mathrm{s} \times 20 = 270000\mathrm{s} = 75\mathrm{h}.$
 
-**使用SDB**:** $500 \times 90\% \times 10\mathrm{s} \times 20 = 90000\mathrm{s} = 25\mathrm{h}.$
+**使用SDB**: $500 \times 0.9 \times 10\mathrm{s} \times 20 = 90000\mathrm{s} = 25\mathrm{h}.$
 
 ## 3. RTFM (1)
 
