@@ -51,4 +51,7 @@ $(clean-tools):
 clean-tools: $(clean-tools)
 clean-all: clean distclean clean-tools
 
-.PHONY: run gdb run-env clean-tools clean-all $(clean-tools)
+count:
+	@echo $(shell find $(NEMU_HOME) -type f -regex '^.*\.\(c\|cpp\|h\|hpp\)$$' -print | xargs grep -c -e '^.\+$$' | cut -f 2 -d ':' | awk '{ sum += $$1 }; END { print sum }')
+
+.PHONY: run gdb run-env clean-tools clean-all count $(clean-tools)
