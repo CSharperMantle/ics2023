@@ -21,6 +21,7 @@ int cmd_x(char *args);
 int cmd_p(char *args);
 int cmd_save(char *args);
 int cmd_load(char *args);
+int cmd_expr(char *args);
 #ifdef CONFIG_WATCHPOINT
 int cmd_w(char *args);
 int cmd_d(char *args);

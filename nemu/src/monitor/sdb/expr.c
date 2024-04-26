@@ -44,19 +44,19 @@ static struct rule {
   const char *regex;
   int token_type;
 } rules[] = {
-    {"\\s+", TK_NOTYPE},      // spaces
-    {"\\+", '+'},             // plus
-    {"-", '-'},               // minus
-    {"\\*", '*'},             // multiply
-    {"/", '/'},               // divide
-    {"\\(", '('},             // left bracket
-    {"\\)", ')'},             // right bracket
-    {"==", TK_EQ},            // equal
-    {"!=", TK_NEQ},           // not equal
-    {"&&", TK_AND},           // logical and
-    {"0x[0-9]+", TK_NUM},     // hex number
-    {"[0-9]+", TK_NUM},       // dec number
-    {"\\$[a-z0-9]+", TK_REG}, // register
+    {"\\s+",         TK_NOTYPE}, // spaces
+    {"\\+",          '+'      }, // plus
+    {"-",            '-'      }, // minus
+    {"\\*",          '*'      }, // multiply
+    {"/",            '/'      }, // divide
+    {"\\(",          '('      }, // left bracket
+    {"\\)",          ')'      }, // right bracket
+    {"==",           TK_EQ    }, // equal
+    {"!=",           TK_NEQ   }, // not equal
+    {"&&",           TK_AND   }, // logical and
+    {"0x[0-9]+u?",     TK_NUM   }, // hex number
+    {"[0-9]+u?",       TK_NUM   }, // dec number
+    {"\\$[a-z0-9]+", TK_REG   }, // register
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -80,12 +80,14 @@ void init_regex(void) {
   }
 }
 
+#define N_TOKENS         4096
+#define LEN_SINGLE_TOKEN 32
+
 typedef struct token {
   int type;
-  char str[32];
+  char str[LEN_SINGLE_TOKEN];
 } Token;
-
-static Token tokens[32] = {0};
+static Token tokens[N_TOKENS] = {0};
 static int nr_token = 0;
 
 static bool make_token(char *e) {
@@ -131,11 +133,8 @@ static bool make_token(char *e) {
         tokens[nr_token++] = token;
 
         switch (rules[i].token_type) {
-          case TK_NOTYPE:
-            nr_token--;
-            break;
-          default:
-            break;
+          case TK_NOTYPE: nr_token--; break;
+          default: break;
         }
 
         break;
@@ -161,8 +160,7 @@ static bool make_token(char *e) {
           tokens[i].type = TK_NEG;
         }
         break;
-      default:
-        break;
+      default: break;
     }
   }
 #undef AFTER_EXPR_
@@ -192,8 +190,7 @@ static ParenStatus check_parentheses(int p, int q) {
         has_paren = true;
         last_rparen = i;
         break;
-      default:
-        break;
+      default: break;
     }
     if (level < 0) {
       return PAREN_UNMATCHED;
@@ -210,8 +207,8 @@ static ParenStatus check_parentheses(int p, int q) {
   if (level != 0) {
     return PAREN_UNMATCHED;
   }
-  if (has_paren && level == 0 && i == last_rparen && tokens[p].type == '(' &&
-      tokens[q].type == ')') {
+  if (has_paren && level == 0 && i == last_rparen && tokens[p].type == '('
+      && tokens[q].type == ')') {
     return PAREN_WRAPPED;
   } else {
     return PAREN_NONE;
@@ -226,35 +223,21 @@ static int find_main_op(int p, int q) {
   }
   for (int i = p; i <= q; i++) {
     switch (tokens[i].type) {
-      case '(':
-        level++;
-        continue;
-      case ')':
-        level--;
-        continue;
-      default:
-        break;
+      case '(': level++; continue;
+      case ')': level--; continue;
+      default: break;
     }
     if (level == 0) {
       /* Change associativity for unary minus */
       switch (tokens[i].type) {
-        case TK_AND:
-          indices[PREC_AND] = i;
-          break;
+        case TK_AND: indices[PREC_AND] = i; break;
         case TK_EQ:
-        case TK_NEQ:
-          indices[PREC_EQ_NEQ] = i;
-          break;
+        case TK_NEQ: indices[PREC_EQ_NEQ] = i; break;
         case '*':
-        case '/':
-          indices[PREC_MUL_DIV] = i;
-          break;
+        case '/': indices[PREC_MUL_DIV] = i; break;
         case '+':
-        case '-':
-          indices[PREC_ADD_SUB] = i;
-          break;
-        default:
-          break;
+        case '-': indices[PREC_ADD_SUB] = i; break;
+        default: break;
       }
     }
   }
@@ -275,10 +258,10 @@ static word_t eval(int p, int q, bool *success) {
   } else if (p == q) {
     switch (tokens[p].type) {
       case TK_NUM:
-        Warn("(%d,%d): single number token", p, q);
+        Log("(%d,%d): single number token", p, q);
         return (word_t)strtoll(tokens[p].str, NULL, 0);
       case TK_REG: {
-        Warn("(%d,%d): single register token", p, q);
+        Log("(%d,%d): single register token", p, q);
         bool reg_succ = false;
         /* Remove prefix "$" */
         word_t val = isa_reg_str2val(tokens[p].str + 1, &reg_succ);
@@ -289,8 +272,7 @@ static word_t eval(int p, int q, bool *success) {
         }
         return val;
       }
-      default:
-        panic("unreachable (tokens[p].type == %d)", tokens[p].type);
+      default: panic("unreachable (tokens[p].type == %d)", tokens[p].type);
     }
   }
 
@@ -319,10 +301,10 @@ static word_t eval(int p, int q, bool *success) {
           }
           default: {
             Warn("(%d,%d): not even a unary op at token #%d (%s); reporting",
-                p,
-                q,
-                p,
-                tokens[p].str);
+                 p,
+                 q,
+                 p,
+                 tokens[p].str);
             printf("Bad expression at token #%d\n", p);
             *success = false;
             return 0;
@@ -333,26 +315,17 @@ static word_t eval(int p, int q, bool *success) {
       word_t val_1 = eval(p, i_op - 1, success);
       word_t val_2 = eval(i_op + 1, q, success);
       switch (tokens[i_op].type) {
-        case '+':
-          return val_1 + val_2;
-        case '-':
-          return val_1 - val_2;
-        case '*':
-          return val_1 * val_2;
-        case '/':
-          return val_1 / val_2;
-        case TK_EQ:
-          return val_1 == val_2;
-        case TK_NEQ:
-          return val_1 != val_2;
-        case TK_AND:
-          return (val_1 && val_2) ? 1 : 0;
-        default:
-          panic("unreachable");
+        case '+': return val_1 + val_2;
+        case '-': return val_1 - val_2;
+        case '*': return val_1 * val_2;
+        case '/': return val_1 / val_2;
+        case TK_EQ: return val_1 == val_2;
+        case TK_NEQ: return val_1 != val_2;
+        case TK_AND: return (val_1 && val_2) ? 1 : 0;
+        default: panic("unreachable");
       }
     }
-    default:
-      panic("unreachable");
+    default: panic("unreachable");
   }
 }
 

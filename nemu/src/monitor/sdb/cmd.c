@@ -21,6 +21,7 @@ const CmdEntry_t CMD_TABLE[] = {
     {"p",      "Evaluate EXPR",                                       cmd_p     },
     {"save",   "Save NEMU snapshot to FILENAME",                      cmd_save  },
     {"load",   "Load NEMU snapshot from FILENAME",                    cmd_load  },
+    {"_expr",  "DEBUG: Run expr eval tests as listed in FILENAME",    cmd_expr  },
 #ifdef CONFIG_WATCHPOINT
     {"w",      "Set up watchpoint for EXPR",                          cmd_w     },
     {"d",      "Delete watchpoint N",                                 cmd_d     },
@@ -157,6 +158,49 @@ int cmd_load(char *args) {
   }
   if (ckpt_load_from(args)) {
     printf("Cannot load checkpoint \"%s\"\n", args);
+  }
+  return 0;
+}
+
+int cmd_expr(char *args) {
+  if (args == NULL) {
+    puts("One argument required");
+    return 0;
+  }
+
+  FILE *const f = fopen(args, "rt");
+  if (f == NULL) {
+    printf("Cannot open expression file %s: %s\n", args, strerror(errno));
+    return 0;
+  }
+  fseek(f, 0, SEEK_END);
+  const long f_len = ftell(f);
+  char *const f_buf = malloc(sizeof(char) * f_len);
+  rewind(f);
+  fread(f_buf, sizeof(char), f_len, f);
+
+  size_t nlen = 0;
+  char *p_line = strtok(f_buf, "\r\n");
+  while (p_line) {
+    char *const s_expected = p_line;
+    char *const s_spc = strchr(p_line, ' ');
+    if (s_spc == NULL) {
+      Warn("syntax error at line %zu; expr not found\n", nlen);
+    } else {
+      char *const s_expr = s_spc + 1;
+      Log("evaling expr \"%s\"", s_expr);
+      const unsigned u_expected = (unsigned)strtoul(s_expected, NULL, 10);
+      bool success = true;
+      const unsigned u_actual = (unsigned)expr(s_expr, &success);
+      Assert(success, "expr \"%s\" fails to eval", s_expr);
+      Assert(u_actual == u_expected,
+             "expr \"%s\" eval wrong; expected %u, actual %u",
+             s_expr,
+             u_expected,
+             u_actual);
+    }
+    p_line = strtok(NULL, "\r\n");
+    nlen++;
   }
   return 0;
 }
