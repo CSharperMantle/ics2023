@@ -54,8 +54,8 @@ static struct rule {
     {"==",           TK_EQ    }, // equal
     {"!=",           TK_NEQ   }, // not equal
     {"&&",           TK_AND   }, // logical and
-    {"0x[0-9]+u?",     TK_NUM   }, // hex number
-    {"[0-9]+u?",       TK_NUM   }, // dec number
+    {"0x[0-9]+u?",   TK_NUM   }, // hex number
+    {"[0-9]+u?",     TK_NUM   }, // dec number
     {"\\$[a-z0-9]+", TK_REG   }, // register
 };
 
