@@ -69,6 +69,7 @@ config TARGET_AM
 endchoice
 
 menu "Build Options"
+
 choice
   prompt "Compiler"
   default CC_GCC
@@ -87,6 +88,10 @@ config CC
   default "g++" if CC_GPP
   default "clang" if CC_CLANG
   default "none"
+
+config LLVM_CONFIG
+  string
+  default "llvm-config"
 
 choice
   prompt "Optimization Level"
