@@ -90,7 +90,7 @@ config CC
   default "none"
 
 config LLVM_CONFIG
-  string
+  string "Executable for llvm-config"
   default "llvm-config"
 
 choice
