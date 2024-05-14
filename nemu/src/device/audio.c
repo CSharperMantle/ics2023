@@ -19,7 +19,7 @@
 #include <device/map.h>
 #include <string.h>
 
-enum { reg_freq = 0, reg_channels, reg_samples, reg_sbuf_size, reg_init, reg_count, nr_reg };
+enum { REG_FREQ = 0, REG_CHANNELS, REG_SAMPLES, REG_SBUF_SIZE, REG_INIT, REG_COUNT, NR_REG_ };
 
 static bool audio_opened = false;
 
@@ -84,38 +84,38 @@ static void do_sdl_audio_shutdown(void) {
 static void audio_io_handler(uint32_t offset, int len, bool is_write) {
   assert(len == 4);
   switch (offset / sizeof(uint32_t)) {
-    case reg_freq:
+    case REG_FREQ:
       if (is_write) {
-        audio_spec.freq = audio_base[reg_freq];
+        audio_spec.freq = audio_base[REG_FREQ];
       }
       break;
-    case reg_channels:
+    case REG_CHANNELS:
       if (is_write) {
-        audio_spec.channels = audio_base[reg_channels];
+        audio_spec.channels = audio_base[REG_CHANNELS];
       }
       break;
-    case reg_samples:
+    case REG_SAMPLES:
       if (is_write) {
-        audio_spec.samples = audio_base[reg_samples];
+        audio_spec.samples = audio_base[REG_SAMPLES];
       }
       break;
-    case reg_sbuf_size:
+    case REG_SBUF_SIZE:
       if (!is_write) {
-        audio_base[reg_sbuf_size] = CONFIG_SB_SIZE;
+        audio_base[REG_SBUF_SIZE] = CONFIG_SB_SIZE;
       }
       break;
-    case reg_init:
-      if (is_write && audio_base[reg_init]) {
+    case REG_INIT:
+      if (is_write && audio_base[REG_INIT]) {
         if (audio_opened) {
           do_sdl_audio_shutdown();
         }
         do_sdl_audio_init();
-        audio_base[reg_init] = 0;
+        audio_base[REG_INIT] = 0;
       }
       break;
-    case reg_count:
+    case REG_COUNT:
       if (!is_write) {
-        audio_base[reg_count] = (uint32_t)sbuf_count;
+        audio_base[REG_COUNT] = (uint32_t)sbuf_count;
       }
       break;
     default: panic("do not support offset = %d", offset);
@@ -129,7 +129,7 @@ static void audio_sbuf_handler(uint32_t offset, int len, bool is_write) {
 }
 
 void init_audio() {
-  const uint32_t space_size = sizeof(uint32_t) * nr_reg;
+  const uint32_t space_size = sizeof(uint32_t) * NR_REG_;
   audio_base = (uint32_t *)new_space(space_size);
 #ifdef CONFIG_HAS_PORT_IO
   add_pio_map("audio", CONFIG_AUDIO_CTL_PORT, audio_base, space_size, audio_io_handler);
