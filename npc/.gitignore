@@ -12,6 +12,9 @@
 !.scalafmt.conf
 !build.sc
 !README.md
+!constr/**
+!csrc/**
+!.clang-format
 build/
 .github/
 
