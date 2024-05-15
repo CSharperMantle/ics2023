@@ -22,10 +22,10 @@ checkformat:
 clean:
 	-rm -rf $(BUILD_DIR)
 
-.PHONY: test verilog help reformat checkformat clean
-
 sim:
-	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
+	$(call git_commit, "sim RTL")
 	@echo "Write this Makefile by yourself."
+
+.PHONY: test verilog help reformat checkformat clean sim
 
 -include ../Makefile
