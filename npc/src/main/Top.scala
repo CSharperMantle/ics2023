@@ -1,16 +1,121 @@
 package top
 
 import chisel3._
-import top.SeqLed
+import chisel3.util._
+import top._
+
+import scala.collection.immutable.ArraySeq
 
 class Top extends Module {
   val io = IO(
     new Bundle {
-      val leds = Output(UInt(8.W))
+      val ps2_clk        = Input(Bool())
+      val ps2_data       = Input(Bool())
+      val disp_keycode_l = Output(UInt(8.W))
+      val disp_keycode_h = Output(UInt(8.W))
+      val disp_key_cnt_l = Output(UInt(8.W))
+      val disp_key_cnt_h = Output(UInt(8.W))
+      val disp_ascii_l   = Output(UInt(8.W))
+      val disp_ascii_h   = Output(UInt(8.W))
     }
   )
 
-  val seq_led = Module(new SeqLed)
+  val lut_keycode = VecInit(
+    ArraySeq(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0x71, 0x31, 0xff, 0xff, 0xff, 0x7a, 0x73, 0x61, 0x77, 0x32, 0xff, 0xff, 0x63, 0x78, 0x64, 0x65,
+      0x34, 0x33, 0xff, 0xff, 0xff, 0x76, 0x66, 0x74, 0x72, 0x35, 0xff, 0xff, 0x6e, 0x62, 0x68, 0x67, 0x79, 0x36, 0xff,
+      0xff, 0xff, 0x6d, 0x6a, 0x75, 0x37, 0x38, 0xff, 0xff, 0xff, 0x6b, 0x69, 0x6f, 0x30, 0x39, 0xff, 0xff, 0xff, 0xff,
+      0x6c, 0xff, 0x70, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff).map(_.U(8.W))
+  )
 
-  io.leds := seq_led.io.leds
+  val kbd = Module(new PS2KeyboardRecv())
+  kbd.io.ps2_clk  := io.ps2_clk
+  kbd.io.ps2_data := io.ps2_data
+
+  val reg_disp_keycode  = RegEnable(kbd.io.data, 0.U(8.W), kbd.io.ready)
+  val reg_disp_en       = RegInit(0.B)
+  val enc7seg_keycode_h = Module(new Enc7Seg())
+  enc7seg_keycode_h.io.x  := reg_disp_keycode(7, 4)
+  enc7seg_keycode_h.io.en := reg_disp_en
+  io.disp_keycode_h       := enc7seg_keycode_h.io.y
+  val enc7seg_keycode_l = Module(new Enc7Seg())
+  enc7seg_keycode_l.io.x  := reg_disp_keycode(3, 0)
+  enc7seg_keycode_l.io.en := reg_disp_en
+  io.disp_keycode_l       := enc7seg_keycode_l.io.y
+
+  val counter_key_cnt   = Module(new CounterN(8.W))
+  val enc7seg_key_cnt_h = Module(new Enc7Seg())
+  enc7seg_key_cnt_h.io.x  := counter_key_cnt.io.q(7, 4)
+  enc7seg_key_cnt_h.io.en := true.B
+  io.disp_key_cnt_h       := enc7seg_key_cnt_h.io.y
+  val enc7seg_key_cnt_l = Module(new Enc7Seg())
+  enc7seg_key_cnt_l.io.x  := counter_key_cnt.io.q(3, 0)
+  enc7seg_key_cnt_l.io.en := true.B
+  io.disp_key_cnt_l       := enc7seg_key_cnt_l.io.y
+
+  val w_disp_ascii = Wire(UInt(8.W))
+  w_disp_ascii := lut_keycode(reg_disp_keycode)
+  val enc7seg_ascii_h = Module(new Enc7Seg())
+  enc7seg_ascii_h.io.x  := w_disp_ascii(7, 4)
+  enc7seg_ascii_h.io.en := reg_disp_en
+  io.disp_ascii_h       := enc7seg_ascii_h.io.y
+  val enc7seg_ascii_l = Module(new Enc7Seg())
+  enc7seg_ascii_l.io.x  := w_disp_ascii(3, 0)
+  enc7seg_ascii_l.io.en := reg_disp_en
+  io.disp_ascii_l       := enc7seg_ascii_l.io.y
+
+  object State extends ChiselEnum {
+    val SReset        = Value
+    val SIdle         = Value
+    val SKeyDownEnter = Value
+    val SKeyDownExit  = Value
+    val SKeyUpEnter   = Value
+    val SKeyUpNext    = Value
+    val SKeyUpData    = Value
+    val SKeyUpExit    = Value
+  }
+  import State._
+  val y = RegInit(SReset)
+
+  y := SReset
+  switch(y) {
+    is(SReset) { y := SIdle }
+    is(SIdle) {
+      when(kbd.io.ready) {
+        when(kbd.io.data === 0xf0.U) {
+          y := SKeyUpEnter
+        }.otherwise {
+          y := SKeyDownEnter
+        }
+      }.otherwise { y := SIdle }
+    }
+    is(SKeyDownEnter) { y := SKeyDownExit }
+    is(SKeyDownExit) { y := SIdle }
+    is(SKeyUpEnter) { y := SKeyUpNext }
+    is(SKeyUpNext) {
+      when(kbd.io.ready) {
+        y := SKeyUpData
+      }.otherwise { y := SKeyUpNext }
+    }
+    is(SKeyUpData) { y := SKeyUpExit }
+    is(SKeyUpExit) { y := SIdle }
+  }
+
+  kbd.io.nxt_n          := ~((y === SKeyDownEnter) || (y === SKeyUpEnter) || (y === SKeyUpData))
+  counter_key_cnt.io.en := y === SKeyUpEnter
+  when(y === SKeyDownEnter) {
+    reg_disp_en := 1.U
+  }.elsewhen(y === SKeyUpEnter) {
+    reg_disp_en := 0.U
+  }.otherwise {}
+  counter_key_cnt.io.en := y === SKeyUpEnter
 }

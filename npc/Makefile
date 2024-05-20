@@ -63,12 +63,12 @@ checkformat:
 clean:
 	-rm -rf $(BUILD_DIR)
 
-sim: $(BIN)
+sim: verilog $(BIN)
 	$(call git_commit, "sim RTL")
-	@$^
+	@$(BIN)
 
 wave:
-	gtkwave dump.vcd
+	gtkwave --giga dump.vcd
 
 all: default
 
