@@ -7,4 +7,7 @@
         "**/target": true
     },
     "editor.tabSize": 2,
+    "github.copilot.enable": {
+        "*": false
+    }
 }

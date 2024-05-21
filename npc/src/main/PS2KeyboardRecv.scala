@@ -40,8 +40,8 @@ class PS2KeyboardRecv extends Module {
       when(reg_buffer(0) === false.B && io.ps2_data && reg_buffer.asUInt(9, 1).xorR) {
         reg_fifo(reg_w_ptr) := reg_buffer.asUInt(8, 1)
         reg_w_ptr           := reg_w_ptr + 1.U
-        reg_ready            := true.B
-        reg_overflow         := reg_overflow | (reg_r_ptr === (reg_w_ptr + 1.U))
+        reg_ready           := true.B
+        reg_overflow        := reg_overflow | (reg_r_ptr === (reg_w_ptr + 1.U))
       }.otherwise {}
       reg_count := 0.U
     }.otherwise {

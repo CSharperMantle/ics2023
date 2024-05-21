@@ -1,6 +1,7 @@
 package top
 
 import chisel3._
+import chisel3.util._
 
 class CounterN(N: Width) extends Module {
   val io = IO(new Bundle {
@@ -10,9 +11,7 @@ class CounterN(N: Width) extends Module {
 
   val counter = RegInit(0.U(N))
 
-  when(io.en) {
-    counter := counter + 1.U
-  }.otherwise {}
+  counter := Mux(io.en, counter + 1.U, counter)
 
   io.q := counter
 }
