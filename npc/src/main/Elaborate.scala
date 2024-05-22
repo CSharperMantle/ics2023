@@ -6,5 +6,5 @@ object Elaborate extends App {
     "disallowPackedArrays",
     "locationInfoStyle=wrapInAtSquareBracket"
   ).reduce(_ + "," + _))
-  circt.stage.ChiselStage.emitSystemVerilogFile(new top.Top(), args, firtoolOptions)
+  circt.stage.ChiselStage.emitSystemVerilogFile(new Top(), args, firtoolOptions)
 }
