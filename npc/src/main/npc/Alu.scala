@@ -53,16 +53,16 @@ class Alu extends Module {
 
   val table = TruthTable(
     Seq(
-      AluOp.Add.BP  -> BitPat("b_00000001"),
-      AluOp.Sl.BP   -> BitPat("b_00000010"),
-      AluOp.Slt.BP  -> BitPat("b_00000100"),
-      AluOp.Sltu.BP -> BitPat("b_00001000"),
-      AluOp.Xor.BP  -> BitPat("b_00010000"),
-      AluOp.Sr.BP   -> BitPat("b_00100000"),
-      AluOp.Or.BP   -> BitPat("b_01000000"),
-      AluOp.And.BP  -> BitPat("b_10000000")
+      AluOp.Add.BP  -> BitPat("b_000000001"),
+      AluOp.Sl.BP   -> BitPat("b_000000010"),
+      AluOp.Slt.BP  -> BitPat("b_000000100"),
+      AluOp.Sltu.BP -> BitPat("b_000001000"),
+      AluOp.Xor.BP  -> BitPat("b_000010000"),
+      AluOp.Sr.BP   -> BitPat("b_000100000"),
+      AluOp.Or.BP   -> BitPat("b_001000000"),
+      AluOp.And.BP  -> BitPat("b_010000000")
     ),
-    BitPat("b_00000000")
+    BitPat("b_100000000")
   )
   val res = Wire(UInt(9.W))
   res := decoder(io.i_op, table)
