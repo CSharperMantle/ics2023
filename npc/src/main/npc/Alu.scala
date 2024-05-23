@@ -42,6 +42,7 @@ class Alu extends Module {
   val lt  = (diff ^ ((io.i_s1 ^ io.i_s2) & (diff ^ io.i_s1))) >> (XLen - 1)
   val ltu = ((~io.i_s1 & io.i_s2) | ((~io.i_s1 | io.i_s2) & diff)) >> (XLen - 1)
 
+  // Wang, W., & Xing, J. "CPU Design and Practice", p.87.
   val shamt       = (if (XLen == 32) io.i_s2(4, 0) else io.i_s1(5, 0)).asUInt
   val sh_src      = Mux(io.i_op === AluOp.Sl.U, Reverse(io.i_s1), io.i_s1)
   val sh_res      = (sh_src >> shamt)(XLen - 1, 0)
