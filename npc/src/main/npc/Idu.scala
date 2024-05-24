@@ -8,21 +8,21 @@ import common._
 
 object Instr {
   object Type extends CvtChiselEnum {
-    val R    = Value
-    val I    = Value
-    val Is   = Value
-    val Icsr = Value
-    val S    = Value
-    val B    = Value
-    val U    = Value
-    val J    = Value
+    val TypeR    = Value
+    val TypeI    = Value
+    val TypeIs   = Value
+    val TypeIcsr = Value
+    val TypeS    = Value
+    val TypeB    = Value
+    val TypeU    = Value
+    val TypeJ    = Value
   }
 
   object MemLen extends CvtChiselEnum {
-    val B = Value
-    val H = Value
-    val W = Value
-    val D = Value
+    val LenB = Value
+    val LenH = Value
+    val LenW = Value
+    val LenD = Value
   }
 
   object Opcode extends CvtChiselEnum {
@@ -56,13 +56,13 @@ case class InstrPat(
 
 object MemLenField extends DecodeField[InstrPat, UInt] {
   def name       = "memLen"
-  def chiselType = UInt(MemLen.getWidth.W)
+  def chiselType = UInt(MemLen.W)
   def genTable(pat: InstrPat): BitPat = {
     pat.funct3.rawString match {
-      case "000" | "100" => MemLen.B.BP
-      case "001" | "101" => MemLen.H.BP
-      case "010" | "110" => MemLen.W.BP
-      case _             => MemLen.D.BP
+      case "000" | "100" => MemLen.LenB.BP
+      case "001" | "101" => MemLen.LenH.BP
+      case "010" | "110" => MemLen.LenW.BP
+      case _             => MemLen.LenD.BP
     }
   }
 }

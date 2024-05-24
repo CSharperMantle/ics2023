@@ -12,11 +12,14 @@ class NpcIO extends Bundle {
   val break  = Output(Bool())
   val memLen = Output(UInt())
 
-  val op  = Input(UInt(AluOp.getWidth.W))
-  val dir = Input(UInt(AluDir.getWidth.W))
-  val s1  = Input(UInt(XLen.W))
-  val s2  = Input(UInt(XLen.W))
-  val d   = Output(UInt(XLen.W))
+  val calcOp    = Input(UInt(AluCalcOp.W))
+  val calcDir   = Input(UInt(AluCalcDir.W))
+  val brCond    = Input(UInt(AluBrCond.W))
+  val s1        = Input(UInt(XLen.W))
+  val s2        = Input(UInt(XLen.W))
+  val d         = Output(UInt(XLen.W))
+  val brTaken   = Output(Bool())
+  val brInvalid = Output(Bool())
 }
 
 class Npc extends Module {
@@ -28,11 +31,14 @@ class Npc extends Module {
   io.memLen    := idu.io.memLen
 
   val alu = Module(new Alu)
-  alu.io.op  := io.op
-  alu.io.dir := io.dir
-  alu.io.s1  := io.s1
-  alu.io.s2  := io.s2
-  io.d       := alu.io.d
+  alu.io.brCond  := io.brCond
+  alu.io.calcOp  := io.calcOp
+  alu.io.calcDir := io.calcDir
+  alu.io.s1      := io.s1
+  alu.io.s2      := io.s2
+  io.d           := alu.io.d
+  io.brTaken     := alu.io.brTaken
+  io.brInvalid   := alu.io.brInvalid
 
   val w_update_pc = Wire(Bool())
   val w_dnpc      = Wire(UInt(XLen.W))
