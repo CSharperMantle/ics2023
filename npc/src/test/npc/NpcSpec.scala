@@ -58,17 +58,36 @@ class NpcSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step()
       dut.reset.poke(false.B)
 
-      dut.io.instr.poke("b0000000_00001_00000_010_00001_00000_11".U) // addi ra, ra, 0x1
+      dut.io.instr.poke("b0000000_00001_00000_010_00001_00000_11".U) // lw ra, $0, 0x1
       dut.io.memREn.expect(true.B)
       dut.io.memRAddr.expect(0x1)
       dut.io.memLen.expect(MemWidth.LenW.U)
       dut.io.memRData.poke(BigInt("deadbeef", 16))
       dut.clock.step()
 
-      dut.io.instr.poke("b0000000_00000_00000_000_00000_00100_11".U) // addi $0, $0, 0
+      dut.io.ra.expect(BigInt("deadbeef", 16))
+    }
+  }
+
+  it should "store a word after a read from memory" in {
+    test(new Npc) { dut =>
+      dut.reset.poke(true.B)
+      dut.clock.step()
+      dut.reset.poke(false.B)
+
+      dut.io.instr.poke("b0000000_00001_00000_010_00001_00000_11".U) // lw ra, $0, 0x1
+      dut.io.memREn.expect(true.B)
+      dut.io.memRAddr.expect(0x1)
+      dut.io.memLen.expect(MemWidth.LenW.U)
+      dut.io.memRData.poke(BigInt("deadbeef", 16))
       dut.clock.step()
 
-      dut.io.ra.expect(BigInt("deadbeef", 16))
+      dut.io.instr.poke("b1111111_00001_00001_010_11111_01000_11".U) // sw [ra+0xffffffff], ra
+      dut.io.memREn.expect(false.B)
+      dut.io.memWEn.expect(true.B)
+      dut.io.memLen.expect(MemWidth.LenW.U)
+      dut.io.memWAddr.expect(BigInt("deadbeee", 16))
+      dut.io.memWData.expect(BigInt("deadbeef", 16))
     }
   }
 }

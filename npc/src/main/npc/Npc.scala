@@ -120,7 +120,7 @@ class Npc extends Module {
     Seq(
       wbSel1H(0) -> alu.io.d,
       wbSel1H(1) -> snpc,
-      wbSel1H(2) -> io.memRData,
+      wbSel1H(2) -> io.memRData, // TODO: Sign extend this!
       wbSel1H(3) -> 0.U,
       wbSel1H(4) -> 0.U
     )
@@ -131,7 +131,7 @@ class Npc extends Module {
   gpr.io.wEn    := idu.io.wbEn
 
   io.memWAddr := wbData
-  io.memWData := srcB
+  io.memWData := rs2
   io.memWEn   := memAction1H(2)
 
   val pcSelTable = TruthTable(
