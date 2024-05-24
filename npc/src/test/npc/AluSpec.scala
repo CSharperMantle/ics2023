@@ -118,7 +118,7 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  it should "calculate branch conditions combinationally" in {
+  it should "produce branch conditions combinationally" in {
     test(new Alu) { dut =>
       val rand = new Random(SEED)
       dut.reset.poke(true.B)
