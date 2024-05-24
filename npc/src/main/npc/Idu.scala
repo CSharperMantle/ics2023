@@ -75,9 +75,9 @@ object BreakField extends BoolDecodeField[InstrPat] {
 }
 
 class IduIO extends Bundle {
-  val i_instr  = Input(UInt(32.W))
-  val o_break  = Output(Bool())
-  val o_memLen = Output(UInt())
+  val instr  = Input(UInt(32.W))
+  val break  = Output(Bool())
+  val memLen = Output(UInt())
 }
 
 class Idu extends Module {
@@ -90,6 +90,7 @@ class Idu extends Module {
   val patterns = Seq(
     // format: off
     InstrPat("addi",   BitPatX(7), BitPatX(5),        BitPatX(5), BitPatX(3), BitPatX(5), Opcode.ADDI.BP),
+    InstrPat("ecall",  BitPatN(7), BitPatN(5),        BitPatN(5), BitPatN(3), BitPatN(5), Opcode.Env.BP),
     InstrPat("ebreak", BitPatN(7), BitPat("b_00001"), BitPatN(5), BitPatN(3), BitPatN(5), Opcode.Env.BP)
     // format: on
   )
@@ -98,8 +99,8 @@ class Idu extends Module {
     BreakField
   )
   val decoder      = new DecodeTable(patterns, fields)
-  val decodeResult = decoder.decode(io.i_instr)
+  val decodeResult = decoder.decode(io.instr)
 
-  io.o_break  := decodeResult(BreakField)
-  io.o_memLen := decodeResult(MemLenField)
+  io.break  := decodeResult(BreakField)
+  io.memLen := decodeResult(MemLenField)
 }

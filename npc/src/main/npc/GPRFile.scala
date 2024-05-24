@@ -4,13 +4,13 @@ import chisel3._
 import chisel3.util._
 
 class GPRFileIO extends Bundle {
-  val i_addr_rs1 = Input(UInt(5.W))
-  val i_addr_rs2 = Input(UInt(5.W))
-  val i_wen      = Input(Bool())
-  val i_addr_rd  = Input(UInt(5.W))
-  val i_data_rd  = Input(UInt(npc.XLen.W))
-  val o_rs1      = Output(UInt(npc.XLen.W))
-  val o_rs2      = Output(UInt(npc.XLen.W))
+  val rs1_addr = Input(UInt(5.W))
+  val rs2_addr = Input(UInt(5.W))
+  val wen      = Input(Bool())
+  val rd_addr  = Input(UInt(5.W))
+  val rd_data  = Input(UInt(npc.XLen.W))
+  val rs1      = Output(UInt(npc.XLen.W))
+  val rs2      = Output(UInt(npc.XLen.W))
 }
 
 class GPRFile extends Module {
@@ -18,7 +18,7 @@ class GPRFile extends Module {
 
   val regs = Mem(32, UInt(npc.XLen.W))
 
-  io.o_rs1           := Mux(io.i_addr_rs1.orR, regs(io.i_addr_rs1), 0.U)
-  io.o_rs2           := Mux(io.i_addr_rs2.orR, regs(io.i_addr_rs2), 0.U)
-  regs(io.i_addr_rd) := Mux(io.i_wen, Mux(io.i_addr_rd.orR, io.i_data_rd, 0.U), regs(io.i_addr_rd))
+  io.rs1           := Mux(io.rs1_addr.orR, regs(io.rs1_addr), 0.U)
+  io.rs2           := Mux(io.rs2_addr.orR, regs(io.rs2_addr), 0.U)
+  regs(io.rd_addr) := Mux(io.wen, Mux(io.rd_addr.orR, io.rd_data, 0.U), regs(io.rd_addr))
 }

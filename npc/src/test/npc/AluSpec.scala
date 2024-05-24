@@ -30,91 +30,91 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step()
       dut.reset.poke(false.B)
 
-      dut.io.i_op.poke(AluOp.Add.U)
-      dut.io.i_dir.poke(AluDir.Pos.U)
+      dut.io.op.poke(AluOp.Add.U)
+      dut.io.dir.poke(AluDir.Pos.U)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(y)
-        dut.io.o_d.expect((x + y).ontoZmod2pow(XLen))
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(y)
+        dut.io.d.expect((x + y).ontoZmod2pow(XLen))
       }
-      dut.io.i_dir.poke(AluDir.Neg.U)
+      dut.io.dir.poke(AluDir.Neg.U)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(y)
-        dut.io.o_d.expect((x - y).ontoZmod2pow(XLen))
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(y)
+        dut.io.d.expect((x - y).ontoZmod2pow(XLen))
       }
 
-      dut.io.i_op.poke(AluOp.Sl.U)
+      dut.io.op.poke(AluOp.Sl.U)
       for (shamt <- 0 until XLen) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(shamt)
-        dut.io.o_d.expect((x << shamt).ontoZmod2pow(XLen))
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(shamt)
+        dut.io.d.expect((x << shamt).ontoZmod2pow(XLen))
       }
 
-      dut.io.i_op.poke(AluOp.Slt.U)
+      dut.io.op.poke(AluOp.Slt.U)
       for (_ <- 0 until N_CASES) {
         val x = if (XLen == 32) rand.nextInt() else rand.nextLong()
         val y = if (XLen == 32) rand.nextInt() else rand.nextLong()
-        dut.io.i_s1.poke(BigInt(x).ontoZmod2pow(XLen))
-        dut.io.i_s2.poke(BigInt(y).ontoZmod2pow(XLen))
-        dut.io.o_d.expect(if (x < y) 1 else 0)
+        dut.io.s1.poke(BigInt(x).ontoZmod2pow(XLen))
+        dut.io.s2.poke(BigInt(y).ontoZmod2pow(XLen))
+        dut.io.d.expect(if (x < y) 1 else 0)
       }
 
-      dut.io.i_op.poke(AluOp.Sltu.U)
+      dut.io.op.poke(AluOp.Sltu.U)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(y)
-        dut.io.o_d.expect(if (x < y) 1 else 0)
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(y)
+        dut.io.d.expect(if (x < y) 1 else 0)
       }
 
-      dut.io.i_op.poke(AluOp.Xor.U)
+      dut.io.op.poke(AluOp.Xor.U)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(y)
-        dut.io.o_d.expect(x ^ y)
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(y)
+        dut.io.d.expect(x ^ y)
       }
 
-      dut.io.i_op.poke(AluOp.Sr.U)
-      dut.io.i_dir.poke(AluDir.Pos.U)
+      dut.io.op.poke(AluOp.Sr.U)
+      dut.io.dir.poke(AluDir.Pos.U)
       for (shamt <- 0 until XLen) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(shamt)
-        dut.io.o_d.expect(x >> shamt)
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(shamt)
+        dut.io.d.expect(x >> shamt)
       }
-      dut.io.i_dir.poke(AluDir.Neg.U)
+      dut.io.dir.poke(AluDir.Neg.U)
       for (shamt <- 0 until XLen) {
         val x = if (XLen == 32) rand.nextInt() else rand.nextLong()
-        dut.io.i_s1.poke(BigInt(x).ontoZmod2pow(XLen))
-        dut.io.i_s2.poke(shamt)
-        dut.io.o_d.expect(BigInt(x >> shamt).ontoZmod2pow(XLen))
+        dut.io.s1.poke(BigInt(x).ontoZmod2pow(XLen))
+        dut.io.s2.poke(shamt)
+        dut.io.d.expect(BigInt(x >> shamt).ontoZmod2pow(XLen))
       }
 
-      dut.io.i_op.poke(AluOp.Or.U)
+      dut.io.op.poke(AluOp.Or.U)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(y)
-        dut.io.o_d.expect(x | y)
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(y)
+        dut.io.d.expect(x | y)
       }
 
-      dut.io.i_op.poke(AluOp.And.U)
+      dut.io.op.poke(AluOp.And.U)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
-        dut.io.i_s1.poke(x)
-        dut.io.i_s2.poke(y)
-        dut.io.o_d.expect(x & y)
+        dut.io.s1.poke(x)
+        dut.io.s2.poke(y)
+        dut.io.d.expect(x & y)
       }
     }
   }
