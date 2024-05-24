@@ -1,0 +1,22 @@
+package npc
+
+import chisel3._
+import chisel3.util._
+import chisel3.util.experimental.decode._
+
+import common._
+import npc._
+
+object MemWidth extends CvtChiselEnum {
+  val LenB = Value
+  val LenH = Value
+  val LenW = Value
+  val LenD = Value
+}
+
+object MemAction extends CvtChiselEnum {
+  val Rd   = Value
+  val Rdu  = Value
+  val Wt   = Value
+  val None = Value
+}

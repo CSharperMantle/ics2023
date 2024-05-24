@@ -12,9 +12,9 @@ class IduSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step()
       dut.reset.poke(false.B)
 
-      dut.io.instr.poke("b_0000000_00001_00000_000_00000_11100_11".U) // ebreak
+      dut.io.instr.poke("b0000000_00001_00000_000_00000_11100_11".U) // ebreak
       dut.io.break.expect(true)
-      dut.io.instr.poke("b_0000000_00000_00000_000_00000_11100_11".U) // ecall
+      dut.io.instr.poke("b0000000_00000_00000_000_00000_11100_11".U) // ecall
       dut.io.break.expect(false)
     }
   }

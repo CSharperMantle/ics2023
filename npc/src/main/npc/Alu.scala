@@ -68,16 +68,16 @@ class Alu extends Module {
 
   val calcTable = TruthTable(
     Seq(
-      AluCalcOp.Add.BP  -> BitPat("b_000000001"),
-      AluCalcOp.Sl.BP   -> BitPat("b_000000010"),
-      AluCalcOp.Slt.BP  -> BitPat("b_000000100"),
-      AluCalcOp.Sltu.BP -> BitPat("b_000001000"),
-      AluCalcOp.Xor.BP  -> BitPat("b_000010000"),
-      AluCalcOp.Sr.BP   -> BitPat("b_000100000"),
-      AluCalcOp.Or.BP   -> BitPat("b_001000000"),
-      AluCalcOp.And.BP  -> BitPat("b_010000000")
+      AluCalcOp.Add.BP  -> "b000000001".BP,
+      AluCalcOp.Sl.BP   -> "b000000010".BP,
+      AluCalcOp.Slt.BP  -> "b000000100".BP,
+      AluCalcOp.Sltu.BP -> "b000001000".BP,
+      AluCalcOp.Xor.BP  -> "b000010000".BP,
+      AluCalcOp.Sr.BP   -> "b000100000".BP,
+      AluCalcOp.Or.BP   -> "b001000000".BP,
+      AluCalcOp.And.BP  -> "b010000000".BP
     ),
-    BitPat("b_100000000")
+    "b100000000".BP
   )
   val calcOp1Hot = decoder(io.calcOp, calcTable)
   io.d := Mux1H(
@@ -96,14 +96,14 @@ class Alu extends Module {
 
   val brTable = TruthTable(
     Seq(
-      AluBrCond.Eq.BP  -> BitPat("b_0000001"),
-      AluBrCond.Ne.BP  -> BitPat("b_0000010"),
-      AluBrCond.Lt.BP  -> BitPat("b_0000100"),
-      AluBrCond.Ge.BP  -> BitPat("b_0001000"),
-      AluBrCond.Ltu.BP -> BitPat("b_0010000"),
-      AluBrCond.Geu.BP -> BitPat("b_0100000")
+      AluBrCond.Eq.BP  -> "b0000001".BP,
+      AluBrCond.Ne.BP  -> "b0000010".BP,
+      AluBrCond.Lt.BP  -> "b0000100".BP,
+      AluBrCond.Ge.BP  -> "b0001000".BP,
+      AluBrCond.Ltu.BP -> "b0010000".BP,
+      AluBrCond.Geu.BP -> "b0100000".BP
     ),
-    BitPat("b_1000000")
+    "b1000000".BP
   )
   val brOp1Hot = decoder(io.brCond, brTable)
   io.brTaken := Mux1H(
