@@ -189,30 +189,4 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.brInvalid.expect(true.B)
     }
   }
-
-  it should "sign-extend combinationally" in {
-    test(new Alu) { dut =>
-      dut.reset.poke(true.B)
-      dut.clock.step()
-      dut.reset.poke(false.B)
-
-      dut.io.sextW.poke(LenB.U)
-      dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(8))
-      dut.io.sextRes.expect(BigInt(-1).ontoZmod2pow(XLen))
-      dut.io.sextData.poke(BigInt(1).ontoZmod2pow(8))
-      dut.io.sextRes.expect(BigInt(1).ontoZmod2pow(XLen))
-
-      dut.io.sextW.poke(LenH.U)
-      dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(16))
-      dut.io.sextRes.expect(BigInt(-1).ontoZmod2pow(XLen))
-      dut.io.sextData.poke(BigInt(1).ontoZmod2pow(16))
-      dut.io.sextRes.expect(BigInt(1).ontoZmod2pow(XLen))
-
-      dut.io.sextW.poke(LenW.U)
-      dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(32))
-      dut.io.sextRes.expect(BigInt(-1).ontoZmod2pow(XLen))
-      dut.io.sextData.poke(BigInt(1).ontoZmod2pow(32))
-      dut.io.sextRes.expect(BigInt(1).ontoZmod2pow(XLen))
-    }
-  }
 }

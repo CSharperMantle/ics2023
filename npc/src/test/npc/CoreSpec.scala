@@ -62,10 +62,10 @@ class CoreSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.memREn.expect(true.B)
       dut.io.memRAddr.expect(0x1)
       dut.io.memWidth.expect(MemWidth.LenW.U)
-      dut.io.memRData.poke(BigInt("deadbeef", 16))
+      dut.io.memRData.poke("hdeadbeef".U)
       dut.clock.step()
 
-      dut.io.ra.expect(BigInt("deadbeef", 16))
+      dut.io.ra.expect("hdeadbeef".U)
     }
   }
 
@@ -79,15 +79,15 @@ class CoreSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.memREn.expect(true.B)
       dut.io.memRAddr.expect(0x1)
       dut.io.memWidth.expect(MemWidth.LenW.U)
-      dut.io.memRData.poke(BigInt("deadbeef", 16))
+      dut.io.memRData.poke("hdeadbeef".U)
       dut.clock.step()
 
       dut.io.instr.poke("b1111111_00001_00001_010_11111_01000_11".U) // sw [ra+0xffffffff], ra
       dut.io.memREn.expect(false.B)
       dut.io.memWEn.expect(true.B)
       dut.io.memWidth.expect(MemWidth.LenW.U)
-      dut.io.memWAddr.expect(BigInt("deadbeee", 16))
-      dut.io.memWData.expect(BigInt("deadbeef", 16))
+      dut.io.memWAddr.expect("hdeadbeee".U)
+      dut.io.memWData.expect("hdeadbeef".U)
     }
   }
 }

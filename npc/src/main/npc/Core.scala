@@ -27,11 +27,13 @@ class CoreIO extends Bundle {
 class Core extends Module {
   val io = IO(new CoreIO)
 
-  val gpr = Module(new GprFile)
-  val csr = Module(new CsrFile)
-  val idu = Module(new Idu)
-  val alu = Module(new Alu)
-  val pc  = RegInit(npc.InitPCVal.U(XLen.W))
+  val csr  = Module(new CsrFile)
+  val gpr  = Module(new GprFile)
+  val idu  = Module(new Idu)
+  val exu  = Module(new Exu)
+  val sext = Module(new SExtender)
+  val wbu  = Module(new Wbu)
+  val pc   = RegInit(InitPCVal.U(XLen.W))
 
   val snpc = pc + 4.U
 
@@ -44,50 +46,23 @@ class Core extends Module {
 
   gpr.io.rs1Idx := idu.io.rs1Idx
   gpr.io.rs2Idx := idu.io.rs2Idx
-  val rs1 = gpr.io.rs1
   val rs2 = gpr.io.rs2
   val imm = idu.io.imm
 
-  val srcASelDec = Decoder1H(
-    Seq(
-      InstrSrcASel.SrcARs1.BP -> 0,
-      InstrSrcASel.SrcAPc.BP  -> 1,
-      InstrSrcASel.SrcAR0.BP  -> 2
-    )
-  )
-  val srcASel1H = srcASelDec(idu.io.srcASel)
-  val srcA = Mux1H(
-    Seq(
-      srcASel1H(0) -> rs1,
-      srcASel1H(1) -> pc,
-      srcASel1H(2) -> 0.U,
-      srcASel1H(3) -> 0.U
-    )
-  )
+  exu.io.srcASel := idu.io.srcASel
+  exu.io.srcBSel := idu.io.srcBSel
+  exu.io.calcOp  := idu.io.aluCalcOp
+  exu.io.calcDir := idu.io.aluCalcDir
+  exu.io.brCond  := idu.io.aluBrCond
+  exu.io.rs1Idx  := idu.io.rs1Idx
+  exu.io.rs1     := gpr.io.rs1
+  exu.io.rs2     := rs2
+  exu.io.pc      := pc
+  exu.io.imm     := imm
 
-  val srcBSelDec = Decoder1H(
-    Seq(
-      InstrSrcBSel.SrcBRs2.BP -> 0,
-      InstrSrcBSel.SrcBImm.BP -> 1
-    )
-  )
-  val srcBSel1H = srcBSelDec(idu.io.srcBSel)
-  val srcB = Mux1H(
-    Seq(
-      srcBSel1H(0) -> rs2,
-      srcBSel1H(1) -> imm,
-      srcBSel1H(2) -> 0.U
-    )
-  )
-
-  alu.io.s1      := srcA
-  alu.io.s2      := srcB
-  alu.io.calcOp  := idu.io.aluCalcOp
-  alu.io.calcDir := idu.io.aluCalcDir
-  alu.io.brCond  := idu.io.aluBrCond
-
-  val brInvalid = alu.io.brInvalid
-  val brTarget  = Mux(alu.io.brTaken, pc + imm, pc)
+  csr.io.s1     := exu.io.csrS1
+  csr.io.csrIdx := imm(11, 0)
+  csr.io.csrOp  := idu.io.csrOp
 
   val memActionDec = Decoder1H(
     Seq(
@@ -99,39 +74,27 @@ class Core extends Module {
   )
   val memAction1H = memActionDec(idu.io.memAction)
   io.memU     := memAction1H(1)
-  io.memRAddr := alu.io.d
+  io.memRAddr := exu.io.d
   io.memREn   := memAction1H(0) | memAction1H(1)
 
-  alu.io.sextData := io.memRData
-  alu.io.sextW    := idu.io.memWidth
+  sext.io.sextData := io.memRData
+  sext.io.sextW    := idu.io.memWidth
 
-  val wbSelDec = Decoder1H(
-    Seq(
-      InstrWbSel.WbAlu.BP  -> 0,
-      InstrWbSel.WbSnpc.BP -> 1,
-      InstrWbSel.WbMem.BP  -> 2,
-      InstrWbSel.WbCsr.BP  -> 3
-    )
-  )
-  val wbSel1H = wbSelDec(idu.io.wbSel)
-  val wbData = Mux1H(
-    Seq(
-      wbSel1H(0) -> alu.io.d,
-      wbSel1H(1) -> snpc,
-      wbSel1H(2) -> alu.io.sextRes,
-      wbSel1H(3) -> 0.U, // TODO: CSR!
-      wbSel1H(4) -> 0.U
-    )
-  )
+  wbu.io.wbSel    := idu.io.wbSel
+  wbu.io.dataAlu  := exu.io.d
+  wbu.io.dataSnpc := snpc
+  wbu.io.dataMem  := sext.io.sextRes
+  wbu.io.dataCsr  := csr.io.csrVal
 
-  gpr.io.rdData := wbData
+  gpr.io.rdData := wbu.io.d
   gpr.io.rdIdx  := idu.io.rdIdx
   gpr.io.wEn    := idu.io.wbEn
 
-  io.memWAddr := wbData
+  io.memWAddr := wbu.io.d
   io.memWData := rs2
   io.memWEn   := memAction1H(2)
 
+  val brTarget = Mux(exu.io.brTaken, pc + imm, pc)
   val pcSelDec = Decoder1H(
     Seq(
       InstrPcSel.PcSnpc.BP -> 0,
@@ -144,14 +107,14 @@ class Core extends Module {
   val dnpc = Mux1H(
     Seq(
       pcSel1H(0) -> pc,
-      pcSel1H(1) -> alu.io.d,
+      pcSel1H(1) -> exu.io.d,
       pcSel1H(2) -> brTarget,
-      pcSel1H(3) -> 0.U,
+      pcSel1H(3) -> csr.io.epc,
       pcSel1H(4) -> 0.U
     )
   ) + 4.U
 
   pc := dnpc
 
-  io.inval := srcASel1H(3) | srcBSel1H(2) | memAction1H(4) | wbSel1H(4) | brInvalid | pcSel1H(4)
+  io.inval := memAction1H(memActionDec.bitBad) | exu.io.inval | wbu.io.inval | pcSel1H(memActionDec.bitBad)
 }

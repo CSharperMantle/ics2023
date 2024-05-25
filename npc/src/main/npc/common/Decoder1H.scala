@@ -22,6 +22,8 @@ class Decoder1H(val cases: Seq[(BitPat, Int)]) {
   def apply(x: UInt): UInt = {
     decoder(x, _table)
   }
+
+  def bitBad: Int = cases.length
 }
 
 object Decoder1H {

@@ -19,3 +19,11 @@ object MemAction extends CvtChiselEnum {
   val Wt   = Value
   val None = Value
 }
+
+class MemuIO extends Bundle {}
+
+class Memu extends Module {
+  val io = IO(new MemuIO)
+
+  // TODO: Make it a blackbox.
+}
