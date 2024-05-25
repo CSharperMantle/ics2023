@@ -164,8 +164,8 @@ object MemActionField extends DecodeField[InstrPat, UInt] {
   def genTable(pat: InstrPat): BitPat = pat.memAction
 }
 
-object MemLenField extends DecodeField[InstrPat, UInt] {
-  def name       = "memLen"
+object MemWidthField extends DecodeField[InstrPat, UInt] {
+  def name       = "memWidth"
   def chiselType = UInt(MemWidth.W)
   def genTable(pat: InstrPat): BitPat = {
     pat.funct3.rawString match {
@@ -275,7 +275,7 @@ object WbEnField extends BoolDecodeField[InstrPat] {
 class IduIO extends Bundle {
   val instr      = Input(UInt(32.W))
   val break      = Output(Bool())
-  val memLen     = Output(MemLenField.chiselType)
+  val memWidth     = Output(MemWidthField.chiselType)
   val rs1Idx     = Output(UInt(5.W))
   val rs2Idx     = Output(UInt(5.W))
   val rdIdx      = Output(UInt(5.W))
@@ -307,11 +307,8 @@ class Idu extends Module {
     // scalafmt: { align.tokens.add = [ { code = "," } ] }
     //      |funct7        |rs2         |rs1 |funct3    |rd  |op     |Fmt        |PcSel    |SrcASel    |SrcBSel     |MemAct  |WbSel     |WbEn|Alu+
     InstrPat("b0000000".BP, 5.X,         5.X, "b000".BP, 5.X, Add,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0000000".BP, 5.X,         5.X, "b000".BP, 5.X, Addw,   ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat(7.X,           5.X,         5.X, "b000".BP, 5.X, Addi,   ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat(7.X,           5.X,         5.X, "b000".BP, 5.X, Addiw,  ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b0100000".BP, 5.X,         5.X, "b000".BP, 5.X, Sub,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0100000".BP, 5.X,         5.X, "b000".BP, 5.X, Subw,   ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Lui,    ImmU.BP,    PcSnpc.BP, SrcAR0.BP,  SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, true),
     InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Auipc,  ImmU.BP,    PcSnpc.BP, SrcAPc.BP,  SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, true),
     InstrPat(7.N,           5.X,         5.X, "b100".BP, 5.X, Xor,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
@@ -321,17 +318,11 @@ class Idu extends Module {
     InstrPat(7.N,           5.X,         5.X, "b111".BP, 5.X, And,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat(7.X,           5.X,         5.X, "b111".BP, 5.X, Andi,   ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b0000000".BP, 5.X,         5.X, "b001".BP, 5.X, Sll,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0000000".BP, 5.X,         5.X, "b001".BP, 5.X, Sllw,   ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b000000?".BP, 5.X,         5.X, "b001".BP, 5.X, Slli,   ImmIs.BP,   PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0000000".BP, 5.X,         5.X, "b001".BP, 5.X, Slliw,  ImmIs.BP,   PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b0000000".BP, 5.X,         5.X, "b101".BP, 5.X, Srl,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0000000".BP, 5.X,         5.X, "b101".BP, 5.X, Srlw,   ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b000000?".BP, 5.X,         5.X, "b101".BP, 5.X, Srli,   ImmIs.BP,   PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0000000".BP, 5.X,         5.X, "b101".BP, 5.X, Srliw,  ImmIs.BP,   PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b0100000".BP, 5.X,         5.X, "b101".BP, 5.X, Sra,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0100000".BP, 5.X,         5.X, "b101".BP, 5.X, Sraw,   ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat("b010000?".BP, 5.X,         5.X, "b101".BP, 5.X, Srai,   ImmIs.BP,   PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
-    InstrPat("b0100000".BP, 5.X,         5.X, "b101".BP, 5.X, Sraiw,  ImmIs.BP,   PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat(7.N,           5.X,         5.X, "b010".BP, 5.X, Slt,    ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat(7.X,           5.X,         5.X, "b010".BP, 5.X, Slti,   ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, None.BP, WbAlu.BP,  1.Y, false),
     InstrPat(7.N,           5.X,         5.X, "b011".BP, 5.X, Sltu,   ImmR.BP,    PcSnpc.BP, SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.Y, false),
@@ -339,14 +330,11 @@ class Idu extends Module {
     InstrPat(7.X,           5.X,         5.X, "b000".BP, 5.X, Lb,     ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rd.BP,   WbMem.BP,  1.Y, true),
     InstrPat(7.X,           5.X,         5.X, "b001".BP, 5.X, Lh,     ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rd.BP,   WbMem.BP,  1.Y, true),
     InstrPat(7.X,           5.X,         5.X, "b010".BP, 5.X, Lw,     ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rd.BP,   WbMem.BP,  1.Y, true),
-    InstrPat(7.X,           5.X,         5.X, "b011".BP, 5.X, Ld,     ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rd.BP,   WbMem.BP,  1.Y, true),
     InstrPat(7.X,           5.X,         5.X, "b100".BP, 5.X, Lbu,    ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rdu.BP,  WbMem.BP,  1.Y, true),
     InstrPat(7.X,           5.X,         5.X, "b101".BP, 5.X, Lhu,    ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rdu.BP,  WbMem.BP,  1.Y, true),
-    InstrPat(7.X,           5.X,         5.X, "b110".BP, 5.X, Lwu,    ImmI.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Rdu.BP,  WbMem.BP,  1.Y, true),
     InstrPat(7.X,           5.X,         5.X, "b000".BP, 5.X, Sb,     ImmS.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Wt.BP,   WbAlu.BP,  1.N, true),
     InstrPat(7.X,           5.X,         5.X, "b001".BP, 5.X, Sh,     ImmS.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Wt.BP,   WbAlu.BP,  1.N, true),
     InstrPat(7.X,           5.X,         5.X, "b010".BP, 5.X, Sw,     ImmS.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Wt.BP,   WbAlu.BP,  1.N, true),
-    InstrPat(7.X,           5.X,         5.X, "b011".BP, 5.X, Sd,     ImmS.BP,    PcSnpc.BP, SrcARs1.BP, SrcBImm.BP, Wt.BP,   WbAlu.BP,  1.N, true),
     InstrPat(7.X,           5.X,         5.X, "b000".BP, 5.X, Beq,    ImmB.BP,    PcBr.BP,   SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.N, true),
     InstrPat(7.X,           5.X,         5.X, "b001".BP, 5.X, Bne,    ImmB.BP,    PcBr.BP,   SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.N, true),
     InstrPat(7.X,           5.X,         5.X, "b100".BP, 5.X, Blt,    ImmB.BP,    PcBr.BP,   SrcARs1.BP, SrcBRs2.BP, None.BP, WbAlu.BP,  1.N, true),
@@ -364,7 +352,7 @@ class Idu extends Module {
   )
   val fields = Seq(
     BreakField,
-    MemLenField,
+    MemWidthField,
     AluCalcOpField,
     AluCalcDirField,
     AluBrCondField,
@@ -381,7 +369,7 @@ class Idu extends Module {
   val res   = table.decode(io.instr)
 
   io.break      := res(BreakField)
-  io.memLen     := res(MemLenField)
+  io.memWidth     := res(MemWidthField)
   io.aluCalcOp  := res(AluCalcOpField)
   io.aluCalcDir := res(AluCalcDirField)
   io.aluBrCond  := res(AluBrCondField)

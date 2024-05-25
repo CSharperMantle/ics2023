@@ -6,12 +6,12 @@ import chisel3.util._
 import common._
 import npc._
 
-class NpcIO extends Bundle {
+class CoreIO extends Bundle {
   val instr = Input(UInt(32.W))
   val pc    = Output(UInt(XLen.W))
   val break = Output(Bool())
 
-  val memLen   = Output(UInt())
+  val memWidth = Output(UInt())
   val memU     = Output(Bool())
   val memREn   = Output(Bool())
   val memRAddr = Output(UInt(XLen.W))
@@ -24,8 +24,8 @@ class NpcIO extends Bundle {
   val ra    = Output(UInt(XLen.W))
 }
 
-class Npc extends Module {
-  val io = IO(new NpcIO)
+class Core extends Module {
+  val io = IO(new CoreIO)
 
   val gpr = Module(new GprFile)
   val csr = Module(new CsrFile)
@@ -40,7 +40,7 @@ class Npc extends Module {
   io.break     := idu.io.break
   io.ra        := gpr.io.ra
 
-  io.memLen := idu.io.memLen
+  io.memWidth := idu.io.memWidth
 
   gpr.io.rs1Idx := idu.io.rs1Idx
   gpr.io.rs2Idx := idu.io.rs2Idx
@@ -102,6 +102,9 @@ class Npc extends Module {
   io.memRAddr := alu.io.d
   io.memREn   := memAction1H(0) | memAction1H(1)
 
+  alu.io.sextData := io.memRData
+  alu.io.sextW    := idu.io.memWidth
+
   val wbSelDec = Decoder1H(
     Seq(
       InstrWbSel.WbAlu.BP  -> 0,
@@ -115,8 +118,8 @@ class Npc extends Module {
     Seq(
       wbSel1H(0) -> alu.io.d,
       wbSel1H(1) -> snpc,
-      wbSel1H(2) -> io.memRData, // TODO: Sign extend this!
-      wbSel1H(3) -> 0.U,
+      wbSel1H(2) -> alu.io.sextRes,
+      wbSel1H(3) -> 0.U, // TODO: CSR!
       wbSel1H(4) -> 0.U
     )
   )
