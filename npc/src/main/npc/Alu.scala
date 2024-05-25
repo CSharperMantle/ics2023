@@ -2,7 +2,6 @@ package npc
 
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.decode._
 
 import common._
 import npc._
@@ -66,20 +65,19 @@ class Alu extends Module {
   val shr       = Mux(io.calcDir === AluCalcDir.Pos.U, srl, sra)
   val shl       = Reverse(shRes)
 
-  val calcTable = TruthTable(
+  val calcOpDec = Decoder1H(
     Seq(
-      AluCalcOp.Add.BP  -> "b000000001".BP,
-      AluCalcOp.Sl.BP   -> "b000000010".BP,
-      AluCalcOp.Slt.BP  -> "b000000100".BP,
-      AluCalcOp.Sltu.BP -> "b000001000".BP,
-      AluCalcOp.Xor.BP  -> "b000010000".BP,
-      AluCalcOp.Sr.BP   -> "b000100000".BP,
-      AluCalcOp.Or.BP   -> "b001000000".BP,
-      AluCalcOp.And.BP  -> "b010000000".BP
-    ),
-    "b100000000".BP
+      AluCalcOp.Add.BP  -> 0,
+      AluCalcOp.Sl.BP   -> 1,
+      AluCalcOp.Slt.BP  -> 2,
+      AluCalcOp.Sltu.BP -> 3,
+      AluCalcOp.Xor.BP  -> 4,
+      AluCalcOp.Sr.BP   -> 5,
+      AluCalcOp.Or.BP   -> 6,
+      AluCalcOp.And.BP  -> 7
+    )
   )
-  val calcOp1Hot = decoder(io.calcOp, calcTable)
+  val calcOp1Hot = calcOpDec(io.calcOp)
   io.d := Mux1H(
     Seq(
       calcOp1Hot(0) -> add,
@@ -94,18 +92,17 @@ class Alu extends Module {
     )
   )
 
-  val brTable = TruthTable(
+  val brOpDec = Decoder1H(
     Seq(
-      AluBrCond.Eq.BP  -> "b0000001".BP,
-      AluBrCond.Ne.BP  -> "b0000010".BP,
-      AluBrCond.Lt.BP  -> "b0000100".BP,
-      AluBrCond.Ge.BP  -> "b0001000".BP,
-      AluBrCond.Ltu.BP -> "b0010000".BP,
-      AluBrCond.Geu.BP -> "b0100000".BP
-    ),
-    "b1000000".BP
+      AluBrCond.Eq.BP  -> 0,
+      AluBrCond.Ne.BP  -> 1,
+      AluBrCond.Lt.BP  -> 2,
+      AluBrCond.Ge.BP  -> 3,
+      AluBrCond.Ltu.BP -> 4,
+      AluBrCond.Geu.BP -> 5
+    )
   )
-  val brOp1Hot = decoder(io.brCond, brTable)
+  val brOp1Hot = brOpDec(io.brCond)
   io.brTaken := Mux1H(
     Seq(
       brOp1Hot(0) -> ~neq,

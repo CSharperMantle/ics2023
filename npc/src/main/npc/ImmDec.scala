@@ -2,7 +2,6 @@ package npc
 
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.decode._
 
 import common._
 import npc._
@@ -41,20 +40,19 @@ class ImmDec extends Module {
     else Cat(Fill(XLen - 32, sign), io.instr(31, 12), Fill(12, false.B))
   val immJ = Cat(Fill(XLen - 21, sign), io.instr(31), io.instr(19, 12), io.instr(20), io.instr(30, 21), false.B)
 
-  val table = TruthTable(
+  val dec = Decoder1H(
     Seq(
-      ImmR.BP    -> "b000000001".BP,
-      ImmI.BP    -> "b000000010".BP,
-      ImmIs.BP   -> "b000000100".BP,
-      ImmIcsr.BP -> "b000001000".BP,
-      ImmS.BP    -> "b000010000".BP,
-      ImmB.BP    -> "b000100000".BP,
-      ImmU.BP    -> "b001000000".BP,
-      ImmJ.BP    -> "b010000000".BP
-    ),
-    "b100000000".BP
+      ImmR.BP    -> 0,
+      ImmI.BP    -> 1,
+      ImmIs.BP   -> 2,
+      ImmIcsr.BP -> 3,
+      ImmS.BP    -> 4,
+      ImmB.BP    -> 5,
+      ImmU.BP    -> 6,
+      ImmJ.BP    -> 7
+    )
   )
-  val immFmt1H = decoder(io.immFmt, table)
+  val immFmt1H = dec(io.immFmt)
   io.imm := Mux1H(
     Seq(
       immFmt1H(0) -> immR,

@@ -2,7 +2,6 @@ package npc
 
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.decode._
 
 import common._
 import npc._
@@ -49,15 +48,14 @@ class Npc extends Module {
   val rs2 = gpr.io.rs2
   val imm = idu.io.imm
 
-  val srcASelTable = TruthTable(
+  val srcASelDec = Decoder1H(
     Seq(
-      InstrSrcASel.SrcARs1.BP -> "b0001".BP,
-      InstrSrcASel.SrcAPc.BP  -> "b0010".BP,
-      InstrSrcASel.SrcAR0.BP  -> "b0100".BP
-    ),
-    "b1000".BP
+      InstrSrcASel.SrcARs1.BP -> 0,
+      InstrSrcASel.SrcAPc.BP  -> 1,
+      InstrSrcASel.SrcAR0.BP  -> 2
+    )
   )
-  val srcASel1H = decoder(idu.io.srcASel, srcASelTable)
+  val srcASel1H = srcASelDec(idu.io.srcASel)
   val srcA = Mux1H(
     Seq(
       srcASel1H(0) -> rs1,
@@ -67,14 +65,13 @@ class Npc extends Module {
     )
   )
 
-  val srcBSelTable = TruthTable(
+  val srcBSelDec = Decoder1H(
     Seq(
-      InstrSrcBSel.SrcBRs2.BP -> "b001".BP,
-      InstrSrcBSel.SrcBImm.BP -> "b010".BP
-    ),
-    "b100".BP
+      InstrSrcBSel.SrcBRs2.BP -> 0,
+      InstrSrcBSel.SrcBImm.BP -> 1
+    )
   )
-  val srcBSel1H = decoder(idu.io.srcBSel, srcBSelTable)
+  val srcBSel1H = srcBSelDec(idu.io.srcBSel)
   val srcB = Mux1H(
     Seq(
       srcBSel1H(0) -> rs2,
@@ -92,30 +89,28 @@ class Npc extends Module {
   val brInvalid = alu.io.brInvalid
   val brTarget  = Mux(alu.io.brTaken, pc + imm, pc)
 
-  val memActionTable = TruthTable(
+  val memActionDec = Decoder1H(
     Seq(
-      MemAction.Rd.BP   -> "b00001".BP,
-      MemAction.Rdu.BP  -> "b00010".BP,
-      MemAction.Wt.BP   -> "b00100".BP,
-      MemAction.None.BP -> "b01000".BP
-    ),
-    "b10000".BP
+      MemAction.Rd.BP   -> 0,
+      MemAction.Rdu.BP  -> 1,
+      MemAction.Wt.BP   -> 2,
+      MemAction.None.BP -> 3
+    )
   )
-  val memAction1H = decoder(idu.io.memAction, memActionTable)
+  val memAction1H = memActionDec(idu.io.memAction)
   io.memU     := memAction1H(1)
   io.memRAddr := alu.io.d
   io.memREn   := memAction1H(0) | memAction1H(1)
 
-  val wbSelTable = TruthTable(
+  val wbSelDec = Decoder1H(
     Seq(
-      InstrWbSel.WbAlu.BP  -> "b00001".BP,
-      InstrWbSel.WbSnpc.BP -> "b00010".BP,
-      InstrWbSel.WbMem.BP  -> "b00100".BP,
-      InstrWbSel.WbCsr.BP  -> "b01000".BP
-    ),
-    "b10000".BP
+      InstrWbSel.WbAlu.BP  -> 0,
+      InstrWbSel.WbSnpc.BP -> 1,
+      InstrWbSel.WbMem.BP  -> 2,
+      InstrWbSel.WbCsr.BP  -> 3
+    )
   )
-  val wbSel1H = decoder(idu.io.wbSel, wbSelTable)
+  val wbSel1H = wbSelDec(idu.io.wbSel)
   val wbData = Mux1H(
     Seq(
       wbSel1H(0) -> alu.io.d,
@@ -134,16 +129,15 @@ class Npc extends Module {
   io.memWData := rs2
   io.memWEn   := memAction1H(2)
 
-  val pcSelTable = TruthTable(
+  val pcSelDec = Decoder1H(
     Seq(
-      InstrPcSel.PcSnpc.BP -> "b00001".BP,
-      InstrPcSel.PcAlu.BP  -> "b00010".BP,
-      InstrPcSel.PcBr.BP   -> "b00100".BP,
-      InstrPcSel.PcEpc.BP  -> "b01000".BP
-    ),
-    "b10000".BP
+      InstrPcSel.PcSnpc.BP -> 0,
+      InstrPcSel.PcAlu.BP  -> 1,
+      InstrPcSel.PcBr.BP   -> 2,
+      InstrPcSel.PcEpc.BP  -> 3
+    )
   )
-  val pcSel1H = decoder(idu.io.pcSel, pcSelTable)
+  val pcSel1H = pcSelDec(idu.io.pcSel)
   val dnpc = Mux1H(
     Seq(
       pcSel1H(0) -> pc,
