@@ -7,6 +7,7 @@ import common._
 import npc._
 
 class SExtenderIO extends Bundle {
+  val sextU    = Input(Bool())
   val sextW    = Input(UInt(MemWidth.W))
   val sextData = Input(UInt(XLen.W))
   val sextRes  = Output(UInt(XLen.W))
@@ -17,9 +18,9 @@ class SExtender extends Module {
 
   val io = IO(new SExtenderIO)
 
-  val sextResB = Cat(Fill(XLen - 8, io.sextData(7)), io.sextData(7, 0))
-  val sextResH = Cat(Fill(XLen - 16, io.sextData(15)), io.sextData(15, 0))
-  val sextResW = if (XLen == 32) io.sextData else Cat(Fill(XLen - 32, io.sextData(31)), io.sextData(31, 0))
+  val sextResB = Cat(Fill(XLen - 8, Mux(io.sextU, 0.B, io.sextData(7))), io.sextData(7, 0))
+  val sextResH = Cat(Fill(XLen - 16, Mux(io.sextU, 0.B, io.sextData(15))), io.sextData(15, 0))
+  val sextResW = if (XLen == 32) io.sextData else Cat(Fill(XLen - 32, Mux(io.sextU, 0.B, io.sextData(31))), io.sextData(31, 0))
   val sextResD = io.sextData
   val sextWDec = Decoder1H(
     Seq(

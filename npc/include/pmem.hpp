@@ -10,6 +10,9 @@ constexpr size_t PMEM_LEFT = 0x80000000;
 constexpr size_t PMEM_RIGHT = PMEM_LEFT + PMEM_SIZE - 1;
 constexpr size_t RESET_VECTOR = PMEM_LEFT + 0;
 
+using paddr_t = word_t;
+using vaddr_t = word_t;
+
 extern std::uint8_t pmem[PMEM_SIZE];
 
 uint8_t *guest_to_host(word_t paddr) noexcept;

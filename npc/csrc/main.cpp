@@ -1,5 +1,8 @@
 #include "VTop.h"
+#include "VTop__Syms.h"
+#include "common.hpp"
 #include "debug.hpp"
+#include "difftest.hpp"
 #include "pmem.hpp"
 #include <cerrno>
 #include <cstdint>
@@ -19,9 +22,12 @@ static const uint32_t DEFAULT_IMG[] = {
     0xdeadbeef, // some data
 };
 
+VTop dut{};
+static CpuState cpu_state_dut{};
+static CpuState cpu_state_ref{};
+
 static VerilatedContext *ctx = nullptr;
 static VerilatedVcdC *tf = nullptr;
-static VTop dut{};
 
 static void step_and_dump_wave() {
   dut.eval();
@@ -36,6 +42,10 @@ static void cycle() {
   step_and_dump_wave();
   dut.clock = 1;
   step_and_dump_wave();
+  memcpy(cpu_state_dut.gpr,
+         dut.rootp->Top__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory.data(),
+         sizeof(cpu_state_dut.gpr));
+  cpu_state_dut.pc = dut.io_pc;
 }
 
 static void sim_init() {
@@ -55,51 +65,8 @@ static void sim_exit() {
 #endif
 }
 
-extern "C" void npc_dpi_ifu(int pc, int *instr) {
-  const word_t upc = static_cast<word_t>(pc);
-  //printf("PC=0x%08x\n", (uint32_t)pc);
-  if (upc > PMEM_LEFT && upc <= PMEM_RIGHT - 4) {
-    *instr = *reinterpret_cast<uint32_t *>(guest_to_host(upc));
-  } else {
-    *instr = 0;
-  }
-}
-
-extern "C" void npc_dpi_memu(char mem_width,
-                             svBit mem_r_en,
-                             int mem_r_addr,
-                             int *mem_r_data,
-                             svBit mem_w_en,
-                             int mem_w_addr,
-                             int mem_w_data) {
-  if (mem_r_en) {
-    Log("pc=" FMT_WORD ": MEM RD: " FMT_WORD "; width=%hhd",
-        static_cast<word_t>(dut.io_pc),
-        static_cast<word_t>(mem_r_addr),
-        mem_width);
-    switch (mem_width) {
-      case 0: *mem_r_data = *reinterpret_cast<uint8_t *>(guest_to_host(mem_r_addr)); break;
-      case 1: *mem_r_data = *reinterpret_cast<uint16_t *>(guest_to_host(mem_r_addr)); break;
-      case 2: *mem_r_data = *reinterpret_cast<uint32_t *>(guest_to_host(mem_r_addr)); break;
-      default: panic("bad mem_width %hhd", mem_width);
-    }
-  }
-  if (mem_w_en) {
-    Log("pc=" FMT_WORD ": MEM WR: " FMT_WORD "; width=%hhd; data=" FMT_WORD,
-        static_cast<word_t>(dut.io_pc),
-        static_cast<word_t>(mem_w_addr),
-        mem_width,
-        mem_w_data);
-    switch (mem_width) {
-      case 0: *reinterpret_cast<uint8_t *>(guest_to_host(mem_r_addr)) = mem_w_data & 0xFF; break;
-      case 1: *reinterpret_cast<uint16_t *>(guest_to_host(mem_r_addr)) = mem_w_data & 0xFFFF; break;
-      case 2: *reinterpret_cast<uint32_t *>(guest_to_host(mem_r_addr)) = mem_w_data; break;
-      default: panic("bad mem_width %hhd", mem_width);
-    }
-  }
-}
-
 int main(int argc, char *argv[]) {
+
   if (argc < 2) {
     Warn("no image file provided, fallback to builtin image");
     std::memcpy(pmem, DEFAULT_IMG, sizeof(DEFAULT_IMG));
@@ -115,6 +82,12 @@ int main(int argc, char *argv[]) {
            "cannot read %zu bytes, %zu already read",
            static_cast<size_t>(len_img),
            nbytes_read);
+
+    if (argc >= 3) {
+      load_difftest(argv[2], len_img, cpu_state_dut);
+    } else {
+      load_difftest(nullptr, len_img, cpu_state_dut);
+    }
   }
 
   sim_init();
@@ -122,24 +95,23 @@ int main(int argc, char *argv[]) {
   cycle();
   dut.reset = 0;
 
-  size_t n_instrs = 0;
   do {
+    ref_difftest_regcpy(&cpu_state_dut, DiffTestCopyDir::ToRef);
     cycle();
-    n_instrs++;
+    ref_difftest_exec(1);
+    ref_difftest_regcpy(&cpu_state_ref, DiffTestCopyDir::ToDut);
+    difftest_check(cpu_state_ref, cpu_state_dut);
   } while (!dut.io_break);
 
-  if (dut.io_break) {
-    if (dut.io_a0 == 0) {
-      Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
-          static_cast<word_t>(dut.io_pc));
-    } else {
-      Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
-          static_cast<word_t>(dut.io_pc));
-    }
+  const word_t retval = dut.io_a0;
+  if (retval == 0) {
+    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
+        static_cast<word_t>(dut.io_pc));
   } else {
-    Error("hit instr cap");
+    Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
+        static_cast<word_t>(dut.io_pc));
   }
-  sim_exit();
 
-  return 0;
+  sim_exit();
+  return (int)retval;
 }

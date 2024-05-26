@@ -26,7 +26,7 @@ class IfuBlackBox extends BlackBox with HasBlackBoxInline {
        |  input  [${XLen - 1}:0] pc,
        |  output [31:0]          instr
        |);
-       |  always @(pc) begin
+       |  always @(*) begin
        |    npc_dpi_ifu(pc, instr);
        |  end
        |endmodule

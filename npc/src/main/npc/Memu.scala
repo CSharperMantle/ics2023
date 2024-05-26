@@ -21,7 +21,6 @@ object MemAction extends CvtChiselEnum {
 }
 
 class MemuBlackBoxIO extends Bundle {
-  val clock    = Input(Clock())
   val memWidth = Input(UInt(MemWidth.W))
   val memREn   = Input(Bool())
   val memRAddr = Input(UInt(XLen.W))
@@ -40,28 +39,32 @@ class MemuBlackBox extends BlackBox with HasBlackBoxInline {
   setInline(
     "MemuBlackBox.sv",
     s"""
-       |import "DPI-C" function void npc_dpi_memu(input  byte      mem_width,
-       |                                          input  bit       mem_r_en,
-       |                                          input  $xLenType mem_r_addr,
-       |                                          output $xLenType mem_r_data,
-       |                                          input  bit       mem_w_en,
-       |                                          input  $xLenType mem_w_addr,
-       |                                          input  $xLenType mem_w_data);
+       |import "DPI-C" function $xLenType npc_dpi_pmem_read(input $xLenType mem_r_addr);
+       |
+       |import "DPI-C" function void npc_dpi_pmem_write(input byte      mem_width,
+       |                                                input $xLenType mem_w_addr,
+       |                                                input $xLenType mem_w_data);
        |
        |module MemuBlackBox(
-       |  input                       clock,
-       |  input  [${memWidthW - 1}:0] memWidth,
-       |  input                       memREn,
-       |  input  [${XLen - 1}:0]      memRAddr,
-       |  output [${XLen - 1}:0]      memRData,
-       |  input                       memWEn,
-       |  input  [${XLen - 1}:0]      memWAddr,
-       |  input  [${XLen - 1}:0]      memWData
+       |  input      [${memWidthW - 1}:0] memWidth,
+       |  input                           memREn,
+       |  input      [${XLen - 1}:0]      memRAddr,
+       |  output reg [${XLen - 1}:0]      memRData,
+       |  input                           memWEn,
+       |  input      [${XLen - 1}:0]      memWAddr,
+       |  input      [${XLen - 1}:0]      memWData
        |);
        |  wire [7:0] memWidthExt;
        |  assign memWidthExt = {${8 - memWidthW}'b0, memWidth};
-       |  always @(posedge clock) begin
-       |    npc_dpi_memu(memWidthExt, memREn, memRAddr, memRData, memWEn, memWAddr, memWData);
+       |  always @(*) begin
+       |    if (memREn) begin
+       |      memRData = npc_dpi_pmem_read(memRAddr);
+       |    end else begin
+       |      memRData = 0;
+       |    end
+       |    if (memWEn) begin
+       |      npc_dpi_pmem_write(memWidthExt, memWAddr, memWData);
+       |    end
        |  end
        |endmodule
        |""".stripMargin
@@ -92,7 +95,6 @@ class Memu extends Module {
   val memAction1H = memActionDec(io.memAction)
 
   val backend = Module(new MemuBlackBox)
-  backend.io.clock    := clock
   backend.io.memWidth := io.memWidth
   backend.io.memREn   := memAction1H(0) | memAction1H(1)
   backend.io.memRAddr := io.memRAddr
@@ -103,7 +105,8 @@ class Memu extends Module {
   val sext = Module(new SExtender)
   sext.io.sextData := backend.io.memRData
   sext.io.sextW    := io.memWidth
-  io.memRData      := Mux(memAction1H(1), backend.io.memRData, sext.io.sextRes)
+  sext.io.sextU    := memAction1H(1)
+  io.memRData      := sext.io.sextRes
 
   io.inval := memAction1H(memActionDec.bitBad)
 }

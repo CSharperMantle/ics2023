@@ -50,8 +50,17 @@ static void out_of_bound(paddr_t addr) {
 }
 
 #ifdef CONFIG_MTRACE
-static void print_mtrace(paddr_t addr, int len, bool read) {
-  Log("mem: %-6s" FMT_PADDR "; len = %d", read ? "READ" : "WRITE", addr, len);
+static void print_mtrace(paddr_t addr, int len, bool read, word_t data) {
+  if (read) {
+    Log("pc=" FMT_WORD ": mem: %-6s" FMT_PADDR "; len = %d", cpu.pc, "READ", addr, len);
+  } else {
+    Log("pc=" FMT_WORD ": mem: %-6s" FMT_PADDR "; len = %d; data=" FMT_WORD,
+        cpu.pc,
+        "WRITE",
+        addr,
+        len,
+        data);
+  }
 }
 #endif
 
@@ -65,7 +74,7 @@ void init_mem() {
 }
 
 word_t paddr_read(paddr_t addr, int len) {
-  IFDEF(CONFIG_MTRACE, print_mtrace(addr, len, true));
+  IFDEF(CONFIG_MTRACE, print_mtrace(addr, len, true, 0));
   if (likely(in_pmem(addr))) {
     return pmem_read(addr, len);
   }
@@ -75,7 +84,7 @@ word_t paddr_read(paddr_t addr, int len) {
 }
 
 void paddr_write(paddr_t addr, int len, word_t data) {
-  IFDEF(CONFIG_MTRACE, print_mtrace(addr, len, false));
+  IFDEF(CONFIG_MTRACE, print_mtrace(addr, len, false, data));
   if (likely(in_pmem(addr))) {
     pmem_write(addr, len, data);
     return;
