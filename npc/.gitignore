@@ -15,7 +15,9 @@
 !constr/**
 !csrc/**
 !.clang-format
-build/
+!script/**
+!include/**
+build/**
 .github/
 
 # mill

@@ -7,7 +7,7 @@ PRJ_NAME = playground
 
 TOP_NAME = Top
 NXDC_FILES = constr/top.nxdc
-INC_PATH ?=
+INC_PATH ?= ./include
 
 VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc  \
@@ -32,11 +32,11 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # NVBoard interop: verilator flags
 INCFLAGS = $(addprefix -I, $(INC_PATH))
-CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOP_NAME)\"" -O3
+CXXFLAGS += $(INCFLAGS)
+CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -O3
 
 $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
-	@echo $(VSRCS)
-	@echo $(CSRCS)
+	./script/remove_f.py $(VSRCS)
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \
 		--top-module $(TOP_NAME) $^ \
@@ -63,7 +63,7 @@ checkformat:
 clean:
 	-rm -rf $(BUILD_DIR)
 
-sim: verilog $(BIN)
+sim: $(BIN)
 	$(call git_commit, "sim RTL")
 	@$(BIN)
 

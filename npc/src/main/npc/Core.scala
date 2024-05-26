@@ -7,19 +7,8 @@ import common._
 import npc._
 
 class CoreIO extends Bundle {
-  val instr = Input(UInt(32.W))
   val pc    = Output(UInt(XLen.W))
   val break = Output(Bool())
-
-  val memWidth = Output(UInt())
-  val memU     = Output(Bool())
-  val memREn   = Output(Bool())
-  val memRAddr = Output(UInt(XLen.W))
-  val memRData = Input(UInt(XLen.W))
-  val memWEn   = Output(Bool())
-  val memWAddr = Output(UInt(XLen.W))
-  val memWData = Output(UInt(XLen.W))
-
   val inval = Output(Bool())
   val ra    = Output(UInt(XLen.W))
 }
@@ -27,22 +16,25 @@ class CoreIO extends Bundle {
 class Core extends Module {
   val io = IO(new CoreIO)
 
-  val csr  = Module(new CsrFile)
-  val gpr  = Module(new GprFile)
+  val csr = Module(new CsrFile)
+  val gpr = Module(new GprFile)
+
+  val ifu  = Module(new Ifu)
   val idu  = Module(new Idu)
   val exu  = Module(new Exu)
-  val sext = Module(new SExtender)
+  val memu = Module(new Memu)
   val wbu  = Module(new Wbu)
-  val pc   = RegInit(InitPCVal.U(XLen.W))
+
+  val pc = RegInit(InitPCVal.U(XLen.W))
 
   val snpc = pc + 4.U
 
-  io.pc        := pc
-  idu.io.instr := io.instr
-  io.break     := idu.io.break
-  io.ra        := gpr.io.ra
+  io.pc    := pc
+  io.break := idu.io.break
+  io.ra    := gpr.io.ra
 
-  io.memWidth := idu.io.memWidth
+  ifu.io.pc    := pc
+  idu.io.instr := ifu.io.instr
 
   gpr.io.rs1Idx := idu.io.rs1Idx
   gpr.io.rs2Idx := idu.io.rs2Idx
@@ -56,7 +48,7 @@ class Core extends Module {
   exu.io.brCond  := idu.io.aluBrCond
   exu.io.rs1Idx  := idu.io.rs1Idx
   exu.io.rs1     := gpr.io.rs1
-  exu.io.rs2     := rs2
+  exu.io.rs2     := gpr.io.rs2
   exu.io.pc      := pc
   exu.io.imm     := imm
 
@@ -64,35 +56,21 @@ class Core extends Module {
   csr.io.csrIdx := imm(11, 0)
   csr.io.csrOp  := idu.io.csrOp
 
-  val memActionDec = Decoder1H(
-    Seq(
-      MemAction.Rd.BP   -> 0,
-      MemAction.Rdu.BP  -> 1,
-      MemAction.Wt.BP   -> 2,
-      MemAction.None.BP -> 3
-    )
-  )
-  val memAction1H = memActionDec(idu.io.memAction)
-  io.memU     := memAction1H(1)
-  io.memRAddr := exu.io.d
-  io.memREn   := memAction1H(0) | memAction1H(1)
-
-  sext.io.sextData := io.memRData
-  sext.io.sextW    := idu.io.memWidth
+  memu.io.memAction := idu.io.memAction
+  memu.io.memWidth  := idu.io.memWidth
+  memu.io.memRAddr  := exu.io.d
+  memu.io.memWAddr  := exu.io.d
+  memu.io.memWData  := gpr.io.rs2
 
   wbu.io.wbSel    := idu.io.wbSel
   wbu.io.dataAlu  := exu.io.d
   wbu.io.dataSnpc := snpc
-  wbu.io.dataMem  := sext.io.sextRes
+  wbu.io.dataMem  := memu.io.memRData
   wbu.io.dataCsr  := csr.io.csrVal
 
   gpr.io.rdData := wbu.io.d
   gpr.io.rdIdx  := idu.io.rdIdx
   gpr.io.wEn    := idu.io.wbEn
-
-  io.memWAddr := wbu.io.d
-  io.memWData := rs2
-  io.memWEn   := memAction1H(2)
 
   val brTarget = Mux(exu.io.brTaken, pc + imm, pc)
   val pcSelDec = Decoder1H(
@@ -116,5 +94,5 @@ class Core extends Module {
 
   pc := dnpc
 
-  io.inval := memAction1H(memActionDec.bitBad) | exu.io.inval | wbu.io.inval | pcSel1H(memActionDec.bitBad)
+  io.inval := ~reset.asBool & (exu.io.inval | memu.io.inval | wbu.io.inval | pcSel1H(pcSelDec.bitBad))
 }
