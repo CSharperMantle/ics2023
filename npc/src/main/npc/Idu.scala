@@ -140,7 +140,7 @@ case class InstrPat(
 object BreakField extends BoolDecodeField[InstrPat] {
   def name = "break"
   def genTable(pat: InstrPat): BitPat = {
-    if ((pat.opcode.equals(InstrOpcodeBP.Ebreak)) && (pat.rs2.equals("b00001".BP))) y else n
+    if ((pat.opcode == InstrOpcodeBP.Ebreak) && (pat.rs2 == "b00001".BP)) y else n
   }
 }
 
@@ -214,7 +214,7 @@ object CsrOpField extends DecodeField[InstrPat, UInt] {
   def name       = "csrOp"
   def chiselType = UInt(CsrOp.W)
   def genTable(pat: InstrPat): BitPat = {
-    if (pat.wbSel.equals(WbSel.WbCsr))
+    if (pat.wbSel == WbSel.WbCsr.BP)
       pat.funct3.rawString match {
         case "001" | "101" => CsrOp.Rw.BP
         case "010" | "110" => CsrOp.Rs.BP
