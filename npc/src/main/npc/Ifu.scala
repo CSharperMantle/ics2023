@@ -7,7 +7,6 @@ import common._
 import npc._
 
 class IfuBlackBoxIO extends Bundle {
-  val clock = Input(Clock())
   val pc    = Input(UInt(XLen.W))
   val instr = Output(UInt(32.W))
 }
@@ -24,11 +23,10 @@ class IfuBlackBox extends BlackBox with HasBlackBoxInline {
        |                                         output int       instr);
        |
        |module IfuBlackBox(
-       |  input                  clock,
        |  input  [${XLen - 1}:0] pc,
        |  output [31:0]          instr
        |);
-       |  always @(posedge clock) begin
+       |  always @(pc) begin
        |    npc_dpi_ifu(pc, instr);
        |  end
        |endmodule
@@ -45,7 +43,6 @@ class Ifu extends Module {
   val io = IO(new IfuIO)
 
   val backend = Module(new IfuBlackBox)
-  backend.io.clock := clock
   backend.io.pc    := io.pc
   io.instr         := backend.io.instr
 }

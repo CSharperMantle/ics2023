@@ -95,6 +95,10 @@ object InstrOpcodeBP {
   val Csrrsi = "b11100_11".BP
   val Csrrc  = "b11100_11".BP
   val Csrrci = "b11100_11".BP
+
+  val Unk00 = "b?????_00".BP
+  val Unk01 = "b?????_01".BP
+  val Unk10 = "b?????_10".BP
 }
 
 /** PC update source. */
@@ -335,7 +339,10 @@ class Idu extends Module {
     InstrPat(7.X,           5.X,         5.X, "b011".BP, 5.X, Csrrc,  ImmIcsr.BP, PcSnpc.BP, SrcARs1.BP,  SrcBImm.BP, None.BP, WbCsr.BP,  1.Y, false),
     InstrPat(7.X,           5.X,         5.X, "b101".BP, 5.X, Csrrwi, ImmIcsr.BP, PcSnpc.BP, SrcAZimm.BP, SrcBImm.BP, None.BP, WbCsr.BP,  1.Y, false),
     InstrPat(7.X,           5.X,         5.X, "b110".BP, 5.X, Csrrsi, ImmIcsr.BP, PcSnpc.BP, SrcAZimm.BP, SrcBImm.BP, None.BP, WbCsr.BP,  1.Y, false),
-    InstrPat(7.X,           5.X,         5.X, "b111".BP, 5.X, Csrrci, ImmIcsr.BP, PcSnpc.BP, SrcAZimm.BP, SrcBImm.BP, None.BP, WbCsr.BP,  1.Y, false)
+    InstrPat(7.X,           5.X,         5.X, "b111".BP, 5.X, Csrrci, ImmIcsr.BP, PcSnpc.BP, SrcAZimm.BP, SrcBImm.BP, None.BP, WbCsr.BP,  1.Y, false),
+    InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Unk00,  ImmR.BP,    PcSnpc.BP, SrcAR0.BP,   SrcBImm.BP, None.BP, WbAlu.BP,  1.N, false),
+    InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Unk01,  ImmR.BP,    PcSnpc.BP, SrcAR0.BP,   SrcBImm.BP, None.BP, WbAlu.BP,  1.N, false),
+    InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Unk10,  ImmR.BP,    PcSnpc.BP, SrcAR0.BP,   SrcBImm.BP, None.BP, WbAlu.BP,  1.N, false)
   )
   val fields = Seq(
     BreakField,
@@ -373,7 +380,7 @@ class Idu extends Module {
   immDec.io.immFmt := res(ImmFmtField)
   io.imm           := immDec.io.imm
 
-  io.rs1Idx := io.instr(24, 20)
-  io.rs2Idx := io.instr(19, 15)
+  io.rs1Idx := io.instr(19, 15)
+  io.rs2Idx := io.instr(24, 20)
   io.rdIdx  := io.instr(11, 7)
 }

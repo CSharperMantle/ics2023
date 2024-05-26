@@ -13,7 +13,7 @@ class GprFileIO extends Bundle {
   val rdData = Input(UInt(XLen.W))
   val rs1    = Output(UInt(XLen.W))
   val rs2    = Output(UInt(XLen.W))
-  val ra     = Output(UInt(XLen.W))
+  val a0     = Output(UInt(XLen.W))
 }
 
 class GprFile extends Module {
@@ -25,5 +25,5 @@ class GprFile extends Module {
   io.rs2         := Mux(io.rs2Idx.orR, regs(io.rs2Idx), 0.U)
   regs(io.rdIdx) := Mux(io.wEn, Mux(io.rdIdx.orR, io.rdData, 0.U), regs(io.rdIdx))
 
-  io.ra := regs(1)
+  io.a0 := regs(10)
 }

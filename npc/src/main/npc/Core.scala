@@ -10,7 +10,7 @@ class CoreIO extends Bundle {
   val pc    = Output(UInt(XLen.W))
   val break = Output(Bool())
   val inval = Output(Bool())
-  val ra    = Output(UInt(XLen.W))
+  val a0    = Output(UInt(XLen.W))
 }
 
 class Core extends Module {
@@ -31,7 +31,7 @@ class Core extends Module {
 
   io.pc    := pc
   io.break := idu.io.break
-  io.ra    := gpr.io.ra
+  io.a0    := gpr.io.a0
 
   ifu.io.pc    := pc
   idu.io.instr := ifu.io.instr
@@ -72,7 +72,7 @@ class Core extends Module {
   gpr.io.rdIdx  := idu.io.rdIdx
   gpr.io.wEn    := idu.io.wbEn
 
-  val brTarget = Mux(exu.io.brTaken, pc + imm, pc)
+  val brTarget = Mux(exu.io.brTaken, pc + imm, snpc)
   val pcSelDec = Decoder1H(
     Seq(
       InstrPcSel.PcSnpc.BP -> 0,
@@ -84,13 +84,13 @@ class Core extends Module {
   val pcSel1H = pcSelDec(idu.io.pcSel)
   val dnpc = Mux1H(
     Seq(
-      pcSel1H(0) -> pc,
+      pcSel1H(0) -> snpc,
       pcSel1H(1) -> exu.io.d,
       pcSel1H(2) -> brTarget,
       pcSel1H(3) -> csr.io.epc,
       pcSel1H(4) -> 0.U
     )
-  ) + 4.U
+  )
 
   pc := dnpc
 
