@@ -11,6 +11,7 @@
 #include "VTop__Syms.h"
 #include "common.hpp"
 #include "debug.hpp"
+#include "device/device.hpp"
 #include "difftest.hpp"
 #include "mem/host.hpp"
 
@@ -86,13 +87,17 @@ int main(int argc, char *argv[]) {
 
   const char *env_ref_so = getenv("NPC_DIFFTEST_REF_SO");
   if (env_ref_so == nullptr || std::strlen(env_ref_so) == 0) {
-    Log("difftest: not initialized; env var NPC_DIFFTEST_REF_SO=%s",
+    Log("difftest: not initialized; NPC_DIFFTEST_REF_SO=%s",
         env_ref_so == nullptr ? "(not found)" : env_ref_so);
     load_difftest(nullptr, len_img, cpu_state_dut);
   } else {
     Log("difftest: loading ref so \"%s\"", env_ref_so);
     load_difftest(env_ref_so, len_img, cpu_state_dut);
   }
+
+#ifdef CONFIG_DEVICE
+  init_device();
+#endif
 
   sim_init();
   dut.reset = 1;
