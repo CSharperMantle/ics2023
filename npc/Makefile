@@ -9,8 +9,7 @@ TOP_NAME = Top
 NXDC_FILES = constr/top.nxdc
 INC_PATH ?= $(abspath ./include)
 
-ARGV1 ?=
-ARGV2 ?=
+MAINARGS ?=
 
 VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc  \
@@ -68,7 +67,7 @@ clean:
 
 sim: $(BIN)
 	$(call git_commit, "sim RTL")
-	@$(BIN) $(ARGV1) $(ARGV2)
+	@$(BIN) $(MAINARGS)
 
 wave:
 	gtkwave --giga dump.vcd

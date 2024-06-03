@@ -21,4 +21,4 @@ image: $(IMAGE).elf
 	@$(OBJCOPY) -S --set-section-flags .bss=alloc,contents -O binary $(IMAGE).elf $(IMAGE).bin
 
 run: image
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim ARGV1=$(IMAGE).bin ARGV2=$(NEMU_HOME)/build/riscv32-nemu-interpreter-so
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim MAINARGS=$(IMAGE).bin

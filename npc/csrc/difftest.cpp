@@ -3,7 +3,7 @@
 #include "VTop__Syms.h"
 #include "common.hpp"
 #include "debug.hpp"
-#include "pmem.hpp"
+#include "mem/host.hpp"
 #include <dlfcn.h>
 
 const char *REG_NAMES[] = {"$0", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
@@ -24,7 +24,6 @@ static void stub_difftest_raise_intr(uint64_t NO) {}
 
 void load_difftest(const char *soname, size_t img_size, CpuState &cpu) noexcept {
   if (soname == nullptr) {
-    Log("difftest disabled");
     ref_difftest_memcpy = stub_difftest_memcpy;
     ref_difftest_regcpy = stub_difftest_regcpy;
     ref_difftest_exec = stub_difftest_exec;
@@ -32,7 +31,6 @@ void load_difftest(const char *soname, size_t img_size, CpuState &cpu) noexcept 
     return;
   }
 
-  Log("difftest enabled with ref \"%s\"", soname);
   void *const handle = dlopen(soname, RTLD_LAZY);
   assert(handle);
   ref_difftest_memcpy =
@@ -65,7 +63,7 @@ void difftest_check(const CpuState &ref, const CpuState &dut) noexcept {
   Assert(ref.pc == dut.pc, "PC mismatch: Ref=" FMT_WORD ", Dut=" FMT_WORD, ref.pc, dut.pc);
   for (size_t i = 0; i < 32; i++) {
     Assert(ref.gpr[i] == dut.gpr[i],
-           "PC=" FMT_WORD ": GPR \"%s\" mismatch: Ref=" FMT_WORD ", Dut=" FMT_WORD,
+           "pc=" FMT_WORD ": GPR \"%s\" mismatch: Ref=" FMT_WORD ", Dut=" FMT_WORD,
            dut.pc,
            REG_NAMES[i],
            ref.gpr[i],

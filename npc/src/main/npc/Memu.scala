@@ -110,14 +110,6 @@ class Memu extends Module {
     )
   )
 
-  val backend = Module(new MemuBlackBox)
-  backend.io.memMask  := memMask
-  backend.io.memREn   := memAction1H(0) | memAction1H(1)
-  backend.io.memRAddr := io.memRAddr
-  backend.io.memWAddr := io.memWAddr
-  backend.io.memWData := io.memWData
-  backend.io.memWEn   := memAction1H(2)
-
   val memAlignDec = Decoder1H(
     Seq(
       "b00".BP -> 0,
@@ -126,14 +118,54 @@ class Memu extends Module {
       "b11".BP -> 3
     )
   )
-  val memAlign1H = memAlignDec(io.memRAddr(1, 0))
+
+  val wEn = memAction1H(2)
+  val rEn = memAction1H(0) | memAction1H(1)
+
+  val backend = Module(new MemuBlackBox)
+
+  backend.io.memREn   := rEn
+  backend.io.memRAddr := Cat(io.memRAddr(XLen - 1, 2), Fill(2, 0.B))
+
+  val memWAlign1H = memAlignDec(io.memWAddr(1, 0))
+  val memWDataShifted = Mux1H(
+    Seq(
+      memWAlign1H(0) -> io.memWData,
+      memWAlign1H(1) -> Cat(io.memWData(XLen - 9, 0), Fill(8, 0.B)),
+      memWAlign1H(2) -> Cat(io.memWData(XLen - 17, 0), Fill(16, 0.B)),
+      memWAlign1H(3) -> Cat(io.memWData(XLen - 25, 0), Fill(24, 0.B)),
+      memWAlign1H(4) -> 0.U
+    )
+  )
+  backend.io.memWData := memWDataShifted
+  backend.io.memWAddr := Cat(io.memWAddr(XLen - 1, 2), Fill(2, 0.B))
+  backend.io.memWEn   := wEn
+  val memWMaskShifted = Mux1H(
+    Seq(
+      memWAlign1H(0) -> memMask,
+      memWAlign1H(1) -> Cat(memMask(6, 0), Fill(1, 0.B)),
+      memWAlign1H(2) -> Cat(memMask(5, 0), Fill(2, 0.B)),
+      memWAlign1H(3) -> Cat(memMask(4, 0), Fill(3, 0.B)),
+      memWAlign1H(4) -> 0.U
+    )
+  )
+
+  backend.io.memMask := MuxCase(
+    0.U,
+    Seq(
+      rEn -> memMask,
+      wEn -> memWMaskShifted
+    )
+  )
+
+  val memRAlign1H = memAlignDec(io.memRAddr(1, 0))
   val memRDataShifted = Mux1H(
     Seq(
-      memAlign1H(0) -> backend.io.memRData,
-      memAlign1H(1) -> Cat(Fill(8, 0.B), backend.io.memRData(XLen - 1, 8)),
-      memAlign1H(2) -> Cat(Fill(16, 0.B), backend.io.memRData(XLen - 1, 16)),
-      memAlign1H(3) -> Cat(Fill(24, 0.B), backend.io.memRData(XLen - 1, 24)),
-      memAlign1H(4) -> 0.U
+      memRAlign1H(0) -> backend.io.memRData,
+      memRAlign1H(1) -> Cat(Fill(8, 0.B), backend.io.memRData(XLen - 1, 8)),
+      memRAlign1H(2) -> Cat(Fill(16, 0.B), backend.io.memRData(XLen - 1, 16)),
+      memRAlign1H(3) -> Cat(Fill(24, 0.B), backend.io.memRData(XLen - 1, 24)),
+      memRAlign1H(4) -> 0.U
     )
   )
 
@@ -143,5 +175,5 @@ class Memu extends Module {
   sext.io.sextU    := memAction1H(1)
   io.memRData      := sext.io.sextRes
 
-  io.inval := memAction1H(memActionDec.bitBad) | memAlign1H(memAlignDec.bitBad)
+  io.inval := memAction1H(memActionDec.bitBad) | memWAlign1H(memAlignDec.bitBad) | memRAlign1H(memAlignDec.bitBad)
 }

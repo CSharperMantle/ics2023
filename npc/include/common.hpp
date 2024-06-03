@@ -1,6 +1,7 @@
 #ifndef NPC_COMMON_HPP_
 #define NPC_COMMON_HPP_
 
+#include <cinttypes>
 #include <cstdint>
 
 #include "config.hpp"

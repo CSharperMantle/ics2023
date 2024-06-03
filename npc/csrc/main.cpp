@@ -1,9 +1,4 @@
-#include "VTop.h"
-#include "VTop__Syms.h"
-#include "common.hpp"
-#include "debug.hpp"
-#include "difftest.hpp"
-#include "pmem.hpp"
+
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -11,6 +6,13 @@
 #include <cstring>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
+
+#include "VTop.h"
+#include "VTop__Syms.h"
+#include "common.hpp"
+#include "debug.hpp"
+#include "difftest.hpp"
+#include "mem/host.hpp"
 
 #define DUMP_WAVE 1
 
@@ -66,28 +68,30 @@ static void sim_exit() {
 }
 
 int main(int argc, char *argv[]) {
-
+  size_t len_img = 0;
   if (argc < 2) {
     Warn("no image file provided, fallback to builtin image");
-    std::memcpy(pmem, DEFAULT_IMG, sizeof(DEFAULT_IMG));
+    std::memcpy(host_mem, DEFAULT_IMG, sizeof(DEFAULT_IMG));
+    len_img = sizeof(DEFAULT_IMG);
   } else {
     FILE *const f_img = std::fopen(argv[1], "rb");
     Assert(f_img, "cannot open \"%s\": errno %d: %s", argv[1], errno, std::strerror(errno));
     std::fseek(f_img, 0, SEEK_END);
-    const long len_img = std::ftell(f_img);
-    Log("image \"%s\", size=%ld", argv[1], len_img);
+    len_img = static_cast<size_t>(std::ftell(f_img));
+    Log("image \"%s\", size=%zu", argv[1], len_img);
     fseek(f_img, 0, SEEK_SET);
     const size_t nbytes_read = fread(guest_to_host(RESET_VECTOR), 1, len_img, f_img);
-    Assert(nbytes_read == len_img,
-           "cannot read %zu bytes, %zu already read",
-           static_cast<size_t>(len_img),
-           nbytes_read);
+    Assert(nbytes_read == len_img, "cannot read %zu bytes, %zu already read", len_img, nbytes_read);
+  }
 
-    if (argc >= 3) {
-      load_difftest(argv[2], len_img, cpu_state_dut);
-    } else {
-      load_difftest(nullptr, len_img, cpu_state_dut);
-    }
+  const char *env_ref_so = getenv("NPC_DIFFTEST_REF_SO");
+  if (env_ref_so == nullptr || std::strlen(env_ref_so) == 0) {
+    Log("difftest: not initialized; env var NPC_DIFFTEST_REF_SO=%s",
+        env_ref_so == nullptr ? "(not found)" : env_ref_so);
+    load_difftest(nullptr, len_img, cpu_state_dut);
+  } else {
+    Log("difftest: loading ref so \"%s\"", env_ref_so);
+    load_difftest(env_ref_so, len_img, cpu_state_dut);
   }
 
   sim_init();

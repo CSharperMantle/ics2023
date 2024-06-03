@@ -2,12 +2,12 @@
 #define NPC_DIFFTEST_HPP_
 
 #include "common.hpp"
-#include "pmem.hpp"
+#include "mem/host.hpp"
 
 struct CpuState {
   word_t gpr[32];
   word_t csr[4096];
-  vaddr_t pc;
+  paddr_t pc;
   int priv;
   bool intr;
 };

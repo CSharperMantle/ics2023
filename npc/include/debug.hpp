@@ -18,7 +18,9 @@
 
 #include "common.hpp"
 #include "utils.hpp"
+
 #include <cstdio>
+#include <cassert>
 
 #define Log(format, ...)                                                                           \
   _Log(ANSI_FMT("[%s:%d %s]", ANSI_FG_BLUE) " " format "\n",                                       \
