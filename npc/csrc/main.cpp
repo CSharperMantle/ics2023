@@ -14,8 +14,8 @@
 #include "device/device.hpp"
 #include "difftest.hpp"
 #include "mem/host.hpp"
-
-#define DUMP_WAVE 1
+#include "util/disasm.hpp"
+#include "util/iringbuf.hpp"
 
 static const uint32_t DEFAULT_IMG[] = {
     0x00000297, // auipc t0,0
@@ -35,7 +35,7 @@ static VerilatedVcdC *tf = nullptr;
 static void step_and_dump_wave() {
   dut.eval();
   ctx->timeInc(1);
-#if defined(DUMP_WAVE) && DUMP_WAVE
+#if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   tf->dump(ctx->time());
 #endif
 }
@@ -54,7 +54,7 @@ static void cycle() {
 static void sim_init() {
   ctx = Verilated::defaultContextp();
   tf = new VerilatedVcdC();
-#if defined(DUMP_WAVE) && DUMP_WAVE
+#if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   ctx->traceEverOn(true);
   dut.trace(tf, 0);
   tf->open("dump.vcd");
@@ -63,9 +63,19 @@ static void sim_init() {
 
 static void sim_exit() {
   step_and_dump_wave();
-#if defined(DUMP_WAVE) && DUMP_WAVE
+#if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   tf->close();
 #endif
+}
+
+static void print_iringbuf() {
+  Log("- - - %d recent instructions (top: oldest)", CONFIG_IRINGBUF_NR_ELEM);
+  for (const auto &instr : iringbuf) {
+    auto instr_disasm =
+        disasm(instr.first, reinterpret_cast<const uint8_t *>(&instr.second), sizeof(instr.second));
+    Log(FMT_WORD "\t%s", instr.first, instr_disasm.c_str());
+  }
+  Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
 }
 
 int main(int argc, char *argv[]) {
@@ -99,6 +109,8 @@ int main(int argc, char *argv[]) {
   init_device();
 #endif
 
+  init_disasm("riscv32-pc-linux-gnu");
+
   sim_init();
   dut.reset = 1;
   cycle();
@@ -117,6 +129,7 @@ int main(int argc, char *argv[]) {
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
         static_cast<word_t>(dut.io_pc));
   } else {
+    print_iringbuf();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
         static_cast<word_t>(dut.io_pc));
   }

@@ -86,5 +86,5 @@ class Exu extends Module {
   io.d       := alu.io.d
   io.brTaken := alu.io.brTaken
   io.csrS1   := srcA
-  io.inval   := alu.io.brInvalid | srcASel1H(srcASelDec.bitBad) | srcBSel1H(srcBSelDec.bitBad)
+  io.inval   := srcASel1H(srcASelDec.bitBad) | srcBSel1H(srcBSelDec.bitBad)
 }

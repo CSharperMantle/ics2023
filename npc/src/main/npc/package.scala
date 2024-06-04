@@ -29,4 +29,36 @@ object npc {
   require(XLen == 32 || XLen == 64)
 
   val InitPCVal = BigInt("80000000", 16)
+
+  object PrivMode {
+    val M = 3
+    val S = 1
+    val U = 0
+  }
+
+  object IntrCode {
+    val SSoft     = 1
+    val MSoft     = 3
+    val STimer    = 5
+    val MTimer    = 7
+    val SExternal = 9
+    val MExternal = 11
+  }
+
+  object ExcpCode {
+    val InstUnaligned  = 0
+    val InstAccess     = 1
+    val Inst           = 2
+    val Break          = 3
+    val ReadUnaligned  = 4
+    val ReadAccess     = 5
+    val StoreUnaligned = 6
+    val StoreAccess    = 7
+    val UEnvCall       = 8
+    val SEnvCall       = 9
+    val MEnvCall       = 11
+    val InstPage       = 12
+    val ReadPage       = 13
+    val StorePage      = 14
+  }
 }

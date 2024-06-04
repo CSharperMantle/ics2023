@@ -34,11 +34,25 @@ class ImmDec extends Module {
   val immIs   = Cat(Fill(XLen - 6, false.B), io.instr(25, 20))
   val immIcsr = Cat(Fill(XLen - 12, false.B), io.instr(31, 20))
   val immS    = Cat(Fill(XLen - 12, sign), io.instr(31, 25), io.instr(11, 7))
-  val immB    = Cat(Fill(XLen - 13, sign), io.instr(31), io.instr(7), io.instr(30, 25), io.instr(11, 8), false.B)
+  val immB = Cat(
+    Fill(XLen - 13, sign),
+    io.instr(31),
+    io.instr(7),
+    io.instr(30, 25),
+    io.instr(11, 8),
+    false.B
+  )
   val immU =
     if (XLen == 32) Cat(io.instr(31, 12), Fill(12, false.B))
     else Cat(Fill(XLen - 32, sign), io.instr(31, 12), Fill(12, false.B))
-  val immJ = Cat(Fill(XLen - 21, sign), io.instr(31), io.instr(19, 12), io.instr(20), io.instr(30, 21), false.B)
+  val immJ = Cat(
+    Fill(XLen - 21, sign),
+    io.instr(31),
+    io.instr(19, 12),
+    io.instr(20),
+    io.instr(30, 21),
+    false.B
+  )
 
   val dec = Decoder1H(
     Seq(

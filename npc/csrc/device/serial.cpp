@@ -22,6 +22,7 @@ static void serial_io_handler(uint32_t offset, uint8_t mask, bool is_write) {
       for (size_t i = 0; i < 8; i++) {
         if ((mask >> i) & 0b1) {
           std::putchar((buf >> (i * 8)) & 0xFF);
+          std::fflush(stdout);
         }
       }
       break;

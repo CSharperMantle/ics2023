@@ -14,10 +14,10 @@ object MemWidth extends CvtChiselEnum {
 }
 
 object MemAction extends CvtChiselEnum {
-  val Rd   = Value
-  val Rdu  = Value
-  val Wt   = Value
-  val None = Value
+  val MemRd   = Value
+  val MemRdu  = Value
+  val MemWt   = Value
+  val MemNone = Value
 }
 
 class MemuBlackBoxIO extends Bundle {
@@ -85,10 +85,10 @@ class Memu extends Module {
 
   val memActionDec = Decoder1H(
     Seq(
-      MemAction.Rd.BP   -> 0,
-      MemAction.Rdu.BP  -> 1,
-      MemAction.Wt.BP   -> 2,
-      MemAction.None.BP -> 3
+      MemAction.MemRd.BP   -> 0,
+      MemAction.MemRdu.BP  -> 1,
+      MemAction.MemWt.BP   -> 2,
+      MemAction.MemNone.BP -> 3
     )
   )
   val memAction1H = memActionDec(io.memAction)
@@ -175,5 +175,7 @@ class Memu extends Module {
   sext.io.sextU    := memAction1H(1)
   io.memRData      := sext.io.sextRes
 
-  io.inval := memAction1H(memActionDec.bitBad) | memWAlign1H(memAlignDec.bitBad) | memRAlign1H(memAlignDec.bitBad)
+  io.inval := memAction1H(memActionDec.bitBad) | memWAlign1H(
+    memAlignDec.bitBad
+  ) | memRAlign1H(memAlignDec.bitBad)
 }

@@ -12,7 +12,8 @@ class Decoder1H(val cases: Seq[(BitPat, Int)]) {
       cases.map {
         case (pat, idx) => {
           val pat1HSuffixed = if (idx > 0) (1.Y ## idx.N) else 1.Y
-          pat -> (if (cases.length - idx > 0) ((cases.length - idx).N ## pat1HSuffixed) else pat1HSuffixed)
+          pat -> (if (cases.length - idx > 0) ((cases.length - idx).N ## pat1HSuffixed)
+                  else pat1HSuffixed)
         }
       },
       1.Y ## cases.length.N

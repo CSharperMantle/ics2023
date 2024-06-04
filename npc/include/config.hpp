@@ -1,10 +1,13 @@
 #ifndef NPC_CONFIG_HPP_
 #define NPC_CONFIG_HPP_
 
+#define CONFIG_DUMP_WAVE 0
+
 #define CONFIG_RT_CHECK
 // #define CONFIG_MTRACE
 // #define CONFIG_DTRACE
 // #define CONFIG_ISA64
+#define CONFIG_IRINGBUF_NR_ELEM 64
 
 #define CONFIG_DEVICE
 #define CONFIG_RTC_MMIO    0xa0000048

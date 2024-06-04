@@ -52,9 +52,11 @@ class Core extends Module {
   exu.io.pc      := pc
   exu.io.imm     := imm
 
-  csr.io.s1     := exu.io.csrS1
-  csr.io.csrIdx := imm(11, 0)
-  csr.io.csrOp  := idu.io.csrOp
+  csr.io.s1      := exu.io.csrS1
+  csr.io.csrIdx  := imm(11, 0)
+  csr.io.csrOp   := idu.io.csrOp
+  csr.io.excpAdj := idu.io.excpAdj
+  csr.io.pc      := pc
 
   memu.io.memAction := idu.io.memAction
   memu.io.memWidth  := idu.io.memWidth
@@ -75,10 +77,11 @@ class Core extends Module {
   val brTarget = Mux(exu.io.brTaken, pc + imm, snpc)
   val pcSelDec = Decoder1H(
     Seq(
-      InstrPcSel.PcSnpc.BP -> 0,
-      InstrPcSel.PcAlu.BP  -> 1,
-      InstrPcSel.PcBr.BP   -> 2,
-      InstrPcSel.PcEpc.BP  -> 3
+      InstrPcSel.PcSnpc.BP  -> 0,
+      InstrPcSel.PcAlu.BP   -> 1,
+      InstrPcSel.PcBr.BP    -> 2,
+      InstrPcSel.PcMepc.BP  -> 3,
+      InstrPcSel.PcMtvec.BP -> 4
     )
   )
   val pcSel1H = pcSelDec(idu.io.pcSel)
@@ -87,12 +90,16 @@ class Core extends Module {
       pcSel1H(0) -> snpc,
       pcSel1H(1) -> exu.io.d,
       pcSel1H(2) -> brTarget,
-      pcSel1H(3) -> csr.io.epc,
-      pcSel1H(4) -> 0.U
+      pcSel1H(3) -> csr.io.mepc,
+      pcSel1H(4) -> csr.io.mtvec,
+      pcSel1H(5) -> 0.U
     )
   )
 
   pc := dnpc
 
-  io.inval := ~reset.asBool & (exu.io.inval | memu.io.inval | wbu.io.inval | pcSel1H(pcSelDec.bitBad))
+  io.break := idu.io.break
+  io.inval := ~reset.asBool & (idu.io.inval | exu.io.inval | memu.io.inval | wbu.io.inval | pcSel1H(
+    pcSelDec.bitBad
+  ))
 }

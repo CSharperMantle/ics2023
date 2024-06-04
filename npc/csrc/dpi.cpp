@@ -4,15 +4,19 @@
 #include "difftest.hpp"
 #include "mem/host.hpp"
 #include "mem/paddr.hpp"
+#include "util/iringbuf.hpp"
 
 extern VTop dut;
+extern IRingBuf iringbuf;
 
 extern "C" void npc_dpi_ifu(sword_t pc, int *instr) {
   const word_t upc = static_cast<word_t>(pc) & ~0x3u;
   if (dut.reset) {
     *instr = 0;
   } else {
-    *instr = paddr_read(static_cast<paddr_t>(upc));
+    const uint32_t instr_ = paddr_read(static_cast<paddr_t>(upc));
+    iringbuf.emplace_back(upc, instr_);
+    *instr = instr_;
   }
 }
 

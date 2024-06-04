@@ -5,6 +5,7 @@ BIN = $(BUILD_DIR)/$(TOP_NAME)
 
 PRJ_NAME = playground
 
+
 TOP_NAME = Top
 NXDC_FILES = constr/top.nxdc
 INC_PATH ?= $(abspath ./include)
@@ -16,28 +17,33 @@ VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert  \
 				--trace
 
+CONFIG_LLVM_CONFIG ?= llvm-config-15
+
 default: verilog $(BIN)
 
 $(shell mkdir -p $(BUILD_DIR))
 
-SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
-$(SRC_AUTO_BIND): $(NXDC_FILES)
-	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+# SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
+# $(SRC_AUTO_BIND): $(NXDC_FILES)
+# 	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+
+CXXFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --cxxflags) -fPIE
+LDFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --libs)
 
 # NVBoard interop: source
 VSRCS = $(shell find $(abspath ./build) -regextype posix-extended -regex "^.*\.(sv|v)$$")
 CSRCS = $(shell find $(abspath ./csrc) -regextype posix-extended -regex "^.*\.(c|cc|cpp)$$")
-CSRCS += $(SRC_AUTO_BIND)
 
 # NVBoard interop: rules
-include $(NVBOARD_HOME)/scripts/nvboard.mk
+# include $(NVBOARD_HOME)/scripts/nvboard.mk
+# CSRCS += $(SRC_AUTO_BIND)
 
-# NVBoard interop: verilator flags
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS)
 CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -O3
 
-$(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
+# $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
+$(BIN): $(VSRCS) $(CSRCS)
 	./script/remove_f.py $(VSRCS)
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \

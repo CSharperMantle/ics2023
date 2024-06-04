@@ -7,6 +7,12 @@ import chisel3.util.experimental.decode._
 import common._
 import npc._
 
+object CsrExcpAdj extends CvtChiselEnum {
+  val ExcpAdjNone  = Value
+  val ExcpAdjEcall = Value
+  val ExcpAdjMret  = Value
+}
+
 object CsrInternalIdx extends CvtChiselEnum {
   val SatpIdx     = Value
   val MstatusIdx  = Value
@@ -28,16 +34,20 @@ object CsrOp extends CvtChiselEnum {
 }
 
 class CsrFileIO extends Bundle {
-  val csrIdx = Input(UInt(12.W))
-  val csrOp  = Input(UInt(CsrOp.W))
-  val s1     = Input(UInt(XLen.W))
-  val csrVal = Output(UInt(XLen.W))
-  val epc    = Output(UInt(XLen.W))
+  val csrIdx  = Input(UInt(12.W))
+  val csrOp   = Input(UInt(CsrOp.W))
+  val s1      = Input(UInt(XLen.W))
+  val excpAdj = Input(UInt(CsrExcpAdj.W))
+  val pc      = Input(UInt(XLen.W))
+  val csrVal  = Output(UInt(XLen.W))
+  val mepc    = Output(UInt(XLen.W))
+  val mtvec   = Output(UInt(XLen.W))
 }
 
 class CsrFile extends Module {
   import CsrOp._
   import CsrInternalIdx._
+  import CsrExcpAdj._
 
   val io = IO(new CsrFileIO)
 
@@ -79,5 +89,33 @@ class CsrFile extends Module {
   )
   io.csrVal := csrVal
 
-  io.epc := csrs(MepcIdx.U)
+  val excpAdjDec = Decoder1H(
+    Seq(
+      ExcpAdjNone.BP  -> 0,
+      ExcpAdjEcall.BP -> 1,
+      ExcpAdjMret.BP  -> 2
+    )
+  )
+  val excpAdj1H = excpAdjDec(io.excpAdj)
+
+  val mstatus = csrs(MstatusIdx.U)
+
+  csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
+  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.pc, csrs(MepcIdx.U))
+
+  // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
+  //                                        | MPP              |               | MPIE      |              | MIE       |
+  val mstatusAdjMret  = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), 1.U(1.W),   mstatus(6, 4), mstatus(7), mstatus(2, 0))
+  val mstatusAdjEcall = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), mstatus(3), mstatus(6, 4), 0.U(1.W),   mstatus(2, 0))
+  csrs(MstatusIdx.U) := Mux1H(
+    Seq(
+      excpAdj1H(0) -> mstatus,
+      excpAdj1H(1) -> mstatusAdjEcall,
+      excpAdj1H(2) -> mstatusAdjMret,
+      excpAdj1H(3) -> mstatus
+    )
+  )
+
+  io.mepc  := csrs(MepcIdx.U)
+  io.mtvec := csrs(MtvecIdx.U)
 }

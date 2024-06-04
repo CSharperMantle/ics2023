@@ -20,7 +20,9 @@ class SExtender extends Module {
 
   val sextResB = Cat(Fill(XLen - 8, Mux(io.sextU, 0.B, io.sextData(7))), io.sextData(7, 0))
   val sextResH = Cat(Fill(XLen - 16, Mux(io.sextU, 0.B, io.sextData(15))), io.sextData(15, 0))
-  val sextResW = if (XLen == 32) io.sextData else Cat(Fill(XLen - 32, Mux(io.sextU, 0.B, io.sextData(31))), io.sextData(31, 0))
+  val sextResW =
+    if (XLen == 32) io.sextData
+    else Cat(Fill(XLen - 32, Mux(io.sextU, 0.B, io.sextData(31))), io.sextData(31, 0))
   val sextResD = io.sextData
   val sextWDec = Decoder1H(
     Seq(
