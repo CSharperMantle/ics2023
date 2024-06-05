@@ -1,10 +1,12 @@
 #include <cassert>
 #include <cstdint>
+#include <memory>
 
 #include "VTop.h"
 #include "common.hpp"
 #include "debug.hpp"
 #include "device/map.hpp"
+#include "difftest.hpp"
 #include "mem/host.hpp"
 #include "mem/paddr.hpp"
 
@@ -51,10 +53,10 @@ static void print_dtrace(paddr_t addr, const char *name, uint8_t mask, bool read
 #endif
 
 int find_mapid_by_addr(const std::vector<IOMap> &maps, paddr_t addr) {
+  extern std::unique_ptr<DiffTest> difftest;
   for (size_t i = 0; i < maps.size(); i++) {
     if (map_inside(maps[i], addr)) {
-      // difftest_skip_ref();
-      // TODO: Add difftest support
+      difftest->skip_next();
       return i;
     }
   }

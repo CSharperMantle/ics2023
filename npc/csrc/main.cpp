@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 
@@ -26,8 +27,8 @@ static const uint32_t DEFAULT_IMG[] = {
 };
 
 VTop dut{};
-static CpuState cpu_state_dut{};
-static CpuState cpu_state_ref{};
+
+std::unique_ptr<DiffTest> difftest{};
 
 static VerilatedContext *ctx = nullptr;
 static VerilatedVcdC *tf = nullptr;
@@ -45,10 +46,7 @@ static void cycle() {
   step_and_dump_wave();
   dut.clock = 1;
   step_and_dump_wave();
-  memcpy(cpu_state_dut.gpr,
-         dut.rootp->Top__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory.data(),
-         sizeof(cpu_state_dut.gpr));
-  cpu_state_dut.pc = dut.io_pc;
+  difftest->sync_dut(dut);
 }
 
 static void sim_init() {
@@ -99,10 +97,10 @@ int main(int argc, char *argv[]) {
   if (env_ref_so == nullptr || std::strlen(env_ref_so) == 0) {
     Log("difftest: not initialized; NPC_DIFFTEST_REF_SO=%s",
         env_ref_so == nullptr ? "(not found)" : env_ref_so);
-    load_difftest(nullptr, len_img, cpu_state_dut);
+    difftest = std::make_unique<DiffTest>(nullptr, len_img);
   } else {
     Log("difftest: loading ref so \"%s\"", env_ref_so);
-    load_difftest(env_ref_so, len_img, cpu_state_dut);
+    difftest = std::make_unique<DiffTest>(env_ref_so, len_img);
   }
 
 #ifdef CONFIG_DEVICE
@@ -117,11 +115,10 @@ int main(int argc, char *argv[]) {
   dut.reset = 0;
 
   do {
-    ref_difftest_regcpy(&cpu_state_dut, DiffTestCopyDir::ToRef);
+    difftest->cycle_preamble();
     cycle();
-    ref_difftest_exec(1);
-    ref_difftest_regcpy(&cpu_state_ref, DiffTestCopyDir::ToDut);
-    difftest_check(cpu_state_ref, cpu_state_dut);
+    difftest->cycle();
+    difftest->assert_gpr();
   } while (!dut.io_break);
 
   const word_t retval = dut.io_a0;
@@ -135,5 +132,5 @@ int main(int argc, char *argv[]) {
   }
 
   sim_exit();
-  return (int)retval;
+  return retval != 0;
 }
