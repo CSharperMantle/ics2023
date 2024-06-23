@@ -75,7 +75,7 @@ static uint64_t full_mul_u64(uint64_t a, uint64_t b, uint64_t *out_h) {
   sum_h += p2 >> 32;
   sum_h += p3;
 
-  if (sum_h != NULL) {}
+  if (out_h != NULL) {
     *out_h = sum_h;
   }
   return sum_l;
