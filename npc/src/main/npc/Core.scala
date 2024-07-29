@@ -23,16 +23,16 @@ class Core extends Module {
   val ifu      = Module(new Ifu)
   val idu      = Module(new Idu)
   val exu      = Module(new Exu)
-  val memu     = Module(new Memu)
+  val lsu      = Module(new Lsu)
   val wbu      = Module(new Wbu)
   val pcUpdate = Module(new PcUpdate)
 
   StageConnect(idu.io.msgIn, ifu.io.msgOut)
   StageConnect(exu.io.msgIn, idu.io.msgOut)
   gpr.io.read <> exu.io.gprRead
-  csr.io.conn <> exu.io.csr
-  StageConnect(memu.io.msgIn, exu.io.msgOut)
-  StageConnect(wbu.io.msgIn, memu.io.msgOut)
+  csr.io.conn <> exu.io.csrConn
+  StageConnect(lsu.io.msgIn, exu.io.msgOut)
+  StageConnect(wbu.io.msgIn, lsu.io.msgOut)
   gpr.io.write <> wbu.io.gprWrite
   StageConnect(pcUpdate.io.msgIn, wbu.io.msgOut)
   StageConnect(ifu.io.msgIn, pcUpdate.io.msgOut)

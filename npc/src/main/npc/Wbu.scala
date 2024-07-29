@@ -25,7 +25,7 @@ class Wbu2PcUpdateMsg extends Bundle {
 }
 
 class WbuIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new Memu2WbuMsg))
+  val msgIn  = Flipped(Decoupled(new Lsu2WbuMsg))
   val msgOut = Decoupled(new Wbu2PcUpdateMsg)
 
   val gprWrite = Flipped(new GprFileWriteConn)

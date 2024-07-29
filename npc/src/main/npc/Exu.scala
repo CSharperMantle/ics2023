@@ -18,7 +18,7 @@ object ExSrcBSel extends CvtChiselEnum {
   val SrcBImm = Value
 }
 
-class Exu2MemuMsg extends Bundle {
+class Exu2LsuMsg extends Bundle {
   val memAction = Output(MemActionField.chiselType)
   val memWidth  = Output(MemWidthField.chiselType)
   val d         = Output(UInt(XLen.W))
@@ -39,10 +39,10 @@ class Exu2MemuMsg extends Bundle {
 
 class ExuIO extends Bundle {
   val msgIn  = Flipped(Decoupled(new Idu2ExuMsg))
-  val msgOut = Decoupled(new Exu2MemuMsg)
+  val msgOut = Decoupled(new Exu2LsuMsg)
 
   val gprRead = Flipped(new GprFileReadConn)
-  val csr     = Flipped(new CsrFileConn)
+  val csrConn = Flipped(new CsrFileConn)
 }
 
 class Exu extends Module {
@@ -96,11 +96,11 @@ class Exu extends Module {
   io.gprRead.rs1Idx := io.msgIn.bits.rs1Idx
   io.gprRead.rs2Idx := io.msgIn.bits.rs2Idx
 
-  io.csr.s1      := srcA
-  io.csr.csrIdx  := io.msgIn.bits.imm(11, 0)
-  io.csr.csrOp   := Mux(io.msgIn.valid, io.msgIn.bits.csrOp, CsrOp.Unk.U)
-  io.csr.excpAdj := Mux(io.msgIn.valid, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
-  io.csr.pc      := io.msgIn.bits.pc
+  io.csrConn.s1      := srcA
+  io.csrConn.csrIdx  := io.msgIn.bits.imm(11, 0)
+  io.csrConn.csrOp   := Mux(io.msgIn.valid, io.msgIn.bits.csrOp, CsrOp.Unk.U)
+  io.csrConn.excpAdj := Mux(io.msgIn.valid, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
+  io.csrConn.pc      := io.msgIn.bits.pc
 
   io.msgOut.bits.memAction := io.msgIn.bits.memAction
   io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
@@ -113,13 +113,13 @@ class Exu extends Module {
   io.msgOut.bits.pc      := io.msgIn.bits.pc
   io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn
   io.msgOut.bits.wbSel   := io.msgIn.bits.wbSel
-  io.msgOut.bits.csrVal  := io.csr.csrVal
+  io.msgOut.bits.csrVal  := io.csrConn.csrVal
   io.msgOut.bits.rdIdx   := io.msgIn.bits.rdIdx
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
   io.msgOut.bits.brTaken := alu.io.brTaken
   io.msgOut.bits.imm     := io.msgIn.bits.imm
-  io.msgOut.bits.mepc    := io.csr.mepc
-  io.msgOut.bits.mtvec   := io.csr.mtvec
+  io.msgOut.bits.mepc    := io.csrConn.mepc
+  io.msgOut.bits.mtvec   := io.csrConn.mtvec
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

@@ -68,7 +68,7 @@ class MemuBlackBox extends BlackBox with HasBlackBoxInline {
   )
 }
 
-class Memu2WbuMsg extends Bundle {
+class Lsu2WbuMsg extends Bundle {
   val pc       = Output(UInt(XLen.W))
   val wbSel    = Output(WbSelField.chiselType)
   val d        = Output(UInt(XLen.W))
@@ -85,15 +85,15 @@ class Memu2WbuMsg extends Bundle {
   val mtvec   = Output(UInt(XLen.W))
 }
 
-class MemuIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new Exu2MemuMsg))
-  val msgOut = Decoupled(new Memu2WbuMsg)
+class LsuIO extends Bundle {
+  val msgIn  = Flipped(Decoupled(new Exu2LsuMsg))
+  val msgOut = Decoupled(new Lsu2WbuMsg)
 }
 
-class Memu extends Module {
+class Lsu extends Module {
   require(XLen == 32, "Memu for RV64 is not implemented")
 
-  val io = IO(new MemuIO)
+  val io = IO(new LsuIO)
 
   val memRAddr = io.msgIn.bits.d
   val memWAddr = io.msgIn.bits.d

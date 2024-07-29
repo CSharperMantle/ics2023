@@ -37,7 +37,7 @@ class IduSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.msgOut.ready.poke(true)
       dut.clock.step()
       dut.io.msgOut.valid.expect(true)
-      dut.io.msgOut.bits.break.expect(false)
+      dut.io.break.expect(false)
       dut.io.msgIn.ready.expect(true)
     }
   }
