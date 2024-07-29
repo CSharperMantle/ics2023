@@ -25,6 +25,17 @@ object npc {
     def ontoZmod2pow(width: Int): BigInt = x & BigInt("1" * width, 2)
   }
 
+  object ArchType extends Enumeration {
+    type ArchType = Value
+
+    val SingleCycle = Value
+    val MultiCycle = Value
+    val Pipelined = Value
+    val OutOfOrder = Value
+  }
+
+  val Arch = ArchType.MultiCycle
+
   val XLen = 32
   require(XLen == 32 || XLen == 64)
 
