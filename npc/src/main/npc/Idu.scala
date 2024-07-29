@@ -224,14 +224,15 @@ object CsrOpField extends DecodeField[InstrPat, UInt] {
   def name       = "csrOp"
   def chiselType = UInt(CsrOp.W)
   def genTable(pat: InstrPat): BitPat = {
+    import CsrOp._
     if (pat.wbSel == WbSel.WbCsr.BP)
       pat.funct3.rawString match {
-        case "001" | "101" => CsrOp.Rw.BP
-        case "010" | "110" => CsrOp.Rs.BP
-        case "011" | "111" => CsrOp.Rc.BP
-        case _             => CsrOp.Unk.BP
+        case "001" | "101" => Rw.BP
+        case "010" | "110" => Rs.BP
+        case "011" | "111" => Rc.BP
+        case _             => Unk.BP
       }
-    else CsrOp.Unk.BP
+    else Unk.BP
   }
 }
 
@@ -287,26 +288,33 @@ object InstrInvalField extends BoolDecodeField[InstrPat] {
   }
 }
 
-class IduIO extends Bundle {
-  val instr      = Input(UInt(32.W))
-  val break      = Output(Bool())
-  val memWidth   = Output(MemWidthField.chiselType)
+class Idu2ExuMsg extends Bundle {
   val rs1Idx     = Output(UInt(5.W))
   val rs2Idx     = Output(UInt(5.W))
-  val rdIdx      = Output(UInt(5.W))
   val aluCalcOp  = Output(AluCalcOpField.chiselType)
   val aluCalcDir = Output(AluCalcDirField.chiselType)
   val aluBrCond  = Output(AluBrCondField.chiselType)
   val csrOp      = Output(CsrOpField.chiselType)
   val imm        = Output(UInt(XLen.W))
-  val pcSel      = Output(PcSelField.chiselType)
   val srcASel    = Output(SrcASelField.chiselType)
   val srcBSel    = Output(SrcBSelField.chiselType)
-  val memAction  = Output(MemActionField.chiselType)
-  val wbSel      = Output(WbSelField.chiselType)
-  val wbEn       = Output(WbEnField.chiselType)
   val excpAdj    = Output(ExcpAdjField.chiselType)
   val inval      = Output(Bool())
+  // Pass-through for Exu
+  val pc        = Output(UInt(XLen.W))
+  val memAction = Output(MemActionField.chiselType)
+  val memWidth  = Output(MemWidthField.chiselType)
+  val wbEn      = Output(WbEnField.chiselType)
+  val wbSel     = Output(WbSelField.chiselType)
+  val rdIdx     = Output(UInt(5.W))
+  val pcSel     = Output(PcSelField.chiselType)
+}
+
+class IduIO extends Bundle {
+  val msgIn  = Flipped(Decoupled(new Ifu2IduMsg))
+  val msgOut = Decoupled(new Idu2ExuMsg)
+
+  val break = Output(Bool())
 }
 
 class Idu extends Module {
@@ -393,29 +401,34 @@ class Idu extends Module {
     InstrInvalField
   )
   val table = new DecodeTable(patterns, fields)
-  val res   = table.decode(io.instr)
-
-  io.break      := res(BreakField)
-  io.memWidth   := res(MemWidthField)
-  io.aluCalcOp  := res(AluCalcOpField)
-  io.aluCalcDir := res(AluCalcDirField)
-  io.aluBrCond  := res(AluBrCondField)
-  io.csrOp      := res(CsrOpField)
-  io.pcSel      := res(PcSelField)
-  io.srcASel    := res(SrcASelField)
-  io.srcBSel    := res(SrcBSelField)
-  io.memAction  := res(MemActionField)
-  io.wbSel      := res(WbSelField)
-  io.wbEn       := res(WbEnField)
-  io.excpAdj    := res(ExcpAdjField)
-  io.inval      := res(InstrInvalField)
+  val res   = table.decode(io.msgIn.bits.instr)
 
   val immDec = Module(new ImmDec)
-  immDec.io.instr  := io.instr
+  immDec.io.instr  := io.msgIn.bits.instr
   immDec.io.immFmt := res(ImmFmtField)
-  io.imm           := immDec.io.imm
 
-  io.rs1Idx := io.instr(19, 15)
-  io.rs2Idx := io.instr(24, 20)
-  io.rdIdx  := io.instr(11, 7)
+  io.msgOut.bits.rs1Idx     := io.msgIn.bits.instr(19, 15)
+  io.msgOut.bits.rs2Idx     := io.msgIn.bits.instr(24, 20)
+  io.msgOut.bits.aluCalcOp  := res(AluCalcOpField)
+  io.msgOut.bits.aluCalcDir := res(AluCalcDirField)
+  io.msgOut.bits.aluBrCond  := res(AluBrCondField)
+  io.msgOut.bits.csrOp      := res(CsrOpField)
+  io.msgOut.bits.imm        := immDec.io.imm
+  io.msgOut.bits.srcASel    := res(SrcASelField)
+  io.msgOut.bits.srcBSel    := res(SrcBSelField)
+  io.msgOut.bits.excpAdj    := res(ExcpAdjField)
+  io.msgOut.bits.inval      := res(InstrInvalField)
+
+  io.msgOut.bits.pc        := io.msgIn.bits.pc
+  io.msgOut.bits.memAction := res(MemActionField)
+  io.msgOut.bits.memWidth  := res(MemWidthField)
+  io.msgOut.bits.wbEn      := res(WbEnField)
+  io.msgOut.bits.wbSel     := res(WbSelField)
+  io.msgOut.bits.rdIdx     := io.msgIn.bits.instr(11, 7)
+  io.msgOut.bits.pcSel     := res(PcSelField)
+
+  io.break := res(BreakField)
+
+  io.msgOut.valid := io.msgIn.valid
+  io.msgIn.ready  := io.msgOut.ready
 }

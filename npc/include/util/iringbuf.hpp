@@ -9,6 +9,7 @@
 
 using IRingBuf = baudvine::RingBuf<std::pair<paddr_t, uint32_t>, CONFIG_IRINGBUF_NR_ELEM>;
 
+extern std::pair<paddr_t, uint32_t> instr_pending;
 extern IRingBuf iringbuf;
 
 #endif /* IRINGBUF_H_INCLUDED_ */

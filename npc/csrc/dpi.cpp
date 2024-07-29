@@ -9,14 +9,19 @@
 extern VTop dut;
 extern IRingBuf iringbuf;
 
-extern "C" void npc_dpi_ifu(sword_t pc, int *instr) {
+static word_t ifu_request_addr = 0;
+
+extern "C" bool npc_dpi_ifu(sword_t pc, int *instr) {
   const word_t upc = static_cast<word_t>(pc) & ~0x3u;
-  if (dut.reset) {
-    *instr = 0;
+  if (ifu_request_addr != upc) {
+    *instr = 0xdead3210;
+    ifu_request_addr = upc;
+    return false;
   } else {
     const uint32_t instr_ = paddr_read(static_cast<paddr_t>(upc));
-    iringbuf.emplace_back(upc, instr_);
+    instr_pending = std::make_pair(upc, instr_);
     *instr = instr_;
+    return true;
   }
 }
 

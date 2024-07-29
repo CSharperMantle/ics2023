@@ -79,7 +79,7 @@ Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
   return ctx;
 }
 
-void yield() {
+void yield(void) {
 #ifdef __riscv_e
   asm volatile("li a5, -1; ecall");
 #else
@@ -87,8 +87,15 @@ void yield() {
 #endif
 }
 
-bool ienabled() {
-  return false;
+bool ienabled(void) {
+  CsrMstatus_t mstatus;
+  asm volatile("csrr %0, mstatus" : "=r"(mstatus.packed));
+  return mstatus.mie;
 }
 
-void iset(bool enable) {}
+void iset(bool enable) {
+  CsrMstatus_t mstatus;
+  asm volatile("csrr %0, mstatus" : "=r"(mstatus.packed));
+  mstatus.mie = enable;
+  asm volatile("csrw mstatus, %0" : : "r"(mstatus.packed));
+}

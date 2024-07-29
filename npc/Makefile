@@ -27,10 +27,10 @@ $(shell mkdir -p $(BUILD_DIR))
 # $(SRC_AUTO_BIND): $(NXDC_FILES)
 # 	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
 
+# LLVM flags
 CXXFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --cxxflags) -fPIE
 LDFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --libs)
 
-# NVBoard interop: source
 VSRCS = $(shell find $(abspath ./build) -regextype posix-extended -regex "^.*\.(sv|v)$$")
 CSRCS = $(shell find $(abspath ./csrc) -regextype posix-extended -regex "^.*\.(c|cc|cpp)$$")
 
@@ -40,7 +40,7 @@ CSRCS = $(shell find $(abspath ./csrc) -regextype posix-extended -regex "^.*\.(c
 
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS)
-CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -O3
+CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -g
 
 # $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 $(BIN): $(VSRCS) $(CSRCS)

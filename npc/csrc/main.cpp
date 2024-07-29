@@ -46,6 +46,9 @@ static void cycle() {
   step_and_dump_wave();
   dut.clock = 1;
   step_and_dump_wave();
+  if (dut.io_retired) {
+    iringbuf.push_back(std::move(instr_pending));
+  }
   difftest->sync_dut(dut);
 }
 
@@ -74,6 +77,13 @@ static void print_iringbuf() {
     Log(FMT_WORD "\t%s", instr.first, instr_disasm.c_str());
   }
   Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
+}
+
+void assert_fail_msg() {
+  print_iringbuf();
+#if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
+  tf->close();
+#endif
 }
 
 int main(int argc, char *argv[]) {

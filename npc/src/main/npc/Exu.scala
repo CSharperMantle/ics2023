@@ -18,21 +18,31 @@ object ExSrcBSel extends CvtChiselEnum {
   val SrcBImm = Value
 }
 
-class ExuIO extends Bundle {
-  val srcASel = Input(UInt(ExSrcASel.W))
-  val srcBSel = Input(UInt(ExSrcBSel.W))
-  val calcOp  = Input(UInt(AluCalcOp.W))
-  val calcDir = Input(UInt(AluCalcDir.W))
-  val brCond  = Input(UInt(AluBrCond.W))
-  val rs1Idx  = Input(UInt(5.W))
-  val rs1     = Input(UInt(XLen.W))
-  val rs2     = Input(UInt(XLen.W))
-  val pc      = Input(UInt(XLen.W))
-  val imm     = Input(UInt(XLen.W))
-  val d       = Output(UInt(XLen.W))
+class Exu2MemuMsg extends Bundle {
+  val memAction = Output(MemActionField.chiselType)
+  val memWidth  = Output(MemWidthField.chiselType)
+  val d         = Output(UInt(XLen.W))
+  val rs2       = Output(UInt(XLen.W))
+  val inval     = Output(Bool())
+  // Pass-through for Memu
+  val pc      = Output(UInt(XLen.W))
+  val wbEn    = Output(WbEnField.chiselType)
+  val wbSel   = Output(WbSelField.chiselType)
+  val csrVal  = Output(UInt(XLen.W))
+  val rdIdx   = Output(UInt(5.W))
+  val pcSel   = Output(PcSelField.chiselType)
   val brTaken = Output(Bool())
-  val csrS1   = Output(UInt(XLen.W))
-  val inval   = Output(Bool())
+  val imm     = Output(UInt(XLen.W))
+  val mepc    = Output(UInt(XLen.W))
+  val mtvec   = Output(UInt(XLen.W))
+}
+
+class ExuIO extends Bundle {
+  val msgIn  = Flipped(Decoupled(new Idu2ExuMsg))
+  val msgOut = Decoupled(new Exu2MemuMsg)
+
+  val gprRead = Flipped(new GprFileReadConn)
+  val csr     = Flipped(new CsrFileConn)
 }
 
 class Exu extends Module {
@@ -51,13 +61,13 @@ class Exu extends Module {
       SrcAZimm.BP -> 3
     )
   )
-  val srcASel1H = srcASelDec(io.srcASel)
+  val srcASel1H = srcASelDec(io.msgIn.bits.srcASel)
   val srcA = Mux1H(
     Seq(
-      srcASel1H(0) -> io.rs1,
-      srcASel1H(1) -> io.pc,
+      srcASel1H(0) -> io.gprRead.rs1,
+      srcASel1H(1) -> io.msgIn.bits.pc,
       srcASel1H(2) -> 0.U,
-      srcASel1H(3) -> Cat(Fill(XLen - 5, false.B), io.rs1Idx),
+      srcASel1H(3) -> Cat(Fill(XLen - 5, false.B), io.msgIn.bits.rs1Idx),
       srcASel1H(4) -> 0.U
     )
   )
@@ -68,23 +78,49 @@ class Exu extends Module {
       SrcBImm.BP -> 1
     )
   )
-  val srcBSel1H = srcBSelDec(io.srcBSel)
+  val srcBSel1H = srcBSelDec(io.msgIn.bits.srcBSel)
   val srcB = Mux1H(
     Seq(
-      srcBSel1H(0) -> io.rs2,
-      srcBSel1H(1) -> io.imm,
+      srcBSel1H(0) -> io.gprRead.rs2,
+      srcBSel1H(1) -> io.msgIn.bits.imm,
       srcBSel1H(2) -> 0.U
     )
   )
 
   alu.io.s1      := srcA
   alu.io.s2      := srcB
-  alu.io.calcOp  := io.calcOp
-  alu.io.calcDir := io.calcDir
-  alu.io.brCond  := io.brCond
+  alu.io.calcOp  := io.msgIn.bits.aluCalcOp
+  alu.io.calcDir := io.msgIn.bits.aluCalcDir
+  alu.io.brCond  := io.msgIn.bits.aluBrCond
 
-  io.d       := alu.io.d
-  io.brTaken := alu.io.brTaken
-  io.csrS1   := srcA
-  io.inval   := srcASel1H(srcASelDec.bitBad) | srcBSel1H(srcBSelDec.bitBad)
+  io.gprRead.rs1Idx := io.msgIn.bits.rs1Idx
+  io.gprRead.rs2Idx := io.msgIn.bits.rs2Idx
+
+  io.csr.s1      := srcA
+  io.csr.csrIdx  := io.msgIn.bits.imm(11, 0)
+  io.csr.csrOp   := Mux(io.msgIn.valid, io.msgIn.bits.csrOp, CsrOp.Unk.U)
+  io.csr.excpAdj := Mux(io.msgIn.valid, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
+  io.csr.pc      := io.msgIn.bits.pc
+
+  io.msgOut.bits.memAction := io.msgIn.bits.memAction
+  io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
+  io.msgOut.bits.d         := alu.io.d
+  io.msgOut.bits.rs2       := io.gprRead.rs2
+  io.msgOut.bits.inval := io.msgIn.bits.inval |
+    srcASel1H(srcASelDec.bitBad) |
+    srcBSel1H(srcBSelDec.bitBad)
+
+  io.msgOut.bits.pc      := io.msgIn.bits.pc
+  io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn
+  io.msgOut.bits.wbSel   := io.msgIn.bits.wbSel
+  io.msgOut.bits.csrVal  := io.csr.csrVal
+  io.msgOut.bits.rdIdx   := io.msgIn.bits.rdIdx
+  io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
+  io.msgOut.bits.brTaken := alu.io.brTaken
+  io.msgOut.bits.imm     := io.msgIn.bits.imm
+  io.msgOut.bits.mepc    := io.csr.mepc
+  io.msgOut.bits.mtvec   := io.csr.mtvec
+
+  io.msgIn.ready  := io.msgOut.ready
+  io.msgOut.valid := io.msgIn.valid
 }

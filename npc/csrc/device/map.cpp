@@ -64,8 +64,7 @@ int find_mapid_by_addr(const std::vector<IOMap> &maps, paddr_t addr) {
 }
 
 void init_map() {
-  io_space = reinterpret_cast<uint8_t *>(malloc(IO_SPACE_MAX));
-  assert(io_space);
+  io_space = new uint8_t[IO_SPACE_MAX];
   p_space = io_space;
 }
 

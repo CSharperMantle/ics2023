@@ -33,7 +33,7 @@ object CsrOp extends CvtChiselEnum {
   val Unk = Value
 }
 
-class CsrFileIO extends Bundle {
+class CsrFileConn extends Bundle {
   val csrIdx  = Input(UInt(12.W))
   val csrOp   = Input(UInt(CsrOp.W))
   val s1      = Input(UInt(XLen.W))
@@ -42,6 +42,10 @@ class CsrFileIO extends Bundle {
   val csrVal  = Output(UInt(XLen.W))
   val mepc    = Output(UInt(XLen.W))
   val mtvec   = Output(UInt(XLen.W))
+}
+
+class CsrFileIO extends Bundle {
+  val conn = new CsrFileConn
 }
 
 class CsrFile extends Module {
@@ -55,12 +59,12 @@ class CsrFile extends Module {
 
   val csrOpDec = Decoder1H(
     Seq(
-      Rw.BP -> 0,
-      Rs.BP -> 1,
-      Rc.BP -> 2
+      Rw.BP  -> 0,
+      Rs.BP  -> 1,
+      Rc.BP  -> 2
     )
   )
-  val csrOp1H = csrOpDec(io.csrOp)
+  val csrOp1H = csrOpDec(io.conn.csrOp)
 
   val csrIdxDecTable = TruthTable(
     Seq(
@@ -76,18 +80,18 @@ class CsrFile extends Module {
     ),
     UnkIdx.BP
   )
-  val csrIdxDecoded = decoder(io.csrIdx, csrIdxDecTable)
+  val csrIdxDecoded = decoder(io.conn.csrIdx, csrIdxDecTable)
 
   val csrVal = Mux(csrIdxDecoded === UnkIdx.U, 0.U, csrs(csrIdxDecoded))
   csrs(csrIdxDecoded) := Mux1H(
     Seq(
-      csrOp1H(0) -> io.s1,
-      csrOp1H(1) -> (io.s1 | csrVal),
-      csrOp1H(2) -> (~io.s1 & csrVal),
+      csrOp1H(0) -> io.conn.s1,
+      csrOp1H(1) -> (io.conn.s1 | csrVal),
+      csrOp1H(2) -> (~io.conn.s1 & csrVal),
       csrOp1H(3) -> csrVal
     )
   )
-  io.csrVal := csrVal
+  io.conn.csrVal := csrVal
 
   val excpAdjDec = Decoder1H(
     Seq(
@@ -96,12 +100,12 @@ class CsrFile extends Module {
       ExcpAdjMret.BP  -> 2
     )
   )
-  val excpAdj1H = excpAdjDec(io.excpAdj)
+  val excpAdj1H = excpAdjDec(io.conn.excpAdj)
 
   val mstatus = csrs(MstatusIdx.U)
 
   csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
-  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.pc, csrs(MepcIdx.U))
+  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(MepcIdx.U))
 
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
   //                                        | MPP              |               | MPIE      |              | MIE       |
@@ -116,6 +120,6 @@ class CsrFile extends Module {
     )
   )
 
-  io.mepc  := csrs(MepcIdx.U)
-  io.mtvec := csrs(MtvecIdx.U)
+  io.conn.mepc  := csrs(MepcIdx.U)
+  io.conn.mtvec := csrs(MtvecIdx.U)
 }

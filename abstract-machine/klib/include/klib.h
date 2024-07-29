@@ -52,6 +52,13 @@ int vsnprintf(char *str, size_t size, const char *format, va_list ap);
   } while (0)
 #endif
 
+// ctype.h
+int isspace(int c);
+int isxdigit(int c);
+int isdigit(int c);
+int isalpha(int c);
+int toupper(int c);
+
 #ifdef __cplusplus
 }
 #endif

@@ -68,20 +68,36 @@ class MemuBlackBox extends BlackBox with HasBlackBoxInline {
   )
 }
 
+class Memu2WbuMsg extends Bundle {
+  val pc       = Output(UInt(XLen.W))
+  val wbSel    = Output(WbSelField.chiselType)
+  val d        = Output(UInt(XLen.W))
+  val memRData = Output(UInt(XLen.W))
+  val csrVal   = Output(UInt(XLen.W))
+  val rdIdx    = Output(UInt(5.W))
+  val wbEn     = Output(WbEnField.chiselType)
+  val inval    = Output(Bool())
+  // Pass-through for Wbu
+  val pcSel   = Output(PcSelField.chiselType)
+  val brTaken = Output(Bool())
+  val imm     = Output(UInt(XLen.W))
+  val mepc    = Output(UInt(XLen.W))
+  val mtvec   = Output(UInt(XLen.W))
+}
+
 class MemuIO extends Bundle {
-  val memWidth  = Input(UInt(MemWidth.W))
-  val memAction = Input(UInt(MemAction.W))
-  val memRAddr  = Input(UInt(XLen.W))
-  val memRData  = Output(UInt(XLen.W))
-  val memWAddr  = Input(UInt(XLen.W))
-  val memWData  = Input(UInt(XLen.W))
-  val inval     = Output(Bool())
+  val msgIn  = Flipped(Decoupled(new Exu2MemuMsg))
+  val msgOut = Decoupled(new Memu2WbuMsg)
 }
 
 class Memu extends Module {
   require(XLen == 32, "Memu for RV64 is not implemented")
 
   val io = IO(new MemuIO)
+
+  val memRAddr = io.msgIn.bits.d
+  val memWAddr = io.msgIn.bits.d
+  val memWData = io.msgIn.bits.rs2
 
   val memActionDec = Decoder1H(
     Seq(
@@ -91,7 +107,7 @@ class Memu extends Module {
       MemAction.MemNone.BP -> 3
     )
   )
-  val memAction1H = memActionDec(io.memAction)
+  val memAction1H = memActionDec(io.msgIn.bits.memAction)
 
   val memWidthDec = Decoder1H(
     Seq(
@@ -100,7 +116,7 @@ class Memu extends Module {
       MemWidth.LenW.BP -> 2
     )
   )
-  val memWidth1H = memWidthDec(io.memWidth)
+  val memWidth1H = memWidthDec(io.msgIn.bits.memWidth)
   val memMask = Mux1H(
     Seq(
       memWidth1H(0) -> "b00000001".U(8.W),
@@ -119,26 +135,26 @@ class Memu extends Module {
     )
   )
 
-  val wEn = memAction1H(2)
-  val rEn = memAction1H(0) | memAction1H(1)
+  val wEn = io.msgIn.valid & memAction1H(2)
+  val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
   val backend = Module(new MemuBlackBox)
 
   backend.io.memREn   := rEn
-  backend.io.memRAddr := Cat(io.memRAddr(XLen - 1, 2), Fill(2, 0.B))
+  backend.io.memRAddr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
 
-  val memWAlign1H = memAlignDec(io.memWAddr(1, 0))
+  val memWAlign1H = memAlignDec(memWAddr(1, 0))
   val memWDataShifted = Mux1H(
     Seq(
-      memWAlign1H(0) -> io.memWData,
-      memWAlign1H(1) -> Cat(io.memWData(XLen - 9, 0), Fill(8, 0.B)),
-      memWAlign1H(2) -> Cat(io.memWData(XLen - 17, 0), Fill(16, 0.B)),
-      memWAlign1H(3) -> Cat(io.memWData(XLen - 25, 0), Fill(24, 0.B)),
+      memWAlign1H(0) -> memWData,
+      memWAlign1H(1) -> Cat(memWData(XLen - 9, 0), Fill(8, 0.B)),
+      memWAlign1H(2) -> Cat(memWData(XLen - 17, 0), Fill(16, 0.B)),
+      memWAlign1H(3) -> Cat(memWData(XLen - 25, 0), Fill(24, 0.B)),
       memWAlign1H(4) -> 0.U
     )
   )
   backend.io.memWData := memWDataShifted
-  backend.io.memWAddr := Cat(io.memWAddr(XLen - 1, 2), Fill(2, 0.B))
+  backend.io.memWAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
   backend.io.memWEn   := wEn
   val memWMaskShifted = Mux1H(
     Seq(
@@ -158,7 +174,7 @@ class Memu extends Module {
     )
   )
 
-  val memRAlign1H = memAlignDec(io.memRAddr(1, 0))
+  val memRAlign1H = memAlignDec(memRAddr(1, 0))
   val memRDataShifted = Mux1H(
     Seq(
       memRAlign1H(0) -> backend.io.memRData,
@@ -171,11 +187,27 @@ class Memu extends Module {
 
   val sext = Module(new SExtender)
   sext.io.sextData := memRDataShifted
-  sext.io.sextW    := io.memWidth
+  sext.io.sextW    := io.msgIn.bits.memWidth
   sext.io.sextU    := memAction1H(1)
-  io.memRData      := sext.io.sextRes
 
-  io.inval := memAction1H(memActionDec.bitBad) | memWAlign1H(
-    memAlignDec.bitBad
-  ) | memRAlign1H(memAlignDec.bitBad)
+  io.msgOut.bits.pc       := io.msgIn.bits.pc
+  io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel
+  io.msgOut.bits.d        := io.msgIn.bits.d
+  io.msgOut.bits.memRData := sext.io.sextRes
+  io.msgOut.bits.csrVal   := io.msgIn.bits.csrVal
+  io.msgOut.bits.rdIdx    := io.msgIn.bits.rdIdx
+  io.msgOut.bits.wbEn     := io.msgIn.bits.wbEn
+  io.msgOut.bits.inval := io.msgIn.bits.inval |
+    memAction1H(memActionDec.bitBad) |
+    memWAlign1H(memAlignDec.bitBad) |
+    memRAlign1H(memAlignDec.bitBad)
+
+  io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
+  io.msgOut.bits.brTaken := io.msgIn.bits.brTaken
+  io.msgOut.bits.imm     := io.msgIn.bits.imm
+  io.msgOut.bits.mepc    := io.msgIn.bits.mepc
+  io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
+
+  io.msgIn.ready  := io.msgOut.ready
+  io.msgOut.valid := io.msgIn.valid
 }

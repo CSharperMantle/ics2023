@@ -56,10 +56,25 @@ bool cte_init(Context *(*handler)(Event, Context *)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  return NULL;
+  Context *const ctx = (Context *)kstack.end - 1;
+  const CsrMstatus_t mstatus = {
+      .mpp = PRIV_MODE_M,
+#ifdef __ISA_RISCV64__
+      .resv_5 = 0x1400,
+#endif
+      .mpie = 1,
+      .mie = 0,
+  };
+  ctx->mstatus = mstatus.packed;
+  ctx->mepc = (uintptr_t)entry - 4;
+  ctx->GPRx = (uintptr_t)arg;
+  ctx->gpr[2] = (uintptr_t)kstack.end;
+  ctx->pdir = NULL;
+  ctx->np = PRIV_MODE_M;
+  return ctx;
 }
 
-void yield() {
+void yield(void) {
 #ifdef __riscv_e
   asm volatile("li a5, -1; ecall");
 #else
@@ -67,8 +82,15 @@ void yield() {
 #endif
 }
 
-bool ienabled() {
-  return false;
+bool ienabled(void) {
+  CsrMstatus_t mstatus;
+  asm volatile("csrr %0, mstatus" : "=r"(mstatus.packed));
+  return mstatus.mie;
 }
 
-void iset(bool enable) {}
+void iset(bool enable) {
+  CsrMstatus_t mstatus;
+  asm volatile("csrr %0, mstatus" : "=r"(mstatus.packed));
+  mstatus.mie = enable;
+  asm volatile("csrw mstatus, %0" : : "r"(mstatus.packed));
+}
