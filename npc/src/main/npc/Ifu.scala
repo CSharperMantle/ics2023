@@ -26,7 +26,6 @@ class Ifu extends Module {
 
   object State extends CvtChiselEnum {
     val S_Idle      = Value
-    val S_Read      = Value
     val S_WaitReady = Value
   }
   import State._

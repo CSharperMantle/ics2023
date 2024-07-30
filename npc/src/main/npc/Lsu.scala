@@ -20,53 +20,6 @@ object MemAction extends CvtChiselEnum {
   val MemNone = Value
 }
 
-class LsuBlackBoxIO extends Bundle {
-  val memMask  = Input(UInt(8.W))
-  val memREn   = Input(Bool())
-  val memRAddr = Input(UInt(XLen.W))
-  val memRData = Output(UInt(XLen.W))
-  val memWEn   = Input(Bool())
-  val memWAddr = Input(UInt(XLen.W))
-  val memWData = Input(UInt(XLen.W))
-}
-
-class LsuBlackBox extends BlackBox with HasBlackBoxInline {
-  val io = IO(new LsuBlackBoxIO)
-
-  val xLenType = getDpiType(XLen.W)
-  setInline(
-    "LsuBlackBox.sv",
-    s"""
-       |module LsuBlackBox(
-       |  input      [7:0]           memMask,
-       |  input                      memREn,
-       |  input      [${XLen - 1}:0] memRAddr,
-       |  output reg [${XLen - 1}:0] memRData,
-       |  input                      memWEn,
-       |  input      [${XLen - 1}:0] memWAddr,
-       |  input      [${XLen - 1}:0] memWData
-       |);
-       |  import "DPI-C" function $xLenType npc_dpi_pmem_read(input $xLenType mem_r_addr);
-       |  
-       |  import "DPI-C" function void npc_dpi_pmem_write(input byte      mem_mask,
-       |                                                  input $xLenType mem_w_addr,
-       |                                                  input $xLenType mem_w_data);
-       |
-       |  always @(*) begin
-       |    if (memREn) begin
-       |      memRData = npc_dpi_pmem_read(memRAddr);
-       |    end else begin
-       |      memRData = 0;
-       |    end
-       |    if (memWEn) begin
-       |      npc_dpi_pmem_write(memMask, memWAddr, memWData);
-       |    end
-       |  end
-       |endmodule
-       |""".stripMargin
-  )
-}
-
 class Lsu2WbuMsg extends Bundle {
   val pc       = Output(UInt(XLen.W))
   val wbSel    = Output(WbSelField.chiselType)
@@ -137,10 +90,9 @@ class Lsu extends Module {
   val wEn = io.msgIn.valid & memAction1H(2)
   val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
-  val backend = Module(new LsuBlackBox)
-
-  backend.io.memREn   := rEn
-  backend.io.memRAddr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
+  val writePort = Module(new SramWPort(XLen.W, XLen.W))
+  val readPort  = Module(new SramRPort(XLen.W, XLen.W))
+  readPort.io.rAddr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
 
   val memWAlign1H = memAlignDec(memWAddr(1, 0))
   val memWDataShifted = Mux1H(
@@ -152,9 +104,8 @@ class Lsu extends Module {
       memWAlign1H(4) -> 0.U
     )
   )
-  backend.io.memWData := memWDataShifted
-  backend.io.memWAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
-  backend.io.memWEn   := wEn
+  writePort.io.wData := memWDataShifted
+  writePort.io.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
   val memWMaskShifted = Mux1H(
     Seq(
       memWAlign1H(0) -> memMask,
@@ -165,7 +116,7 @@ class Lsu extends Module {
     )
   )
 
-  backend.io.memMask := MuxCase(
+  writePort.io.wMask := MuxCase(
     0.U,
     Seq(
       rEn -> memMask,
@@ -176,10 +127,10 @@ class Lsu extends Module {
   val memRAlign1H = memAlignDec(memRAddr(1, 0))
   val memRDataShifted = Mux1H(
     Seq(
-      memRAlign1H(0) -> backend.io.memRData,
-      memRAlign1H(1) -> Cat(Fill(8, 0.B), backend.io.memRData(XLen - 1, 8)),
-      memRAlign1H(2) -> Cat(Fill(16, 0.B), backend.io.memRData(XLen - 1, 16)),
-      memRAlign1H(3) -> Cat(Fill(24, 0.B), backend.io.memRData(XLen - 1, 24)),
+      memRAlign1H(0) -> readPort.io.rData,
+      memRAlign1H(1) -> Cat(Fill(8, 0.B), readPort.io.rData(XLen - 1, 8)),
+      memRAlign1H(2) -> Cat(Fill(16, 0.B), readPort.io.rData(XLen - 1, 16)),
+      memRAlign1H(3) -> Cat(Fill(24, 0.B), readPort.io.rData(XLen - 1, 24)),
       memRAlign1H(4) -> 0.U
     )
   )
@@ -188,6 +139,36 @@ class Lsu extends Module {
   sext.io.sextData := memRDataShifted
   sext.io.sextW    := io.msgIn.bits.memWidth
   sext.io.sextU    := memAction1H(1)
+
+  object State extends CvtChiselEnum {
+    val S_Idle      = Value
+    val S_Read      = Value
+    val S_Write     = Value
+    val S_WaitReady = Value
+  }
+  import State._
+  val firstAction =
+    MuxCase(
+      S_Idle,
+      Seq(
+        (~rEn & ~wEn) -> S_WaitReady,
+        (rEn & ~wEn)  -> S_Read,
+        (~rEn & wEn)  -> S_Write,
+        (rEn & wEn)   -> S_Read
+      )
+    )
+  val y = RegInit(S_Idle)
+  y := MuxLookup(y, S_Idle)(
+    Seq(
+      S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
+      S_Read      -> Mux(readPort.io.done, Mux(wEn, S_Write, S_WaitReady), S_Read),
+      S_Write     -> Mux(writePort.io.done, S_WaitReady, S_Write),
+      S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
+    )
+  )
+
+  readPort.io.rEn  := y === S_Read
+  writePort.io.wEn := y === S_Write
 
   io.msgOut.bits.pc       := io.msgIn.bits.pc
   io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel
@@ -207,6 +188,6 @@ class Lsu extends Module {
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
 
-  io.msgIn.ready  := io.msgOut.ready
-  io.msgOut.valid := io.msgIn.valid
+  io.msgIn.ready  := y === S_WaitReady
+  io.msgOut.valid := y === S_WaitReady
 }

@@ -7,12 +7,13 @@ import common._
 import npc._
 
 class CoreIO extends Bundle {
-  val pc      = Output(UInt(XLen.W))
-  val instr   = Output(UInt(32.W))
-  val break   = Output(Bool())
-  val inval   = Output(Bool())
-  val retired = Output(Bool())
-  val a0      = Output(UInt(XLen.W))
+  val pc          = Output(UInt(XLen.W))
+  val instr       = Output(UInt(32.W))
+  val break       = Output(Bool())
+  val inval       = Output(Bool())
+  val retired     = Output(Bool())
+  val instrCycles = Output(UInt(8.W))
+  val a0          = Output(UInt(XLen.W))
 }
 
 class Core extends Module {
@@ -40,10 +41,15 @@ class Core extends Module {
 
   val retired = pcUpdate.io.msgOut.valid
 
-  io.pc      := pcUpdate.io.msgOut.bits.pc
-  io.instr   := ifu.io.msgOut.bits.instr
-  io.break   := retired & idu.io.break
-  io.inval   := ~reset.asBool & (retired & pcUpdate.io.msgOut.bits.inval)
-  io.retired := retired
-  io.a0      := gpr.io.a0
+  val instrCycles = RegNext(0.U(8.W))
+
+  instrCycles := Mux(retired, 0.U, instrCycles + 1.U)
+
+  io.pc          := pcUpdate.io.msgOut.bits.pc
+  io.instr       := ifu.io.msgOut.bits.instr
+  io.break       := retired & idu.io.break
+  io.inval       := ~reset.asBool & (retired & pcUpdate.io.msgOut.bits.inval)
+  io.retired     := retired
+  io.instrCycles := instrCycles
+  io.a0          := gpr.io.a0
 }

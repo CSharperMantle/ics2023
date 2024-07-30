@@ -429,6 +429,6 @@ class Idu extends Module {
 
   io.break := res(BreakField)
 
-  io.msgOut.valid := io.msgIn.valid
   io.msgIn.ready  := io.msgOut.ready
+  io.msgOut.valid := io.msgIn.valid
 }

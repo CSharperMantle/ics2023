@@ -12,7 +12,11 @@ static void print_mtrace(paddr_t addr, bool read, word_t data, uint8_t mask) {
   extern VTop dut;
   const word_t pc = static_cast<word_t>(dut.io_pc);
   if (read) {
-    Log("pc=" FMT_WORD ": mem: %s " FMT_PADDR "; data=" FMT_WORD, pc, "R", addr, data);
+    if (mask == 0) {
+      Log("pc=" FMT_WORD ": mem: %s " FMT_PADDR "; ->", pc, "R", addr);
+    } else {
+      Log("pc=" FMT_WORD ": mem: %s " FMT_PADDR "; <- data=" FMT_WORD, pc, "R", addr, data);
+    }
   } else {
     Log("pc=" FMT_WORD ": mem: %s " FMT_PADDR "; data=" FMT_WORD "; mask=0x%02hhx",
         pc,
@@ -39,6 +43,9 @@ static void pmem_write(paddr_t addr, uint8_t mask, word_t data) {
 
 word_t paddr_read(paddr_t addr) {
   word_t val = 0;
+#ifdef CONFIG_MTRACE
+  print_mtrace(addr, true, 0, 0);
+#endif
   if (likely(in_pmem(addr))) {
     val = pmem_read(addr);
   } else {
@@ -49,7 +56,7 @@ word_t paddr_read(paddr_t addr) {
 #endif
   }
 #ifdef CONFIG_MTRACE
-  print_mtrace(addr, true, val, 0);
+  print_mtrace(addr, true, val, 1);
 #endif
   return val;
 }

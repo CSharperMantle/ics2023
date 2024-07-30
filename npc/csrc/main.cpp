@@ -46,10 +46,6 @@ static void cycle() {
   step_and_dump_wave();
   dut.clock = 1;
   step_and_dump_wave();
-  if (dut.io_retired) {
-    iringbuf.emplace_back(dut.io_pc, dut.io_instr);
-  }
-  difftest->sync_dut(dut);
 }
 
 static void sim_init() {
@@ -72,9 +68,10 @@ static void sim_exit() {
 static void print_iringbuf() {
   Log("- - - %d recent instructions (top: oldest)", CONFIG_IRINGBUF_NR_ELEM);
   for (const auto &instr : iringbuf) {
-    auto instr_disasm =
-        disasm(instr.first, reinterpret_cast<const uint8_t *>(&instr.second), sizeof(instr.second));
-    Log(FMT_WORD "\t%s", instr.first, instr_disasm.c_str());
+    auto instr_disasm = disasm(std::get<0>(instr),
+                               reinterpret_cast<const uint8_t *>(&std::get<1>(instr)),
+                               sizeof(std::get<1>(instr)));
+    Log(FMT_WORD "\t%hhu\t%s", std::get<0>(instr), std::get<2>(instr), instr_disasm.c_str());
   }
   Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
 }
@@ -123,12 +120,29 @@ int main(int argc, char *argv[]) {
   dut.reset = 1;
   cycle();
   dut.reset = 0;
+  difftest->sync_dut(dut);
+  difftest->cycle_preamble();
+
+  static word_t last_pc = 0;
+  static size_t last_pc_count = 0;
 
   do {
-    difftest->cycle_preamble();
     cycle();
-    difftest->cycle();
-    difftest->assert_gpr();
+
+    if (dut.io_retired) {
+      iringbuf.emplace_back(dut.io_pc, dut.io_instr, dut.io_instrCycles);
+      difftest->cycle();
+      difftest->sync_dut(dut);
+      difftest->assert_gpr();
+      difftest->cycle_preamble();
+    }
+    if (dut.io_pc != last_pc) {
+      last_pc = dut.io_pc;
+      last_pc_count = 0;
+    } else {
+      last_pc_count++;
+      Assert(last_pc_count < CONFIG_SIM_STUCK_DETECT_THRESHOLD, "%s", "simulation cannot progress");
+    }
   } while (!dut.io_break);
 
   const word_t retval = dut.io_a0;
@@ -136,7 +150,7 @@ int main(int argc, char *argv[]) {
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
         static_cast<word_t>(dut.io_pc));
   } else {
-    print_iringbuf();
+    assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
         static_cast<word_t>(dut.io_pc));
   }

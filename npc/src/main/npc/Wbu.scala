@@ -60,7 +60,7 @@ class Wbu extends Module {
     )
   )
 
-  io.gprWrite.wEn    := io.msgIn.ready & io.msgIn.bits.wbEn
+  io.gprWrite.wEn    := io.msgIn.valid & io.msgIn.bits.wbEn
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
 
