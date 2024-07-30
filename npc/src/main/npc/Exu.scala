@@ -38,8 +38,8 @@ class Exu2LsuMsg extends Bundle {
 }
 
 class ExuIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new Idu2ExuMsg))
-  val msgOut = Decoupled(new Exu2LsuMsg)
+  val msgIn  = Flipped(Irrevocable(new Idu2ExuMsg))
+  val msgOut = Irrevocable(new Exu2LsuMsg)
 
   val gprRead = Flipped(new GprFileReadConn)
   val csrConn = Flipped(new CsrFileConn)

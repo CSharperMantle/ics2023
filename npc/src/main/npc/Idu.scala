@@ -311,8 +311,8 @@ class Idu2ExuMsg extends Bundle {
 }
 
 class IduIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new Ifu2IduMsg))
-  val msgOut = Decoupled(new Idu2ExuMsg)
+  val msgIn  = Flipped(Irrevocable(new Ifu2IduMsg))
+  val msgOut = Irrevocable(new Idu2ExuMsg)
 
   val break = Output(Bool())
 }

@@ -46,8 +46,8 @@ class SramRPortBlackBox(addrWidth: Width, dataWidth: Width)
 }
 
 class SramRPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val addr = Flipped(Decoupled(UInt(addrWidth)))
-  val data = Decoupled(new Bundle {
+  val addr = Flipped(Irrevocable(UInt(addrWidth)))
+  val data = Irrevocable(new Bundle {
     val data = UInt(dataWidth)
     val resp = UInt(2.W)
   })
@@ -128,12 +128,12 @@ class SramWPortBlackBox(addrWidth: Width, dataWidth: Width)
 }
 
 class SramWPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val data = Flipped(Decoupled(new Bundle {
+  val data = Flipped(Irrevocable(new Bundle {
     val wAddr = UInt(addrWidth)
     val wData = UInt(dataWidth)
     val wMask = UInt(8.W)
   }))
-  val bResp = Decoupled(UInt(2.W))
+  val bResp = Irrevocable(UInt(2.W))
 }
 
 class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {

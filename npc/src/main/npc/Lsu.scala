@@ -38,8 +38,8 @@ class Lsu2WbuMsg extends Bundle {
 }
 
 class LsuIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new Exu2LsuMsg))
-  val msgOut = Decoupled(new Lsu2WbuMsg)
+  val msgIn  = Flipped(Irrevocable(new Exu2LsuMsg))
+  val msgOut = Irrevocable(new Lsu2WbuMsg)
 }
 
 class Lsu extends Module {

@@ -13,8 +13,8 @@ class Ifu2IduMsg extends Bundle {
 }
 
 class IfuIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new PcUpdate2IfuMsg))
-  val msgOut = Decoupled(new Ifu2IduMsg)
+  val msgIn  = Flipped(Irrevocable(new PcUpdate2IfuMsg))
+  val msgOut = Irrevocable(new Ifu2IduMsg)
 }
 
 class Ifu extends Module {

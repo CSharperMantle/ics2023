@@ -13,8 +13,8 @@ class PcUpdate2IfuMsg extends Bundle {
 }
 
 class PcUpdateIO extends Bundle {
-  val msgIn  = Flipped(Decoupled(new Wbu2PcUpdateMsg))
-  val msgOut = Decoupled(new PcUpdate2IfuMsg)
+  val msgIn  = Flipped(Irrevocable(new Wbu2PcUpdateMsg))
+  val msgOut = Irrevocable(new PcUpdate2IfuMsg)
 }
 
 class PcUpdate extends Module {

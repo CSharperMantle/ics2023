@@ -146,6 +146,7 @@ int main(int argc, char *argv[]) {
 
   const word_t retval = dut.io_a0;
   if (retval == 0) {
+    print_iringbuf();
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
         static_cast<word_t>(dut.io_pc));
   } else {
