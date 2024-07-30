@@ -32,8 +32,8 @@ struct DiffTest {
   DiffTest(const char *soname, size_t img_size);
   ~DiffTest();
 
-  void skip_next(size_t n = 1);
-  void assert_gpr() const;
+  void skip_next();
+  void assert_gpr();
   void cycle_preamble();
   void sync_dut(const VTop &vdut);
   void cycle();
@@ -44,10 +44,13 @@ private:
   void (*ref_difftest_regcpy)(void *dut, bool direction) = nullptr;
   void (*ref_difftest_exec)(uint64_t n) = nullptr;
   void (*ref_difftest_raise_intr)(uint64_t NO) = nullptr;
-  size_t skip;
   bool skip_cycle;
+  bool skip_check;
   CpuState dut;
   CpuState ref;
+  static constexpr int SKIP_CTR_FREE = -1;
+  static constexpr int SKIP_CTR_START = 2;
+  std::array<int, 3> skip_ctr{SKIP_CTR_FREE, SKIP_CTR_FREE, SKIP_CTR_FREE};
 };
 
 extern const std::array<const char *, 32> REG_NAMES;

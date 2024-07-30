@@ -127,22 +127,21 @@ int main(int argc, char *argv[]) {
   static size_t last_pc_count = 0;
 
   do {
-    cycle();
-
-    if (dut.io_retired) {
-      iringbuf.emplace_back(dut.io_pc, dut.io_instr, dut.io_instrCycles);
-      difftest->cycle();
-      difftest->sync_dut(dut);
-      difftest->assert_gpr();
-      difftest->cycle_preamble();
-    }
-    if (dut.io_pc != last_pc) {
-      last_pc = dut.io_pc;
-      last_pc_count = 0;
-    } else {
-      last_pc_count++;
-      Assert(last_pc_count < CONFIG_SIM_STUCK_DETECT_THRESHOLD, "%s", "simulation cannot progress");
-    }
+    difftest->cycle();
+    difftest->sync_dut(dut);
+    difftest->assert_gpr();
+    difftest->cycle_preamble();
+    do {
+      cycle();
+      if (dut.io_pc != last_pc) {
+        last_pc = dut.io_pc;
+        last_pc_count = 0;
+      } else {
+        last_pc_count++;
+        Assert(last_pc_count < CONFIG_SIM_STUCK_THRESHOLD, "simulation cannot progress");
+      }
+    } while (!dut.io_retired);
+    iringbuf.emplace_back(dut.io_pc, dut.io_instr, dut.io_instrCycles);
   } while (!dut.io_break);
 
   const word_t retval = dut.io_a0;

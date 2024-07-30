@@ -26,21 +26,28 @@ class Ifu extends Module {
 
   object State extends CvtChiselEnum {
     val S_Idle      = Value
+    val S_Read      = Value
+    val S_ReadDone  = Value
     val S_WaitReady = Value
   }
   import State._
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(port.io.done, S_WaitReady, S_Idle),
+      S_Idle      -> Mux(port.io.addr.ready, S_Read, S_Idle),
+      S_Read      -> Mux(port.io.data.valid, S_ReadDone, S_Read),
+      S_ReadDone  -> S_WaitReady,
       S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
     )
   )
 
-  port.io.rAddr := pc
-  port.io.rEn   := ~reset.asBool & (y === S_Idle)
+  val instr = RegEnable(port.io.data.bits.data, port.io.data.valid)
 
-  io.msgOut.bits.instr := port.io.rData
+  port.io.addr.bits  := pc
+  port.io.addr.valid := ~reset.asBool & (y === S_Idle)
+  port.io.data.ready := y === S_ReadDone
+
+  io.msgOut.bits.instr := instr
   io.msgOut.bits.pc    := pc
 
   io.msgIn.ready  := y === S_WaitReady

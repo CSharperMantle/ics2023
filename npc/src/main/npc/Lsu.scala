@@ -90,9 +90,28 @@ class Lsu extends Module {
   val wEn = io.msgIn.valid & memAction1H(2)
   val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
+  val readPort = Module(new SramRPort(XLen.W, XLen.W))
+
+  readPort.io.addr.bits := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
+  val readData = RegEnable(readPort.io.data.bits.data, readPort.io.data.valid)
+
+  val memRAlign1H = memAlignDec(memRAddr(1, 0))
+  val memRDataShifted = Mux1H(
+    Seq(
+      memRAlign1H(0) -> readData,
+      memRAlign1H(1) -> Cat(Fill(8, 0.B), readData(XLen - 1, 8)),
+      memRAlign1H(2) -> Cat(Fill(16, 0.B), readData(XLen - 1, 16)),
+      memRAlign1H(3) -> Cat(Fill(24, 0.B), readData(XLen - 1, 24)),
+      memRAlign1H(4) -> 0.U
+    )
+  )
+
+  val sext = Module(new SExtender)
+  sext.io.sextData := memRDataShifted
+  sext.io.sextW    := io.msgIn.bits.memWidth
+  sext.io.sextU    := memAction1H(1)
+
   val writePort = Module(new SramWPort(XLen.W, XLen.W))
-  val readPort  = Module(new SramRPort(XLen.W, XLen.W))
-  readPort.io.rAddr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
 
   val memWAlign1H = memAlignDec(memWAddr(1, 0))
   val memWDataShifted = Mux1H(
@@ -104,8 +123,8 @@ class Lsu extends Module {
       memWAlign1H(4) -> 0.U
     )
   )
-  writePort.io.wData := memWDataShifted
-  writePort.io.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
+  writePort.io.data.bits.wData := memWDataShifted
+  writePort.io.data.bits.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
   val memWMaskShifted = Mux1H(
     Seq(
       memWAlign1H(0) -> memMask,
@@ -116,7 +135,7 @@ class Lsu extends Module {
     )
   )
 
-  writePort.io.wMask := MuxCase(
+  writePort.io.data.bits.wMask := MuxCase(
     0.U,
     Seq(
       rEn -> memMask,
@@ -124,26 +143,14 @@ class Lsu extends Module {
     )
   )
 
-  val memRAlign1H = memAlignDec(memRAddr(1, 0))
-  val memRDataShifted = Mux1H(
-    Seq(
-      memRAlign1H(0) -> readPort.io.rData,
-      memRAlign1H(1) -> Cat(Fill(8, 0.B), readPort.io.rData(XLen - 1, 8)),
-      memRAlign1H(2) -> Cat(Fill(16, 0.B), readPort.io.rData(XLen - 1, 16)),
-      memRAlign1H(3) -> Cat(Fill(24, 0.B), readPort.io.rData(XLen - 1, 24)),
-      memRAlign1H(4) -> 0.U
-    )
-  )
-
-  val sext = Module(new SExtender)
-  sext.io.sextData := memRDataShifted
-  sext.io.sextW    := io.msgIn.bits.memWidth
-  sext.io.sextU    := memAction1H(1)
-
   object State extends CvtChiselEnum {
     val S_Idle      = Value
+    val S_ReadReq   = Value
     val S_Read      = Value
+    val S_ReadDone  = Value
+    val S_WriteReq  = Value
     val S_Write     = Value
+    val S_WriteDone = Value
     val S_WaitReady = Value
   }
   import State._
@@ -152,23 +159,30 @@ class Lsu extends Module {
       S_Idle,
       Seq(
         (~rEn & ~wEn) -> S_WaitReady,
-        (rEn & ~wEn)  -> S_Read,
-        (~rEn & wEn)  -> S_Write,
-        (rEn & wEn)   -> S_Read
+        (rEn & ~wEn)  -> S_ReadReq,
+        (~rEn & wEn)  -> S_WriteReq,
+        (rEn & wEn)   -> S_ReadReq
       )
     )
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_Read      -> Mux(readPort.io.done, Mux(wEn, S_Write, S_WaitReady), S_Read),
-      S_Write     -> Mux(writePort.io.done, S_WaitReady, S_Write),
+      S_ReadReq   -> Mux(readPort.io.addr.ready, S_Read, S_ReadReq),
+      S_Read      -> Mux(readPort.io.data.valid, S_ReadDone, S_Read),
+      S_ReadDone  -> Mux(wEn, S_Write, S_WaitReady),
+      S_WriteReq  -> Mux(writePort.io.data.ready, S_WriteDone, S_WriteReq),
+      S_Write     -> Mux(writePort.io.bResp.valid, S_WriteDone, S_Write),
+      S_WriteDone -> S_WaitReady,
       S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
     )
   )
 
-  readPort.io.rEn  := y === S_Read
-  writePort.io.wEn := y === S_Write
+  readPort.io.addr.valid := y === S_ReadReq
+  readPort.io.data.ready := y === S_ReadDone
+
+  writePort.io.data.valid  := y === S_WriteReq
+  writePort.io.bResp.ready := y === S_WriteDone
 
   io.msgOut.bits.pc       := io.msgIn.bits.pc
   io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel

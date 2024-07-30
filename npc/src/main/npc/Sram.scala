@@ -37,7 +37,7 @@ class SramRPortBlackBox(addrWidth: Width, dataWidth: Width)
        |    if (rEn) begin
        |      rData = npc_dpi_pmem_read(rAddr);
        |    end else begin
-       |      rData = 32'hdead3210;
+       |      rData = ${dataWidthVal}'hdead3210;
        |    end
        |  end
        |endmodule
@@ -46,10 +46,11 @@ class SramRPortBlackBox(addrWidth: Width, dataWidth: Width)
 }
 
 class SramRPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val rEn   = Input(Bool())
-  val rAddr = Input(UInt(addrWidth))
-  val rData = Output(UInt(dataWidth))
-  val done  = Output(Bool())
+  val addr = Flipped(Decoupled(UInt(addrWidth)))
+  val data = Decoupled(new Bundle {
+    val data = UInt(dataWidth)
+    val resp = UInt(2.W)
+  })
 }
 
 class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
@@ -58,25 +59,31 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
   val backend = Module(new SramRPortBlackBox(addrWidth, dataWidth))
 
   object State extends CvtChiselEnum {
-    val S_Idle = Value
-    val S_Read = Value
+    val S_Idle      = Value
+    val S_Read      = Value
+    val S_WaitReady = Value
   }
   import State._
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle -> Mux(io.rEn, S_Read, S_Idle),
-      S_Read -> S_Idle
+      S_Idle      -> Mux(io.addr.valid, S_Read, S_Idle),
+      S_Read      -> S_WaitReady,
+      S_WaitReady -> Mux(io.data.ready, S_Idle, S_WaitReady)
     )
   )
 
+  val addr = RegEnable(io.addr.bits, io.addr.valid)
   val data = RegEnable(backend.io.rData, y === S_Read)
 
   backend.io.rEn   := y === S_Read
-  backend.io.rAddr := io.rAddr
+  backend.io.rAddr := addr
 
-  io.rData := data
-  io.done  := y === S_Read
+  io.data.bits.data := data
+  io.data.bits.resp := 0.U
+  io.data.valid     := y === S_WaitReady
+
+  io.addr.ready := y === S_Read
 }
 
 class SramWPortBlackBoxIO(addrWidth: Width, dataWidth: Width) extends Bundle {
@@ -121,11 +128,12 @@ class SramWPortBlackBox(addrWidth: Width, dataWidth: Width)
 }
 
 class SramWPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val wEn   = Input(Bool())
-  val wAddr = Input(UInt(addrWidth))
-  val wData = Input(UInt(dataWidth))
-  val wMask = Input(UInt(8.W))
-  val done  = Output(Bool())
+  val data = Flipped(Decoupled(new Bundle {
+    val wAddr = UInt(addrWidth)
+    val wData = UInt(dataWidth)
+    val wMask = UInt(8.W)
+  }))
+  val bResp = Decoupled(UInt(2.W))
 }
 
 class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
@@ -134,24 +142,27 @@ class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
   val backend = Module(new SramWPortBlackBox(addrWidth, dataWidth))
 
   object State extends CvtChiselEnum {
-    val S_Idle  = Value
-    val S_Write = Value
-    val S_Delay = Value
+    val S_Idle      = Value
+    val S_Write     = Value
+    val S_WaitReady = Value
   }
   import State._
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle  -> Mux(io.wEn, S_Write, S_Idle),
-      S_Write -> S_Delay,
-      S_Delay -> S_Idle
+      S_Idle      -> Mux(io.data.valid, S_Write, S_Idle),
+      S_Write     -> S_WaitReady,
+      S_WaitReady -> Mux(io.bResp.ready, S_Idle, S_WaitReady)
     )
   )
 
   backend.io.wEn   := y === S_Write
-  backend.io.wAddr := io.wAddr
-  backend.io.wData := io.wData
-  backend.io.wMask := io.wMask
+  backend.io.wAddr := io.data.bits.wAddr
+  backend.io.wData := io.data.bits.wData
+  backend.io.wMask := io.data.bits.wMask
 
-  io.done := y === S_Delay
+  io.data.ready := y === S_WaitReady
+
+  io.bResp.valid := y === S_WaitReady
+  io.bResp.bits  := 0.U
 }

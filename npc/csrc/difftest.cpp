@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <dlfcn.h>
@@ -61,15 +62,22 @@ DiffTest::~DiffTest() {
   dlclose(dylib);
 }
 
-void DiffTest::skip_next(size_t n) {
+void DiffTest::skip_next() {
   if (dylib == nullptr) {
     return;
   }
-  skip = n;
+  auto p_ctr =
+      std::find_if(skip_ctr.begin(), skip_ctr.end(), [](int ctr) { return ctr == SKIP_CTR_FREE; });
+  Assert(p_ctr != skip_ctr.end(), "unreachable");
+  *p_ctr = SKIP_CTR_START;
 }
 
-void DiffTest::assert_gpr() const {
+void DiffTest::assert_gpr() {
   if (dylib == nullptr) {
+    return;
+  }
+  if (skip_check) {
+    skip_check = false;
     return;
   }
   // Assert(ref.pc == dut.pc, "pc mismatch: ref=" FMT_WORD ", dut=" FMT_WORD, ref.pc, dut.pc);
@@ -98,9 +106,14 @@ void DiffTest::cycle_preamble() {
   if (dylib == nullptr) {
     return;
   }
-  if (skip > 0) {
-    skip_cycle = true;
-    skip--;
+  skip_cycle = false;
+  for (auto &ctr : skip_ctr) {
+    if (ctr == SKIP_CTR_FREE) {
+      continue;
+    } else if (ctr == 0) {
+      skip_check = skip_cycle = true;
+    }
+    ctr--;
   }
   ref_difftest_regcpy(const_cast<CpuState *>(&dut), CopyDir::ToRef);
 }
