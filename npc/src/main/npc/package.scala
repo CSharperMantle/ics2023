@@ -29,9 +29,9 @@ object npc {
     type ArchType = Value
 
     val SingleCycle = Value
-    val MultiCycle = Value
-    val Pipelined = Value
-    val OutOfOrder = Value
+    val MultiCycle  = Value
+    val Pipelined   = Value
+    val OutOfOrder  = Value
   }
 
   val Arch = ArchType.MultiCycle
@@ -71,5 +71,20 @@ object npc {
     val InstPage       = 12
     val ReadPage       = 13
     val StorePage      = 14
+  }
+
+  def getDpiType(width: Width): String = {
+    return width match {
+      case KnownWidth(value) =>
+        value match {
+          case 1  => "bool"
+          case 8  => "byte"
+          case 16 => "shortint"
+          case 32 => "int"
+          case 64 => "longint"
+          case _  => throw new IllegalArgumentException
+        }
+      case UnknownWidth() => throw new IllegalArgumentException
+    }
   }
 }

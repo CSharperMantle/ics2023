@@ -7,6 +7,7 @@ import common._
 import npc._
 
 class PcUpdate2IfuMsg extends Bundle {
+  val pc    = Output(UInt(XLen.W))
   val dnpc  = Output(UInt(XLen.W))
   val inval = Output(Bool())
 }
@@ -42,6 +43,7 @@ class PcUpdate extends Module {
     )
   )
 
+  io.msgOut.bits.pc    := io.msgIn.bits.pc
   io.msgOut.bits.dnpc  := dnpc
   io.msgOut.bits.inval := io.msgIn.bits.inval | pcSel1H(pcSelDec.bitBad)
 

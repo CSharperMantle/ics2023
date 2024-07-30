@@ -8,6 +8,7 @@ import npc._
 
 class CoreIO extends Bundle {
   val pc      = Output(UInt(XLen.W))
+  val instr   = Output(UInt(32.W))
   val break   = Output(Bool())
   val inval   = Output(Bool())
   val retired = Output(Bool())
@@ -39,7 +40,8 @@ class Core extends Module {
 
   val retired = pcUpdate.io.msgOut.valid
 
-  io.pc      := ifu.io.msgOut.bits.pc
+  io.pc      := pcUpdate.io.msgOut.bits.pc
+  io.instr   := ifu.io.msgOut.bits.instr
   io.break   := retired & idu.io.break
   io.inval   := ~reset.asBool & (retired & pcUpdate.io.msgOut.bits.inval)
   io.retired := retired

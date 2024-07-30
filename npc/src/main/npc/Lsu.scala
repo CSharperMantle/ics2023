@@ -20,7 +20,7 @@ object MemAction extends CvtChiselEnum {
   val MemNone = Value
 }
 
-class MemuBlackBoxIO extends Bundle {
+class LsuBlackBoxIO extends Bundle {
   val memMask  = Input(UInt(8.W))
   val memREn   = Input(Bool())
   val memRAddr = Input(UInt(XLen.W))
@@ -30,29 +30,28 @@ class MemuBlackBoxIO extends Bundle {
   val memWData = Input(UInt(XLen.W))
 }
 
-class MemuBlackBox extends BlackBox with HasBlackBoxInline {
-  val io = IO(new MemuBlackBoxIO)
+class LsuBlackBox extends BlackBox with HasBlackBoxInline {
+  val io = IO(new LsuBlackBoxIO)
 
-  val xLenType = if (XLen == 32) "int" else "longint"
-
+  val xLenType = getDpiType(XLen.W)
   setInline(
-    "MemuBlackBox.sv",
+    "LsuBlackBox.sv",
     s"""
-       |import "DPI-C" function $xLenType npc_dpi_pmem_read(input $xLenType mem_r_addr);
-       |
-       |import "DPI-C" function void npc_dpi_pmem_write(input byte      mem_mask,
-       |                                                input $xLenType mem_w_addr,
-       |                                                input $xLenType mem_w_data);
-       |
-       |module MemuBlackBox(
-       |  input      [7:0]                memMask,
-       |  input                           memREn,
-       |  input      [${XLen - 1}:0]      memRAddr,
-       |  output reg [${XLen - 1}:0]      memRData,
-       |  input                           memWEn,
-       |  input      [${XLen - 1}:0]      memWAddr,
-       |  input      [${XLen - 1}:0]      memWData
+       |module LsuBlackBox(
+       |  input      [7:0]           memMask,
+       |  input                      memREn,
+       |  input      [${XLen - 1}:0] memRAddr,
+       |  output reg [${XLen - 1}:0] memRData,
+       |  input                      memWEn,
+       |  input      [${XLen - 1}:0] memWAddr,
+       |  input      [${XLen - 1}:0] memWData
        |);
+       |  import "DPI-C" function $xLenType npc_dpi_pmem_read(input $xLenType mem_r_addr);
+       |  
+       |  import "DPI-C" function void npc_dpi_pmem_write(input byte      mem_mask,
+       |                                                  input $xLenType mem_w_addr,
+       |                                                  input $xLenType mem_w_data);
+       |
        |  always @(*) begin
        |    if (memREn) begin
        |      memRData = npc_dpi_pmem_read(memRAddr);
@@ -91,7 +90,7 @@ class LsuIO extends Bundle {
 }
 
 class Lsu extends Module {
-  require(XLen == 32, "Memu for RV64 is not implemented")
+  require(XLen == 32, "Lsu for RV64 is not implemented")
 
   val io = IO(new LsuIO)
 
@@ -138,7 +137,7 @@ class Lsu extends Module {
   val wEn = io.msgIn.valid & memAction1H(2)
   val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
-  val backend = Module(new MemuBlackBox)
+  val backend = Module(new LsuBlackBox)
 
   backend.io.memREn   := rEn
   backend.io.memRAddr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))

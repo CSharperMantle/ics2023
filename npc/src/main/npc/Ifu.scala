@@ -6,43 +6,6 @@ import chisel3.util._
 import common._
 import npc._
 
-class IfuBlackBoxIO extends Bundle {
-  val clk   = Input(Bool())
-  val en    = Input(Bool())
-  val pc    = Input(UInt(XLen.W))
-  val instr = Output(UInt(32.W))
-  val valid = Output(Bool())
-}
-
-class IfuBlackBox extends BlackBox with HasBlackBoxInline {
-  val io = IO(new IfuBlackBoxIO)
-
-  val xLenType = if (XLen == 32) "int" else "longint"
-  setInline(
-    "IfuBlackBox.sv",
-    s"""
-       |import "DPI-C" function bit npc_dpi_ifu(input  $xLenType pc,
-       |                                        output int       instr);
-       |
-       |module IfuBlackBox(
-       |  input                      clk,
-       |  input                      en,
-       |  input      [${XLen - 1}:0] pc,
-       |  output reg [31:0]          instr,
-       |  output reg                 valid
-       |);
-       |  always @(posedge clk) begin
-       |    if (en) begin
-       |      valid <= npc_dpi_ifu(pc, instr);
-       |    end else begin
-       |      valid <= 1'b0;
-       |    end
-       |  end
-       |endmodule
-       |""".stripMargin
-  )
-}
-
 class Ifu2IduMsg extends Bundle {
   val instr = Output(UInt(32.W))
   // Pass-through for Idu
@@ -59,26 +22,26 @@ class Ifu extends Module {
 
   val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), io.msgIn.valid)
 
-  val backend = Module(new IfuBlackBox)
-  backend.io.clk := clock.asBool
-  backend.io.pc  := pc
+  val port = Module(new SramRPort(XLen.W, 32.W))
 
-  object States extends CvtChiselEnum {
+  object State extends CvtChiselEnum {
     val S_Idle      = Value
+    val S_Read      = Value
     val S_WaitReady = Value
   }
-  import States._
+  import State._
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(backend.io.valid, S_WaitReady, S_Idle),
+      S_Idle      -> Mux(port.io.done, S_WaitReady, S_Idle),
       S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
     )
   )
 
-  backend.io.en := ~reset.asBool & (y === S_Idle)
+  port.io.rAddr := pc
+  port.io.rEn   := ~reset.asBool & (y === S_Idle)
 
-  io.msgOut.bits.instr := backend.io.instr
+  io.msgOut.bits.instr := port.io.rData
   io.msgOut.bits.pc    := pc
 
   io.msgIn.ready  := y === S_WaitReady

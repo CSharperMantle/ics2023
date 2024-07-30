@@ -24,7 +24,7 @@ class Exu2LsuMsg extends Bundle {
   val d         = Output(UInt(XLen.W))
   val rs2       = Output(UInt(XLen.W))
   val inval     = Output(Bool())
-  // Pass-through for Memu
+  // Pass-through for Lsu
   val pc      = Output(UInt(XLen.W))
   val wbEn    = Output(WbEnField.chiselType)
   val wbSel   = Output(WbSelField.chiselType)

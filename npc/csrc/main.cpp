@@ -47,7 +47,7 @@ static void cycle() {
   dut.clock = 1;
   step_and_dump_wave();
   if (dut.io_retired) {
-    iringbuf.push_back(std::move(instr_pending));
+    iringbuf.emplace_back(dut.io_pc, dut.io_instr);
   }
   difftest->sync_dut(dut);
 }
