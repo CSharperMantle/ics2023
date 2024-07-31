@@ -19,10 +19,10 @@ class SramRPortBlackBox(addrWidth: Width, dataWidth: Width)
 
   val io = IO(new SramRPortBlackBoxIO(addrWidth, dataWidth))
 
-  val addrType     = getDpiType(addrWidth)
-  val addrWidthVal = addrWidth.asInstanceOf[KnownWidth].value
-  val dataType     = getDpiType(dataWidth)
-  val dataWidthVal = dataWidth.asInstanceOf[KnownWidth].value
+  private val addrType     = getDpiType(addrWidth)
+  private val addrWidthVal = addrWidth.asInstanceOf[KnownWidth].value
+  private val dataType     = getDpiType(dataWidth)
+  private val dataWidthVal = dataWidth.asInstanceOf[KnownWidth].value
   setInline(
     "SramRPortBlackBox.sv",
     s"""
@@ -62,7 +62,7 @@ class SramRPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
 class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
   val io = IO(new SramRPortIO(addrWidth, dataWidth))
 
-  val backend = Module(new SramRPortBlackBox(addrWidth, dataWidth))
+  private val backend = Module(new SramRPortBlackBox(addrWidth, dataWidth))
 
   object State extends CvtChiselEnum {
     val S_Idle      = Value
@@ -70,7 +70,7 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
     val S_WaitReady = Value
   }
   import State._
-  val y = RegInit(S_Idle)
+  private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle      -> Mux(io.req.valid, S_Read, S_Idle),
@@ -79,8 +79,8 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
     )
   )
 
-  val addr = RegEnable(io.req.bits.addr, io.req.valid)
-  val data = RegEnable(backend.io.rData, y === S_Read)
+  private val addr = RegEnable(io.req.bits.addr, io.req.valid)
+  private val data = RegEnable(backend.io.rData, y === S_Read)
 
   backend.io.rEn   := y === S_Read
   backend.io.rAddr := addr
@@ -151,7 +151,7 @@ class SramWPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
 class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
   val io = IO(new SramWPortIO(addrWidth, dataWidth))
 
-  val backend = Module(new SramWPortBlackBox(addrWidth, dataWidth))
+  private val backend = Module(new SramWPortBlackBox(addrWidth, dataWidth))
 
   object State extends CvtChiselEnum {
     val S_Idle      = Value
@@ -159,7 +159,7 @@ class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
     val S_WaitReady = Value
   }
   import State._
-  val y = RegInit(S_Idle)
+  private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle      -> Mux(io.req.valid, S_Write, S_Idle),

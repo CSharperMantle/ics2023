@@ -51,9 +51,9 @@ class Exu extends Module {
 
   val io = IO(new ExuIO)
 
-  val alu = Module(new Alu)
+  private val alu = Module(new Alu)
 
-  val srcASelDec = Decoder1H(
+  private val srcASelDec = Decoder1H(
     Seq(
       SrcARs1.BP  -> 0,
       SrcAPc.BP   -> 1,
@@ -61,8 +61,8 @@ class Exu extends Module {
       SrcAZimm.BP -> 3
     )
   )
-  val srcASel1H = srcASelDec(io.msgIn.bits.srcASel)
-  val srcA = Mux1H(
+  private val srcASel1H = srcASelDec(io.msgIn.bits.srcASel)
+  private val srcA = Mux1H(
     Seq(
       srcASel1H(0) -> io.gprRead.rs1,
       srcASel1H(1) -> io.msgIn.bits.pc,
@@ -72,14 +72,14 @@ class Exu extends Module {
     )
   )
 
-  val srcBSelDec = Decoder1H(
+  private val srcBSelDec = Decoder1H(
     Seq(
       SrcBRs2.BP -> 0,
       SrcBImm.BP -> 1
     )
   )
-  val srcBSel1H = srcBSelDec(io.msgIn.bits.srcBSel)
-  val srcB = Mux1H(
+  private val srcBSel1H = srcBSelDec(io.msgIn.bits.srcBSel)
+  private val srcB = Mux1H(
     Seq(
       srcBSel1H(0) -> io.gprRead.rs2,
       srcBSel1H(1) -> io.msgIn.bits.imm,

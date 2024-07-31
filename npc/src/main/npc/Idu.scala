@@ -139,9 +139,9 @@ case class InstrPat(
   require(rd.getWidth == 5)
   require(opcode.getWidth == 7)
 
-  def bitPat = pattern
+  private val pattern = funct7 ## rs2 ## rs1 ## funct3 ## rd ## opcode
 
-  val pattern = funct7 ## rs2 ## rs1 ## funct3 ## rd ## opcode
+  def bitPat = pattern
 }
 
 object BreakField extends BoolDecodeField[InstrPat] {
@@ -330,7 +330,7 @@ class Idu extends Module {
 
   val io = IO(new IduIO())
 
-  val patterns = Seq(
+  private val patterns = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
     //      |funct7        |rs2         |rs1 |funct3    |rd  |op     |Fmt        |PcSel      |SrcASel     |SrcBSel    |AluOpSel       |MemAct     |WbSel     |WbEn|ExcpAdj
     InstrPat("b0000000".BP, 5.X,         5.X, "b000".BP, 5.X, Add,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3.BP, MemNone.BP, WbAlu.BP,  1.Y, ExcpAdjNone.BP),
@@ -400,10 +400,10 @@ class Idu extends Module {
     ExcpAdjField,
     InstrInvalField
   )
-  val table = new DecodeTable(patterns, fields)
-  val res   = table.decode(io.msgIn.bits.instr)
+  private val table = new DecodeTable(patterns, fields)
+  private val res   = table.decode(io.msgIn.bits.instr)
 
-  val immDec = Module(new ImmDec)
+  private val immDec = Module(new ImmDec)
   immDec.io.instr  := io.msgIn.bits.instr
   immDec.io.immFmt := res(ImmFmtField)
 

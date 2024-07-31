@@ -55,18 +55,18 @@ class CsrFile extends Module {
 
   val io = IO(new CsrFileIO)
 
-  val csrs = Mem(1 << CsrInternalIdx.getWidth, UInt(npc.XLen.W))
+  private val csrs = Mem(1 << CsrInternalIdx.getWidth, UInt(npc.XLen.W))
 
-  val csrOpDec = Decoder1H(
+  private val csrOpDec = Decoder1H(
     Seq(
       Rw.BP  -> 0,
       Rs.BP  -> 1,
       Rc.BP  -> 2
     )
   )
-  val csrOp1H = csrOpDec(io.conn.csrOp)
+  private val csrOp1H = csrOpDec(io.conn.csrOp)
 
-  val csrIdxDecTable = TruthTable(
+  private val csrIdxDecTable = TruthTable(
     Seq(
       BitPat("h180".U(12.W)) -> SatpIdx.BP,
       BitPat("h300".U(12.W)) -> MstatusIdx.BP,
@@ -80,9 +80,9 @@ class CsrFile extends Module {
     ),
     UnkIdx.BP
   )
-  val csrIdxDecoded = decoder(io.conn.csrIdx, csrIdxDecTable)
+  private val csrIdxDecoded = decoder(io.conn.csrIdx, csrIdxDecTable)
 
-  val csrVal = Mux(csrIdxDecoded === UnkIdx.U, 0.U, csrs(csrIdxDecoded))
+  private val csrVal = Mux(csrIdxDecoded === UnkIdx.U, 0.U, csrs(csrIdxDecoded))
   csrs(csrIdxDecoded) := Mux1H(
     Seq(
       csrOp1H(0) -> io.conn.s1,
@@ -93,24 +93,24 @@ class CsrFile extends Module {
   )
   io.conn.csrVal := csrVal
 
-  val excpAdjDec = Decoder1H(
+  private val excpAdjDec = Decoder1H(
     Seq(
       ExcpAdjNone.BP  -> 0,
       ExcpAdjEcall.BP -> 1,
       ExcpAdjMret.BP  -> 2
     )
   )
-  val excpAdj1H = excpAdjDec(io.conn.excpAdj)
+  private val excpAdj1H = excpAdjDec(io.conn.excpAdj)
 
-  val mstatus = csrs(MstatusIdx.U)
+  private val mstatus = csrs(MstatusIdx.U)
 
   csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
   csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(MepcIdx.U))
 
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
-  //                                        | MPP              |               | MPIE      |              | MIE       |
-  val mstatusAdjMret  = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), 1.U(1.W),   mstatus(6, 4), mstatus(7), mstatus(2, 0))
-  val mstatusAdjEcall = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), mstatus(3), mstatus(6, 4), 0.U(1.W),   mstatus(2, 0))
+  //                                                | MPP              |               | MPIE      |              | MIE       |
+  private val mstatusAdjMret  = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), 1.U(1.W),   mstatus(6, 4), mstatus(7), mstatus(2, 0))
+  private val mstatusAdjEcall = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), mstatus(3), mstatus(6, 4), 0.U(1.W),   mstatus(2, 0))
   csrs(MstatusIdx.U) := Mux1H(
     Seq(
       excpAdj1H(0) -> mstatus,

@@ -6,7 +6,7 @@ import chisel3.util._
 import common._
 import npc._
 
-class XbarArbiterIO[TReq <: Data, TResp <: Data](
+class GenericArbiterIO[TReq <: Data, TResp <: Data](
   private val req:  TReq,
   private val resp: TResp,
   n:                Int)
@@ -18,22 +18,22 @@ class XbarArbiterIO[TReq <: Data, TResp <: Data](
   val chosen     = Output(UInt(log2Ceil(n).W))
 }
 
-class XbarArbiter[TReq <: Data, TResp <: Data](
+class GenericArbiter[TReq <: Data, TResp <: Data](
   private val req:  TReq,
   private val resp: TResp,
   n:                Int)
     extends Module {
-  val io = IO(new XbarArbiterIO(req, resp, n))
+  val io = IO(new GenericArbiterIO(req, resp, n))
 
-  val arbiter = Module(new RRArbiter(new Bundle {}, n))
+  private val arbiter = Module(new RRArbiter(new Bundle {}, n))
 
-  val transActive = RegInit(VecInit(Seq.fill(n)(0.B)))
-  for ((trans, i) <- transActive.zipWithIndex) {
+  private val transactions = RegInit(VecInit(Seq.fill(n)(0.B)))
+  for ((trans, i) <- transactions.zipWithIndex) {
     trans := Mux(io.masterReq(i).valid, 1.B, Mux(io.masterResp(i).ready, 0.B, trans))
   }
 
   // Connect arbiter states
-  for ((arbIn, req) <- arbiter.io.in.zip(transActive)) {
+  for ((arbIn, req) <- arbiter.io.in.zip(transactions)) {
     arbIn.valid := req
   }
   arbiter.io.out.ready := MuxLookup(arbiter.io.chosen, 0.B)(

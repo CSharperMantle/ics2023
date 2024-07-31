@@ -31,7 +31,7 @@ class Core extends Module {
 
   val memRPort = Module(new SramRPort(XLen.W, 32.W))
   val readArb = Module(
-    new XbarArbiter(new SramRPortReq(XLen.W), new SramRPortResp(32.W), 2)
+    new GenericArbiter(new SramRPortReq(XLen.W), new SramRPortResp(32.W), 2)
   )
   readArb.io.slaveReq      <> memRPort.io.req
   readArb.io.slaveResp     <> memRPort.io.resp

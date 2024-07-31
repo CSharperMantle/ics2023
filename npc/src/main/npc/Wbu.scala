@@ -36,12 +36,12 @@ class Wbu extends Module {
 
   val io = IO(new WbuIO)
 
-  val dataAlu  = io.msgIn.bits.d
-  val dataSnpc = io.msgIn.bits.pc + 4.U
-  val dataMem  = io.msgIn.bits.memRData
-  val dataCsr  = io.msgIn.bits.csrVal
+  private val dataAlu  = io.msgIn.bits.d
+  private val dataSnpc = io.msgIn.bits.pc + 4.U
+  private val dataMem  = io.msgIn.bits.memRData
+  private val dataCsr  = io.msgIn.bits.csrVal
 
-  val wbSelDec = Decoder1H(
+  private val wbSelDec = Decoder1H(
     Seq(
       WbSel.WbAlu.BP  -> 0,
       WbSel.WbSnpc.BP -> 1,
@@ -49,8 +49,8 @@ class Wbu extends Module {
       WbSel.WbCsr.BP  -> 3
     )
   )
-  val wbSel1H = wbSelDec(io.msgIn.bits.wbSel)
-  val wbData = Mux1H(
+  private val wbSel1H = wbSelDec(io.msgIn.bits.wbSel)
+  private val wbData = Mux1H(
     Seq(
       wbSel1H(0) -> dataAlu,
       wbSel1H(1) -> dataSnpc,

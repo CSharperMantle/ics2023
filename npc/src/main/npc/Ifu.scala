@@ -22,7 +22,7 @@ class IfuIO extends Bundle {
 class Ifu extends Module {
   val io = IO(new IfuIO)
 
-  val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), io.msgIn.valid)
+  private val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), io.msgIn.valid)
 
   object State extends CvtChiselEnum {
     val S_Idle      = Value
@@ -31,7 +31,7 @@ class Ifu extends Module {
     val S_WaitReady = Value
   }
   import State._
-  val y = RegInit(S_Idle)
+  private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle      -> Mux(io.rReq.ready, S_Read, S_Idle),
@@ -41,7 +41,7 @@ class Ifu extends Module {
     )
   )
 
-  val instr = RegEnable(io.rResp.bits.data, io.rResp.valid)
+  private val instr = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
   io.rReq.bits.addr := pc
   io.rReq.valid     := ~reset.asBool & (y === S_Idle)

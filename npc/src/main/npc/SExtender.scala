@@ -18,13 +18,14 @@ class SExtender extends Module {
 
   val io = IO(new SExtenderIO)
 
-  val sextResB = Cat(Fill(XLen - 8, Mux(io.sextU, 0.B, io.sextData(7))), io.sextData(7, 0))
-  val sextResH = Cat(Fill(XLen - 16, Mux(io.sextU, 0.B, io.sextData(15))), io.sextData(15, 0))
-  val sextResW =
+  private val sextResB = Cat(Fill(XLen - 8, Mux(io.sextU, 0.B, io.sextData(7))), io.sextData(7, 0))
+  private val sextResH =
+    Cat(Fill(XLen - 16, Mux(io.sextU, 0.B, io.sextData(15))), io.sextData(15, 0))
+  private val sextResW =
     if (XLen == 32) io.sextData
     else Cat(Fill(XLen - 32, Mux(io.sextU, 0.B, io.sextData(31))), io.sextData(31, 0))
-  val sextResD = io.sextData
-  val sextWDec = Decoder1H(
+  private val sextResD = io.sextData
+  private val sextWDec = Decoder1H(
     Seq(
       LenB.BP -> 0,
       LenH.BP -> 1,
@@ -32,7 +33,7 @@ class SExtender extends Module {
       LenD.BP -> 3
     )
   )
-  val sextW1H = sextWDec(io.sextW)
+  private val sextW1H = sextWDec(io.sextW)
   io.sextRes := Mux1H(
     Seq(
       sextW1H(0) -> sextResB,

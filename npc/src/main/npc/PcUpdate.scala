@@ -20,9 +20,9 @@ class PcUpdateIO extends Bundle {
 class PcUpdate extends Module {
   val io = IO(new PcUpdateIO)
 
-  val snpc     = io.msgIn.bits.pc + 4.U
-  val brTarget = Mux(io.msgIn.bits.brTaken, io.msgIn.bits.pc + io.msgIn.bits.imm, snpc)
-  val pcSelDec = Decoder1H(
+  private val snpc     = io.msgIn.bits.pc + 4.U
+  private val brTarget = Mux(io.msgIn.bits.brTaken, io.msgIn.bits.pc + io.msgIn.bits.imm, snpc)
+  private val pcSelDec = Decoder1H(
     Seq(
       InstrPcSel.PcSnpc.BP  -> 0,
       InstrPcSel.PcAlu.BP   -> 1,
@@ -31,8 +31,8 @@ class PcUpdate extends Module {
       InstrPcSel.PcMtvec.BP -> 4
     )
   )
-  val pcSel1H = pcSelDec(io.msgIn.bits.pcSel)
-  val dnpc: UInt = Mux1H(
+  private val pcSel1H = pcSelDec(io.msgIn.bits.pcSel)
+  private val dnpc: UInt = Mux1H(
     Seq(
       pcSel1H(0) -> snpc,
       pcSel1H(1) -> io.msgIn.bits.d,

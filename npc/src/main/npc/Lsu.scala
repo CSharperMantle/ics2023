@@ -51,11 +51,11 @@ class Lsu extends Module {
 
   val io = IO(new LsuIO)
 
-  val memRAddr = io.msgIn.bits.d
-  val memWAddr = io.msgIn.bits.d
-  val memWData = io.msgIn.bits.rs2
+  private val memRAddr = io.msgIn.bits.d
+  private val memWAddr = io.msgIn.bits.d
+  private val memWData = io.msgIn.bits.rs2
 
-  val memActionDec = Decoder1H(
+  private val memActionDec = Decoder1H(
     Seq(
       MemAction.MemRd.BP   -> 0,
       MemAction.MemRdu.BP  -> 1,
@@ -63,17 +63,17 @@ class Lsu extends Module {
       MemAction.MemNone.BP -> 3
     )
   )
-  val memAction1H = memActionDec(io.msgIn.bits.memAction)
+  private val memAction1H = memActionDec(io.msgIn.bits.memAction)
 
-  val memWidthDec = Decoder1H(
+  private val memWidthDec = Decoder1H(
     Seq(
       MemWidth.LenB.BP -> 0,
       MemWidth.LenH.BP -> 1,
       MemWidth.LenW.BP -> 2
     )
   )
-  val memWidth1H = memWidthDec(io.msgIn.bits.memWidth)
-  val memMask = Mux1H(
+  private val memWidth1H = memWidthDec(io.msgIn.bits.memWidth)
+  private val memMask = Mux1H(
     Seq(
       memWidth1H(0) -> "b00000001".U(8.W),
       memWidth1H(1) -> "b00000011".U(8.W),
@@ -82,7 +82,7 @@ class Lsu extends Module {
     )
   )
 
-  val memAlignDec = Decoder1H(
+  private val memAlignDec = Decoder1H(
     Seq(
       "b00".BP -> 0,
       "b01".BP -> 1,
@@ -91,14 +91,14 @@ class Lsu extends Module {
     )
   )
 
-  val wEn = io.msgIn.valid & memAction1H(2)
-  val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
+  private val wEn = io.msgIn.valid & memAction1H(2)
+  private val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
   io.rReq.bits.addr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
-  val readData = RegEnable(io.rResp.bits.data, io.rResp.valid)
+  private val readData = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
-  val memRAlign1H = memAlignDec(memRAddr(1, 0))
-  val memRDataShifted = Mux1H(
+  private val memRAlign1H = memAlignDec(memRAddr(1, 0))
+  private val memRDataShifted = Mux1H(
     Seq(
       memRAlign1H(0) -> readData,
       memRAlign1H(1) -> Cat(Fill(8, 0.B), readData(XLen - 1, 8)),
@@ -108,13 +108,13 @@ class Lsu extends Module {
     )
   )
 
-  val sext = Module(new SExtender)
+  private val sext = Module(new SExtender)
   sext.io.sextData := memRDataShifted
   sext.io.sextW    := io.msgIn.bits.memWidth
   sext.io.sextU    := memAction1H(1)
 
-  val memWAlign1H = memAlignDec(memWAddr(1, 0))
-  val memWDataShifted = Mux1H(
+  private val memWAlign1H = memAlignDec(memWAddr(1, 0))
+  private val memWDataShifted = Mux1H(
     Seq(
       memWAlign1H(0) -> memWData,
       memWAlign1H(1) -> Cat(memWData(XLen - 9, 0), Fill(8, 0.B)),
@@ -125,7 +125,7 @@ class Lsu extends Module {
   )
   io.wReq.bits.wData := memWDataShifted
   io.wReq.bits.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
-  val memWMaskShifted = Mux1H(
+  private val memWMaskShifted = Mux1H(
     Seq(
       memWAlign1H(0) -> memMask,
       memWAlign1H(1) -> Cat(memMask(6, 0), Fill(1, 0.B)),
@@ -154,7 +154,7 @@ class Lsu extends Module {
     val S_WaitReady = Value
   }
   import State._
-  val firstAction =
+  private val firstAction =
     MuxCase(
       S_Idle,
       Seq(
@@ -164,7 +164,7 @@ class Lsu extends Module {
         (rEn & wEn)   -> S_ReadReq
       )
     )
-  val y = RegInit(S_Idle)
+  private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
