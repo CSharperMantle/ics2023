@@ -45,12 +45,18 @@ class SramRPortBlackBox(addrWidth: Width, dataWidth: Width)
   )
 }
 
+class SramRPortReq(width: Width) extends Bundle {
+  val addr = UInt(width)
+}
+
+class SramRPortResp(width: Width) extends Bundle {
+  val data = UInt(width)
+  val resp = UInt(2.W)
+}
+
 class SramRPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val addr = Flipped(Irrevocable(UInt(addrWidth)))
-  val data = Irrevocable(new Bundle {
-    val data = UInt(dataWidth)
-    val resp = UInt(2.W)
-  })
+  val req  = Flipped(Irrevocable(new SramRPortReq(addrWidth)))
+  val resp = Irrevocable(new SramRPortResp(dataWidth))
 }
 
 class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
@@ -67,23 +73,23 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.addr.valid, S_Read, S_Idle),
+      S_Idle      -> Mux(io.req.valid, S_Read, S_Idle),
       S_Read      -> S_WaitReady,
-      S_WaitReady -> Mux(io.data.ready, S_Idle, S_WaitReady)
+      S_WaitReady -> Mux(io.resp.ready, S_Idle, S_WaitReady)
     )
   )
 
-  val addr = RegEnable(io.addr.bits, io.addr.valid)
+  val addr = RegEnable(io.req.bits.addr, io.req.valid)
   val data = RegEnable(backend.io.rData, y === S_Read)
 
   backend.io.rEn   := y === S_Read
   backend.io.rAddr := addr
 
-  io.data.bits.data := data
-  io.data.bits.resp := 0.U
-  io.data.valid     := y === S_WaitReady
+  io.resp.bits.data := data
+  io.resp.bits.resp := 0.U
+  io.resp.valid     := y === S_WaitReady
 
-  io.addr.ready := y === S_Read
+  io.req.ready := y === S_Read
 }
 
 class SramWPortBlackBoxIO(addrWidth: Width, dataWidth: Width) extends Bundle {
@@ -127,13 +133,19 @@ class SramWPortBlackBox(addrWidth: Width, dataWidth: Width)
   )
 }
 
+class SramWPortReq(addrWidth: Width, dataWidth: Width) extends Bundle {
+  val wAddr = UInt(addrWidth)
+  val wData = UInt(dataWidth)
+  val wMask = UInt(8.W)
+}
+
+class SramWPortResp extends Bundle {
+  val bResp = UInt(2.W)
+}
+
 class SramWPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val data = Flipped(Irrevocable(new Bundle {
-    val wAddr = UInt(addrWidth)
-    val wData = UInt(dataWidth)
-    val wMask = UInt(8.W)
-  }))
-  val bResp = Irrevocable(UInt(2.W))
+  val req  = Flipped(Irrevocable(new SramWPortReq(addrWidth, dataWidth)))
+  val resp = Irrevocable(new SramWPortResp)
 }
 
 class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
@@ -150,19 +162,19 @@ class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
   val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.data.valid, S_Write, S_Idle),
+      S_Idle      -> Mux(io.req.valid, S_Write, S_Idle),
       S_Write     -> S_WaitReady,
-      S_WaitReady -> Mux(io.bResp.ready, S_Idle, S_WaitReady)
+      S_WaitReady -> Mux(io.resp.ready, S_Idle, S_WaitReady)
     )
   )
 
   backend.io.wEn   := y === S_Write
-  backend.io.wAddr := io.data.bits.wAddr
-  backend.io.wData := io.data.bits.wData
-  backend.io.wMask := io.data.bits.wMask
+  backend.io.wAddr := io.req.bits.wAddr
+  backend.io.wData := io.req.bits.wData
+  backend.io.wMask := io.req.bits.wMask
 
-  io.data.ready := y === S_WaitReady
+  io.req.ready := y === S_WaitReady
 
-  io.bResp.valid := y === S_WaitReady
-  io.bResp.bits  := 0.U
+  io.resp.valid      := y === S_WaitReady
+  io.resp.bits.bResp := 0.U
 }

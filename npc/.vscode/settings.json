@@ -10,5 +10,10 @@
     "github.copilot.enable": {
         "*": false
     },
-    "editor.rulers": [100],
+    "editor.rulers": [
+        100
+    ],
+    "cSpell.words": [
+        "xbar"
+    ],
 }

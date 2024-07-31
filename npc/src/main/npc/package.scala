@@ -38,6 +38,7 @@ object npc {
 
   val XLen = 32
   require(XLen == 32 || XLen == 64)
+  require(XLen == 32, "RV64 not implemented")
 
   val InitPCVal = BigInt("80000000", 16)
 

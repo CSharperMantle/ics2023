@@ -29,6 +29,21 @@ class Core extends Module {
   val wbu      = Module(new Wbu)
   val pcUpdate = Module(new PcUpdate)
 
+  val memRPort = Module(new SramRPort(XLen.W, 32.W))
+  val readArb = Module(
+    new XbarArbiter(new SramRPortReq(XLen.W), new SramRPortResp(32.W), 2)
+  )
+  readArb.io.slaveReq      <> memRPort.io.req
+  readArb.io.slaveResp     <> memRPort.io.resp
+  readArb.io.masterReq(0)  <> ifu.io.rReq
+  readArb.io.masterResp(0) <> ifu.io.rResp
+  readArb.io.masterReq(1)  <> lsu.io.rReq
+  readArb.io.masterResp(1) <> lsu.io.rResp
+
+  val memWPort = Module(new SramWPort(XLen.W, 32.W))
+  memWPort.io.req  <> lsu.io.wReq
+  memWPort.io.resp <> lsu.io.wResp
+
   StageConnect(idu.io.msgIn, ifu.io.msgOut)
   StageConnect(exu.io.msgIn, idu.io.msgOut)
   gpr.io.read <> exu.io.gprRead
@@ -45,7 +60,7 @@ class Core extends Module {
 
   instrCycles := Mux(retired, 0.U, instrCycles + 1.U)
 
-  io.pc          := pcUpdate.io.msgOut.bits.pc
+  io.pc          := ifu.io.msgOut.bits.pc
   io.instr       := ifu.io.msgOut.bits.instr
   io.break       := retired & idu.io.break
   io.inval       := ~reset.asBool & (retired & pcUpdate.io.msgOut.bits.inval)

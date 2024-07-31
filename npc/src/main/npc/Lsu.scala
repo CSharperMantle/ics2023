@@ -40,6 +40,10 @@ class Lsu2WbuMsg extends Bundle {
 class LsuIO extends Bundle {
   val msgIn  = Flipped(Irrevocable(new Exu2LsuMsg))
   val msgOut = Irrevocable(new Lsu2WbuMsg)
+  val rReq   = Irrevocable(new SramRPortReq(XLen.W))
+  val rResp  = Flipped(Irrevocable(new SramRPortResp(XLen.W)))
+  val wReq   = Irrevocable(new SramWPortReq(XLen.W, 32.W))
+  val wResp  = Flipped(Irrevocable(new SramWPortResp))
 }
 
 class Lsu extends Module {
@@ -90,10 +94,8 @@ class Lsu extends Module {
   val wEn = io.msgIn.valid & memAction1H(2)
   val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
-  val readPort = Module(new SramRPort(XLen.W, XLen.W))
-
-  readPort.io.addr.bits := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
-  val readData = RegEnable(readPort.io.data.bits.data, readPort.io.data.valid)
+  io.rReq.bits.addr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
+  val readData = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
   val memRAlign1H = memAlignDec(memRAddr(1, 0))
   val memRDataShifted = Mux1H(
@@ -111,8 +113,6 @@ class Lsu extends Module {
   sext.io.sextW    := io.msgIn.bits.memWidth
   sext.io.sextU    := memAction1H(1)
 
-  val writePort = Module(new SramWPort(XLen.W, XLen.W))
-
   val memWAlign1H = memAlignDec(memWAddr(1, 0))
   val memWDataShifted = Mux1H(
     Seq(
@@ -123,8 +123,8 @@ class Lsu extends Module {
       memWAlign1H(4) -> 0.U
     )
   )
-  writePort.io.data.bits.wData := memWDataShifted
-  writePort.io.data.bits.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
+  io.wReq.bits.wData := memWDataShifted
+  io.wReq.bits.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
   val memWMaskShifted = Mux1H(
     Seq(
       memWAlign1H(0) -> memMask,
@@ -135,7 +135,7 @@ class Lsu extends Module {
     )
   )
 
-  writePort.io.data.bits.wMask := MuxCase(
+  io.wReq.bits.wMask := MuxCase(
     0.U,
     Seq(
       rEn -> memMask,
@@ -168,21 +168,21 @@ class Lsu extends Module {
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_ReadReq   -> Mux(readPort.io.addr.ready, S_Read, S_ReadReq),
-      S_Read      -> Mux(readPort.io.data.valid, S_ReadDone, S_Read),
+      S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
+      S_Read      -> Mux(io.rResp.valid, S_ReadDone, S_Read),
       S_ReadDone  -> Mux(wEn, S_Write, S_WaitReady),
-      S_WriteReq  -> Mux(writePort.io.data.ready, S_WriteDone, S_WriteReq),
-      S_Write     -> Mux(writePort.io.bResp.valid, S_WriteDone, S_Write),
+      S_WriteReq  -> Mux(io.wReq.ready, S_WriteDone, S_WriteReq),
+      S_Write     -> Mux(io.wResp.valid, S_WriteDone, S_Write),
       S_WriteDone -> S_WaitReady,
       S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
     )
   )
 
-  readPort.io.addr.valid := y === S_ReadReq
-  readPort.io.data.ready := y === S_ReadDone
+  io.rReq.valid  := y === S_ReadReq
+  io.rResp.ready := y === S_ReadDone
 
-  writePort.io.data.valid  := y === S_WriteReq
-  writePort.io.bResp.ready := y === S_WriteDone
+  io.wReq.valid  := y === S_WriteReq
+  io.wResp.ready := y === S_WriteDone
 
   io.msgOut.bits.pc       := io.msgIn.bits.pc
   io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel
