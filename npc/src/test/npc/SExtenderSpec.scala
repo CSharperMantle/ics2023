@@ -14,7 +14,7 @@ class SExtenderSpec extends AnyFlatSpec with ChiselScalatestTester {
   "SExtender" should "sign-extend combinationally" in {
     test(new SExtender) { dut =>
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       dut.io.sextW.poke(LenB.U)

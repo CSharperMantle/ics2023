@@ -13,7 +13,7 @@ class ImmDecSpec extends AnyFlatSpec with ChiselScalatestTester {
   "ImmDec" should "extract immediate combinationally" in {
     test(new ImmDec) { dut =>
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       dut.io.instr.poke("b0000000_01110_11011_000_01110_01100_11".U) // add a4, s11, a4

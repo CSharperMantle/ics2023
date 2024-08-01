@@ -9,7 +9,7 @@ class GprFileSpec extends AnyFlatSpec with ChiselScalatestTester {
   "GprFile" should "write sequentially and read combinationally" in {
     test(new GprFile) { dut =>
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       for (_ <- 0 until 4) {
@@ -17,7 +17,7 @@ class GprFileSpec extends AnyFlatSpec with ChiselScalatestTester {
         for (i <- 0 until 32) {
           dut.io.write.rdIdx.poke(i)
           dut.io.write.rdData.poke(i + 1)
-          dut.clock.step()
+          step()
         }
         dut.io.write.wEn.poke(false.B)
 

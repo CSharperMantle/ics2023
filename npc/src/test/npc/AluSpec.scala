@@ -23,7 +23,7 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
     test(new Alu) { dut =>
       val rand = new Random(SEED)
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       dut.io.calcOp.poke(Add.U)
@@ -119,7 +119,7 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
     test(new Alu) { dut =>
       val rand = new Random(SEED)
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       val cases = Seq(
@@ -179,7 +179,7 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
   it should "assert brInvalid on invalid branch conditions" in {
     test(new Alu) { dut =>
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       dut.io.brCond.poke(Eq.U)

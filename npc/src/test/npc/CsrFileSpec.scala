@@ -14,29 +14,29 @@ class CsrFileSpec extends AnyFlatSpec with ChiselScalatestTester {
   "CsrFile" should "perform ops sequentially and return old value combinationally" in {
     test(new CsrFile) { dut =>
       dut.reset.poke(true.B)
-      dut.clock.step()
+      step()
       dut.reset.poke(false.B)
 
       dut.io.conn.csrIdx.poke("h340".U)
       dut.io.conn.s1.poke("hdeadbeef".U)
       dut.io.conn.csrOp.poke(Unk.U)
       dut.io.conn.csrVal.expect(0.U)
-      dut.clock.step()
+      step()
 
       dut.io.conn.csrOp.poke(Rs.U)
-      dut.clock.step()
+      step()
       dut.io.conn.csrVal.expect("hdeadbeef".U)
 
       dut.io.conn.csrOp.poke(Rc.U)
       dut.io.conn.s1.poke("hcafebabe".U)
       dut.io.conn.csrVal.expect("hdeadbeef".U)
-      dut.clock.step()
+      step()
       dut.io.conn.csrVal.expect("h14010441".U)
 
       dut.io.conn.csrOp.poke(Rw.U)
       dut.io.conn.s1.poke("h1234abcd".U)
       dut.io.conn.csrVal.expect("h14010441".U)
-      dut.clock.step()
+      step()
       dut.io.conn.csrVal.expect("h1234abcd".U)
     }
   }

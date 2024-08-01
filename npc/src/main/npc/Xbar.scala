@@ -58,12 +58,18 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
     extends Module {
   val io = IO(new GenericArbiterIO(req, resp, n))
 
-  private val arbiter = Module(new RRArbiter(new Bundle {}, n))
-
   private val transactions = RegInit(VecInit(Seq.fill(n)(0.B)))
   for ((trans, i) <- transactions.zipWithIndex) {
     trans := Mux(io.masterReq(i).valid, 1.B, Mux(io.masterResp(i).ready, 0.B, trans))
   }
+
+  private val arb = Module(new RRArbiter(new Bundle {}, n))
+  for (i <- (0 until n)) {
+    arb.io.in(i).valid := transactions(i)
+  }
+  arb.io.out.ready := MuxLookup(arb.io.chosen, 0.B)(
+    (0 until n).map(i => i.asUInt -> io.masterResp(i).ready)
+  )
 
   private object State extends CvtChiselEnum {
     val S_Idle  = Value
@@ -73,39 +79,31 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle  -> Mux(arbiter.io.out.valid, S_Trans, S_Idle),
+      S_Idle  -> Mux(arb.io.out.valid, S_Trans, S_Idle),
       S_Trans -> Mux(io.slaveResp.ready, S_Idle, S_Trans)
     )
   )
   private val inTrans = y === S_Trans
 
-  // Connect arbiter states
-  for (((arbIn, req), i) <- arbiter.io.in.zip(transactions).zipWithIndex) {
-    arbIn.valid := req
-  }
-  arbiter.io.out.ready := MuxLookup(arbiter.io.chosen, 0.B)(
-    (0 until n).map(i => i.asUInt -> io.masterResp(i).ready)
-  )
-
   // Wire requests and responses
-  io.slaveReq.valid := MuxLookup(arbiter.io.chosen, 0.B)(
+  io.slaveReq.valid := MuxLookup(arb.io.chosen, 0.B)(
     (0 until n).map(i => i.asUInt -> (inTrans & io.masterReq(i).valid))
   )
-  io.slaveReq.bits := MuxLookup(arbiter.io.chosen, io.masterReq(0).bits)(
+  io.slaveReq.bits := MuxLookup(arb.io.chosen, io.masterReq(0).bits)(
     (0 until n).map(i => i.asUInt -> io.masterReq(i).bits)
   )
   for ((req, i) <- io.masterReq.zipWithIndex) {
-    req.ready := (arbiter.io.chosen === i.asUInt) & io.slaveReq.ready
+    req.ready := (arb.io.chosen === i.asUInt) & io.slaveReq.ready
   }
   for ((resp, i) <- io.masterResp.zipWithIndex) {
-    resp.valid := (arbiter.io.chosen === i.asUInt) & io.slaveResp.valid
+    resp.valid := (arb.io.chosen === i.asUInt) & io.slaveResp.valid
     resp.bits  := io.slaveResp.bits
   }
-  io.slaveResp.ready := MuxLookup(arbiter.io.chosen, 0.B)(
+  io.slaveResp.ready := MuxLookup(arb.io.chosen, 0.B)(
     (0 until n).map(i => i.asUInt -> io.masterResp(i).ready)
   )
 
-  io.chosen := arbiter.io.chosen
+  io.chosen := arb.io.chosen
 }
 
 class XbarIO[TReq <: Data, TResp <: Data](
