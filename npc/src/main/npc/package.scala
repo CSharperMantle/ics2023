@@ -85,7 +85,7 @@ object npc {
           case 64 => "longint"
           case _  => throw new IllegalArgumentException
         }
-      case UnknownWidth => throw new IllegalArgumentException
+      case UnknownWidth() => throw new IllegalArgumentException
     }
   }
 
