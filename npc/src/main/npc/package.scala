@@ -88,18 +88,4 @@ object npc {
       case UnknownWidth() => throw new IllegalArgumentException
     }
   }
-
-  object BResp {
-    val Okay   = "b00".U(2.W)
-    val ExOkay = "b01".U(2.W)
-    val SlvErr = "b10".U(2.W)
-    val DecErr = "b11".U(2.W)
-  }
-
-  object RResp {
-    val Okay   = "b00".U(2.W)
-    val ExOkay = "b01".U(2.W)
-    val SlvErr = "b10".U(2.W)
-    val DecErr = "b11".U(2.W)
-  }
 }

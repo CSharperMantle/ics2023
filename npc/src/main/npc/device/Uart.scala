@@ -69,5 +69,5 @@ class Uart extends Module {
   io.req.ready := y === S_WaitReady
 
   io.resp.valid      := y === S_WaitReady
-  io.resp.bits.bResp := Mux(addrBad, BResp.DecErr, BResp.Okay)
+  io.resp.bits.bResp := Mux(addrBad, BResp.DecErr.U, BResp.Okay.U)
 }

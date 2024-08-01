@@ -13,19 +13,6 @@ object CsrExcpAdj extends CvtChiselEnum {
   val ExcpAdjMret  = Value
 }
 
-object CsrInternalIdx extends CvtChiselEnum {
-  val SatpIdx     = Value
-  val MstatusIdx  = Value
-  val MieIdx      = Value
-  val MtvecIdx    = Value
-  val MscratchIdx = Value
-  val MepcIdx     = Value
-  val McauseIdx   = Value
-  val MtvalIdx    = Value
-  val MipIdx      = Value
-  val UnkIdx      = Value
-}
-
 object CsrOp extends CvtChiselEnum {
   val Rw  = Value
   val Rs  = Value
@@ -49,24 +36,37 @@ class CsrFileIO extends Bundle {
 }
 
 class CsrFile extends Module {
+  private object Regs extends CvtChiselEnum {
+    val SatpIdx     = Value
+    val MstatusIdx  = Value
+    val MieIdx      = Value
+    val MtvecIdx    = Value
+    val MscratchIdx = Value
+    val MepcIdx     = Value
+    val McauseIdx   = Value
+    val MtvalIdx    = Value
+    val MipIdx      = Value
+    val UnkIdx      = Value
+  }
+
   import CsrOp._
-  import CsrInternalIdx._
   import CsrExcpAdj._
+  import Regs._
 
   val io = IO(new CsrFileIO)
 
-  private val csrs = Mem(1 << CsrInternalIdx.getWidth, UInt(npc.XLen.W))
+  private val csrs = Mem(1 << Regs.getWidth, UInt(npc.XLen.W))
 
   private val csrOpDec = Decoder1H(
     Seq(
-      Rw.BP  -> 0,
-      Rs.BP  -> 1,
-      Rc.BP  -> 2
+      Rw.BP -> 0,
+      Rs.BP -> 1,
+      Rc.BP -> 2
     )
   )
   private val csrOp1H = csrOpDec(io.conn.csrOp)
 
-  private val csrIdxDecTable = TruthTable(
+  private val regDecTable = TruthTable(
     Seq(
       BitPat("h180".U(12.W)) -> SatpIdx.BP,
       BitPat("h300".U(12.W)) -> MstatusIdx.BP,
@@ -80,10 +80,10 @@ class CsrFile extends Module {
     ),
     UnkIdx.BP
   )
-  private val csrIdxDecoded = decoder(io.conn.csrIdx, csrIdxDecTable)
+  private val regIdx = decoder(io.conn.csrIdx, regDecTable)
 
-  private val csrVal = Mux(csrIdxDecoded === UnkIdx.U, 0.U, csrs(csrIdxDecoded))
-  csrs(csrIdxDecoded) := Mux1H(
+  private val csrVal = Mux(regIdx === UnkIdx.U, 0.U, csrs(regIdx))
+  csrs(regIdx) := Mux1H(
     Seq(
       csrOp1H(0) -> io.conn.s1,
       csrOp1H(1) -> (io.conn.s1 | csrVal),

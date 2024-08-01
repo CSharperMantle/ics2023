@@ -11,8 +11,15 @@ class MemReadReq(width: Width) extends Bundle {
 }
 
 class MemReadResp(width: Width) extends Bundle {
-  val data = UInt(width)
-  val resp = UInt(2.W)
+  val data  = UInt(width)
+  val rResp = UInt(2.W)
+}
+
+object BResp extends CvtChiselEnum {
+  val Okay   = Value
+  val ExOkay = Value
+  val SlvErr = Value
+  val DecErr = Value
 }
 
 class MemWriteReq(addrWidth: Width, dataWidth: Width) extends Bundle {
@@ -23,6 +30,13 @@ class MemWriteReq(addrWidth: Width, dataWidth: Width) extends Bundle {
 
 class MemWriteResp extends Bundle {
   val bResp = UInt(2.W)
+}
+
+object RResp extends CvtChiselEnum {
+  val Okay   = Value
+  val ExOkay = Value
+  val SlvErr = Value
+  val DecErr = Value
 }
 
 class GenericArbiterIO[TReq <: Data, TResp <: Data](
@@ -167,7 +181,7 @@ class Xbar[TReq <: Data, TResp <: Data](
   )
   selResp(io.masterResp.bits) := Mux1H(
     (0 until n).map(i => addrSel1H(i) -> selResp(io.slaveResp(i).bits)) ++ Seq(
-      addrSel1H(addrSelDec.bitBad) -> BResp.DecErr
+      addrSel1H(addrSelDec.bitBad) -> BResp.DecErr.U
     )
   )
   for ((slave, i) <- io.slaveResp.zipWithIndex) {
