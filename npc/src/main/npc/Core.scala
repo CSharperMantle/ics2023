@@ -5,6 +5,7 @@ import chisel3.util._
 
 import common._
 import npc._
+import device._
 
 class CoreIO extends Bundle {
   val pc          = Output(UInt(XLen.W))
@@ -41,9 +42,28 @@ class Core extends Module {
   memRPort.io.req  <> readArb.io.slaveReq
   memRPort.io.resp <> readArb.io.slaveResp
 
+  val memWXbar = Module(
+    new Xbar(
+      new SramWPortReq(XLen.W, 32.W),
+      new SramWPortResp,
+      Seq(
+        Seq("b00010000_00000000_0000????_????????".BP),
+        Seq("b10000000_????????_????????_????????".BP)
+      ),
+      (req: SramWPortReq) => req.wAddr,
+      (resp: SramWPortResp) => resp.bResp
+    )
+  )
+  memWXbar.io.masterReq  <> lsu.io.wReq
+  memWXbar.io.masterResp <> lsu.io.wResp
+
+  val uart = Module(new Uart)
+  uart.io.req  <> memWXbar.io.slaveReq(0)
+  uart.io.resp <> memWXbar.io.slaveResp(0)
+
   val memWPort = Module(new SramWPort(XLen.W, 32.W))
-  memWPort.io.req  <> lsu.io.wReq
-  memWPort.io.resp <> lsu.io.wResp
+  memWPort.io.req  <> memWXbar.io.slaveReq(1)
+  memWPort.io.resp <> memWXbar.io.slaveResp(1)
 
   StageConnect(idu.io.msgIn, ifu.io.msgOut)
   StageConnect(exu.io.msgIn, idu.io.msgOut)

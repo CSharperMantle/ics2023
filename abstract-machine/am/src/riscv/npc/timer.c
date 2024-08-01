@@ -1,7 +1,12 @@
 #include <am.h>
-#include <riscv/riscv.h>
 
-#define RTC_ADDR          0xa0000048
+#ifndef __ISA_RISCV32E__
+// For clangd
+#include "../../platform/npc/include/npc.h"
+#else
+#include <npc.h>
+#endif
+
 #define RTC_ADDR_REG_US_L (RTC_ADDR + 0)
 #define RTC_ADDR_REG_US_H (RTC_ADDR + 4)
 

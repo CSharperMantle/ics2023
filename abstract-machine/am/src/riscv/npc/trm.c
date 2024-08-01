@@ -1,6 +1,11 @@
 #include <am.h>
-#include <klib-macros.h>
-#include <riscv/riscv.h>
+
+#ifndef __ISA_RISCV32E__
+// For clangd
+#include "../../platform/npc/include/npc.h"
+#else
+#include <npc.h>
+#endif
 
 extern char _heap_start;
 int main(const char *args);
@@ -15,14 +20,13 @@ Area heap = RANGE(&_heap_start, PMEM_END);
 #endif
 static const char mainargs[] = MAINARGS;
 
-#define SERIAL_PORT 0xa00003f8
-
 void putch(char ch) {
-  outb(SERIAL_PORT, ch);
+  outb(UART_ADDR, ch);
 }
 
-void halt(int code) {
-  asm volatile("mv a0, %0; ebreak" : : "r"(code));
+__attribute__((noreturn)) void halt(int code) {
+  nemu_trap(code);
+  __builtin_unreachable();
   while (1)
     ;
 }

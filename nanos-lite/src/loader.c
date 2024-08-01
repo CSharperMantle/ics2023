@@ -19,7 +19,7 @@
 #define ELF_MACHINE_TYPE EM_X86_64
 #elif defined(__ISA_MIPS32__)
 #define ELF_MACHINE_TYPE EM_MIPS
-#elif defined(__ISA_RISCV32__) || defined(__ISA_RISCV64__)
+#elif defined(__ISA_RISCV32__) || defined(__ISA_RISCV64__) || defined(__ISA_RISCV32E__)
 #define ELF_MACHINE_TYPE EM_RISCV
 #else
 #error Unsupported ISA

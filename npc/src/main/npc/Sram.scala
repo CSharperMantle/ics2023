@@ -86,7 +86,7 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
   backend.io.rAddr := addr
 
   io.resp.bits.data := data
-  io.resp.bits.resp := 0.U
+  io.resp.bits.resp := RResp.Okay
   io.resp.valid     := y === S_WaitReady
 
   io.req.ready := y === S_Read
@@ -176,5 +176,5 @@ class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
   io.req.ready := y === S_WaitReady
 
   io.resp.valid      := y === S_WaitReady
-  io.resp.bits.bResp := 0.U
+  io.resp.bits.bResp := BResp.Okay
 }

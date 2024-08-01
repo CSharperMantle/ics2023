@@ -89,7 +89,7 @@ class XbarIO[TReq <: Data, TResp <: Data](
 class Xbar[TReq <: Data, TResp <: Data](
   private val req:      TReq,
   private val resp:     TResp,
-  private val addrPats: Seq[BitPat],
+  private val addrPats: Seq[Iterable[BitPat]],
   private val selAddr:  TReq => UInt,
   private val selResp:  TResp => UInt)
     extends Module {
@@ -100,7 +100,7 @@ class Xbar[TReq <: Data, TResp <: Data](
 
   addr := Mux(io.masterReq.valid, selAddr(io.masterReq.bits), Mux(io.masterResp.ready, 0.U, addr))
 
-  private val addrSelDec = Decoder1H(addrPats.zipWithIndex)
+  private val addrSelDec = MultiDecoder1H(addrPats.zipWithIndex)
   private val addrSel1H  = addrSelDec(addr)
   private val addrBad    = addrSel1H(addrSelDec.bitBad)
 
@@ -148,7 +148,7 @@ class Xbar[TReq <: Data, TResp <: Data](
   )
   selResp(io.masterResp.bits) := Mux1H(
     (0 until n).map(i => addrSel1H(i) -> selResp(io.slaveResp(i).bits)) ++ Seq(
-      addrSel1H(addrSelDec.bitBad) -> 3.U(2.W)
+      addrSel1H(addrSelDec.bitBad) -> BResp.DecErr
     )
   )
   for ((slave, i) <- io.slaveResp.zipWithIndex) {

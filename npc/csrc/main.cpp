@@ -142,6 +142,7 @@ int main(int argc, char *argv[]) {
       }
     } while (!dut.io_retired);
     iringbuf.emplace_back(dut.io_pc, dut.io_instr, dut.io_instrCycles);
+    Assert(!dut.io_inval, "instruction retired as invalid");
   } while (!dut.io_break);
 
   const word_t retval = dut.io_a0;

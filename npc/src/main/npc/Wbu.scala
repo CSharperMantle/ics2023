@@ -71,7 +71,7 @@ class Wbu extends Module {
   io.msgOut.bits.d       := io.msgIn.bits.d
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
-  io.msgOut.bits.inval   := io.msgIn.bits.inval | wbSel1H(wbSelDec.bitBad)
+  io.msgOut.bits.inval   := io.msgIn.bits.inval | (io.msgIn.bits.wbEn & wbSel1H(wbSelDec.bitBad))
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

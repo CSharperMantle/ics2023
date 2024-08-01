@@ -178,6 +178,9 @@ class Lsu extends Module {
     )
   )
 
+  private val memRResp = RegEnable(io.rResp.bits.resp, RResp.Okay, io.rResp.valid)
+  private val memWResp = RegEnable(io.wResp.bits.bResp, BResp.Okay, io.wResp.valid)
+
   io.rReq.valid  := y === S_ReadReq
   io.rResp.ready := y === S_ReadDone
 
@@ -193,8 +196,10 @@ class Lsu extends Module {
   io.msgOut.bits.wbEn     := io.msgIn.bits.wbEn
   io.msgOut.bits.inval := io.msgIn.bits.inval |
     memAction1H(memActionDec.bitBad) |
-    memWAlign1H(memAlignDec.bitBad) |
-    memRAlign1H(memAlignDec.bitBad)
+    (rEn & memRAlign1H(memAlignDec.bitBad)) |
+    (rEn & ~(memRResp === RResp.Okay)) |
+    (wEn & memWAlign1H(memAlignDec.bitBad)) |
+    (wEn & ~(memWResp === BResp.Okay))
 
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
   io.msgOut.bits.brTaken := io.msgIn.bits.brTaken
