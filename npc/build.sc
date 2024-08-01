@@ -36,10 +36,13 @@ object playground extends SbtModule with ScalafmtModule { m =>
       super.sources() ++ Seq(PathRef(millSourcePath / "test"))
     }
     override def ivyDeps = super.ivyDeps() ++ Agg(
-      if (useChisel3) ivy"edu.berkeley.cs::chiseltest:0.6.0"
-      else
-        ivy"edu.berkeley.cs::chiseltest:6.0.0"
+      ivy"org.scalatest::scalatest:3.2.19"
     )
+    // override def ivyDeps = super.ivyDeps() ++ Agg(
+    //   if (useChisel3) ivy"edu.berkeley.cs::chiseltest:0.6.0"
+    //   else
+    //     ivy"edu.berkeley.cs::chiseltest:6.0.0"
+    // )
   }
   def repositoriesTask = T.task {
     Seq(

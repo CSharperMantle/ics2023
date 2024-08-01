@@ -1,23 +1,24 @@
 package npc
 
 import chisel3._
-import chiseltest._
+import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers
 
-class GprFileSpec extends AnyFlatSpec with ChiselScalatestTester {
-  "GprFile" should "write sequentially and read combinationally" in {
-    test(new GprFile) { dut =>
-      dut.reset.poke(true.B)
-      step()
-      dut.reset.poke(false.B)
+class GprFileSpec extends AnyFlatSpec {
+  behavior of "GprFile"
+
+  it should "write sequentially and read combinationally" in {
+    simulate(new GprFile) { dut =>
+      dut.reset.poke(true)
+      dut.clock.step()
+      dut.reset.poke(false)
 
       for (_ <- 0 until 4) {
         dut.io.write.wEn.poke(true.B)
         for (i <- 0 until 32) {
           dut.io.write.rdIdx.poke(i)
           dut.io.write.rdData.poke(i + 1)
-          step()
+          dut.clock.step()
         }
         dut.io.write.wEn.poke(false.B)
 

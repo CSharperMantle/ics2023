@@ -1,20 +1,21 @@
 package npc
 
 import chisel3._
-import chiseltest._
+import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers
 
 import npc._
 
-class ImmDecSpec extends AnyFlatSpec with ChiselScalatestTester {
+class ImmDecSpec extends AnyFlatSpec {
   import ImmFmt._
 
-  "ImmDec" should "extract immediate combinationally" in {
-    test(new ImmDec) { dut =>
-      dut.reset.poke(true.B)
-      step()
-      dut.reset.poke(false.B)
+  behavior of "ImmDec"
+
+  it should "extract immediate combinationally" in {
+    simulate(new ImmDec) { dut =>
+      dut.reset.poke(true)
+      dut.clock.step()
+      dut.reset.poke(false)
 
       dut.io.instr.poke("b0000000_01110_11011_000_01110_01100_11".U) // add a4, s11, a4
       dut.io.immFmt.poke(ImmR.U)

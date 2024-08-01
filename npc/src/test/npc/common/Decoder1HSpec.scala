@@ -1,15 +1,14 @@
 package npc.common
 
 import chisel3._
-import chiseltest._
+import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers
 
 import _root_.npc._
 import npc._
 import common.Decoder1H
 
-class Decoder1HSpec extends AnyFlatSpec with ChiselScalatestTester {
+class Decoder1HSpec extends AnyFlatSpec {
   class Harness extends Module {
     val io = IO(new Bundle {
       val data = Input(UInt(4.W))
@@ -28,8 +27,10 @@ class Decoder1HSpec extends AnyFlatSpec with ChiselScalatestTester {
     io.res := dataDec(io.data)
   }
 
-  "Decoder1H" should "decode bit patterns into one-hot vector" in {
-    test(new Harness) { dut =>
+  behavior of "Decoder1H"
+
+  it should "decode bit patterns into one-hot vector" in {
+    simulate(new Harness) { dut =>
       dut.io.data.poke("b1000".U)
       dut.io.res.expect("b00001".U)
 
@@ -57,7 +58,7 @@ class Decoder1HSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 }
 
-class MultiDecoder1HSpec extends AnyFlatSpec with ChiselScalatestTester {
+class MultiDecoder1HSpec extends AnyFlatSpec {
   class Harness extends Module {
     val io = IO(new Bundle {
       val data = Input(UInt(4.W))
@@ -76,8 +77,9 @@ class MultiDecoder1HSpec extends AnyFlatSpec with ChiselScalatestTester {
     io.res := dataDec(io.data)
   }
 
-  "MultiDecoder1H" should "decode bit patterns into one-hot vector" in {
-    test(new Harness) { dut =>
+  behavior of "MultiDecoder1H"
+  it should "decode bit patterns into one-hot vector" in {
+    simulate(new Harness) { dut =>
       dut.io.data.poke("b1000".U)
       dut.io.res.expect("b00001".U)
 

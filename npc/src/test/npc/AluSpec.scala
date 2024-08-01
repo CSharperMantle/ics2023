@@ -1,15 +1,14 @@
 package npc
 
 import chisel3._
-import chiseltest._
+import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers
 
 import scala.util.Random
 
 import npc._
 
-class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
+class AluSpec extends AnyFlatSpec {
   import AluCalcOp._
   import AluCalcDir._
   import AluBrCond._
@@ -18,13 +17,14 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
   val SEED    = 114514
   val N_CASES = 128
 
-  "Alu" should "calculate combinationally" in {
+  behavior of "Alu"
 
-    test(new Alu) { dut =>
+  it should "calculate combinationally" in {
+    simulate(new Alu) { dut =>
       val rand = new Random(SEED)
-      dut.reset.poke(true.B)
-      step()
-      dut.reset.poke(false.B)
+      dut.reset.poke(true)
+      dut.clock.step()
+      dut.reset.poke(false)
 
       dut.io.calcOp.poke(Add.U)
       dut.io.calcDir.poke(Pos.U)
@@ -116,11 +116,11 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "produce branch conditions combinationally" in {
-    test(new Alu) { dut =>
+    simulate(new Alu) { dut =>
       val rand = new Random(SEED)
-      dut.reset.poke(true.B)
-      step()
-      dut.reset.poke(false.B)
+      dut.reset.poke(true)
+      dut.clock.step()
+      dut.reset.poke(false)
 
       val cases = Seq(
         (1, 1, Eq, true),
@@ -177,10 +177,10 @@ class AluSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "assert brInvalid on invalid branch conditions" in {
-    test(new Alu) { dut =>
-      dut.reset.poke(true.B)
-      step()
-      dut.reset.poke(false.B)
+    simulate(new Alu) { dut =>
+      dut.reset.poke(true)
+      dut.clock.step()
+      dut.reset.poke(false)
 
       dut.io.brCond.poke(Eq.U)
       dut.io.brInvalid.expect(false.B)

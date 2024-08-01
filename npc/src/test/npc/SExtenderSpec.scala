@@ -1,21 +1,22 @@
 package npc
 
 import chisel3._
-import chiseltest._
+import chisel3.simulator.EphemeralSimulator._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers
 
 import common._
 import npc._
 
-class SExtenderSpec extends AnyFlatSpec with ChiselScalatestTester {
+class SExtenderSpec extends AnyFlatSpec {
   import MemWidth._
 
-  "SExtender" should "sign-extend combinationally" in {
-    test(new SExtender) { dut =>
-      dut.reset.poke(true.B)
-      step()
-      dut.reset.poke(false.B)
+  behavior of "SExtender"
+
+  it should "sign-extend combinationally" in {
+    simulate(new SExtender) { dut =>
+      dut.reset.poke(true)
+      dut.clock.step()
+      dut.reset.poke(false)
 
       dut.io.sextW.poke(LenB.U)
       dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(8))
