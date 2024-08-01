@@ -15,8 +15,8 @@ class Ifu2IduMsg extends Bundle {
 class IfuIO extends Bundle {
   val msgIn  = Flipped(Irrevocable(new PcUpdate2IfuMsg))
   val msgOut = Irrevocable(new Ifu2IduMsg)
-  val rReq   = Irrevocable(new SramRPortReq(XLen.W))
-  val rResp  = Flipped(Irrevocable(new SramRPortResp(32.W)))
+  val rReq   = Irrevocable(new MemReadReq(XLen.W))
+  val rResp  = Flipped(Irrevocable(new MemReadResp(32.W)))
 }
 
 class Ifu extends Module {

@@ -45,18 +45,9 @@ class SramRPortBlackBox(addrWidth: Width, dataWidth: Width)
   )
 }
 
-class SramRPortReq(width: Width) extends Bundle {
-  val addr = UInt(width)
-}
-
-class SramRPortResp(width: Width) extends Bundle {
-  val data = UInt(width)
-  val resp = UInt(2.W)
-}
-
 class SramRPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val req  = Flipped(Irrevocable(new SramRPortReq(addrWidth)))
-  val resp = Irrevocable(new SramRPortResp(dataWidth))
+  val req  = Flipped(Irrevocable(new MemReadReq(addrWidth)))
+  val resp = Irrevocable(new MemReadResp(dataWidth))
 }
 
 class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
@@ -133,19 +124,9 @@ class SramWPortBlackBox(addrWidth: Width, dataWidth: Width)
   )
 }
 
-class SramWPortReq(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val wAddr = UInt(addrWidth)
-  val wData = UInt(dataWidth)
-  val wMask = UInt(8.W)
-}
-
-class SramWPortResp extends Bundle {
-  val bResp = UInt(2.W)
-}
-
 class SramWPortIO(addrWidth: Width, dataWidth: Width) extends Bundle {
-  val req  = Flipped(Irrevocable(new SramWPortReq(addrWidth, dataWidth)))
-  val resp = Irrevocable(new SramWPortResp)
+  val req  = Flipped(Irrevocable(new MemWriteReq(addrWidth, dataWidth)))
+  val resp = Irrevocable(new MemWriteResp)
 }
 
 class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {

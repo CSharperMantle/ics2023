@@ -34,8 +34,8 @@ class UartBlackBox extends BlackBox with HasBlackBoxInline {
 }
 
 class UartIO extends Bundle {
-  val req  = Flipped(Irrevocable(new SramWPortReq(XLen.W, 32.W)))
-  val resp = Irrevocable(new SramWPortResp)
+  val req  = Flipped(Irrevocable(new MemWriteReq(XLen.W, 32.W)))
+  val resp = Irrevocable(new MemWriteResp)
 }
 
 class Uart extends Module {

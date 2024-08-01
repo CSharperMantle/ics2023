@@ -6,6 +6,25 @@ import chisel3.util._
 import common._
 import npc._
 
+class MemReadReq(width: Width) extends Bundle {
+  val addr = UInt(width)
+}
+
+class MemReadResp(width: Width) extends Bundle {
+  val data = UInt(width)
+  val resp = UInt(2.W)
+}
+
+class MemWriteReq(addrWidth: Width, dataWidth: Width) extends Bundle {
+  val wAddr = UInt(addrWidth)
+  val wData = UInt(dataWidth)
+  val wMask = UInt(8.W)
+}
+
+class MemWriteResp extends Bundle {
+  val bResp = UInt(2.W)
+}
+
 class GenericArbiterIO[TReq <: Data, TResp <: Data](
   private val req:  TReq,
   private val resp: TResp,

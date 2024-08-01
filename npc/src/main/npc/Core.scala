@@ -31,7 +31,7 @@ class Core extends Module {
   val pcUpdate = Module(new PcUpdate)
 
   val readArb = Module(
-    new GenericArbiter(new SramRPortReq(XLen.W), new SramRPortResp(32.W), 2)
+    new GenericArbiter(new MemReadReq(XLen.W), new MemReadResp(32.W), 2)
   )
   readArb.io.masterReq(0)  <> ifu.io.rReq
   readArb.io.masterResp(0) <> ifu.io.rResp
@@ -44,14 +44,14 @@ class Core extends Module {
 
   val memWXbar = Module(
     new Xbar(
-      new SramWPortReq(XLen.W, 32.W),
-      new SramWPortResp,
+      new MemWriteReq(XLen.W, 32.W),
+      new MemWriteResp,
       Seq(
         Seq("b00010000_00000000_0000????_????????".BP),
         Seq("b10000000_????????_????????_????????".BP)
       ),
-      (req: SramWPortReq) => req.wAddr,
-      (resp: SramWPortResp) => resp.bResp
+      (req: MemWriteReq) => req.wAddr,
+      (resp: MemWriteResp) => resp.bResp
     )
   )
   memWXbar.io.masterReq  <> lsu.io.wReq

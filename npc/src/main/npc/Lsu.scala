@@ -40,10 +40,10 @@ class Lsu2WbuMsg extends Bundle {
 class LsuIO extends Bundle {
   val msgIn  = Flipped(Irrevocable(new Exu2LsuMsg))
   val msgOut = Irrevocable(new Lsu2WbuMsg)
-  val rReq   = Irrevocable(new SramRPortReq(XLen.W))
-  val rResp  = Flipped(Irrevocable(new SramRPortResp(XLen.W)))
-  val wReq   = Irrevocable(new SramWPortReq(XLen.W, 32.W))
-  val wResp  = Flipped(Irrevocable(new SramWPortResp))
+  val rReq   = Irrevocable(new MemReadReq(XLen.W))
+  val rResp  = Flipped(Irrevocable(new MemReadResp(XLen.W)))
+  val wReq   = Irrevocable(new MemWriteReq(XLen.W, 32.W))
+  val wResp  = Flipped(Irrevocable(new MemWriteResp))
 }
 
 class Lsu extends Module {
