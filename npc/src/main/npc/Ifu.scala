@@ -24,7 +24,7 @@ class Ifu extends Module {
 
   private val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), io.msgIn.valid)
 
-  object State extends CvtChiselEnum {
+  private object State extends CvtChiselEnum {
     val S_Idle      = Value
     val S_Read      = Value
     val S_ReadDone  = Value

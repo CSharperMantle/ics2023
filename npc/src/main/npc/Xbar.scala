@@ -32,7 +32,7 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
     trans := Mux(io.masterReq(i).valid, 1.B, Mux(io.masterResp(i).ready, 0.B, trans))
   }
 
-  object State extends CvtChiselEnum {
+  private object State extends CvtChiselEnum {
     val S_Idle  = Value
     val S_Trans = Value
   }
@@ -104,7 +104,7 @@ class Xbar[TReq <: Data, TResp <: Data](
   private val addrSel1H  = addrSelDec(addr)
   private val addrBad    = addrSel1H(addrSelDec.bitBad)
 
-  object State extends CvtChiselEnum {
+  private object State extends CvtChiselEnum {
     val S_Idle  = Value
     val S_Trans = Value
   }

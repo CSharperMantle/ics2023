@@ -143,7 +143,7 @@ class Lsu extends Module {
     )
   )
 
-  object State extends CvtChiselEnum {
+  private object State extends CvtChiselEnum {
     val S_Idle      = Value
     val S_ReadReq   = Value
     val S_Read      = Value

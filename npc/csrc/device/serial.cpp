@@ -16,7 +16,6 @@ static void serial_io_handler(uint32_t offset, uint8_t mask, bool is_write) {
   const uint64_t buf = *reinterpret_cast<uint64_t *>(serial_base);
 
   switch (offset) {
-    /* We bind the serial port with the host stderr in NEMU. */
     case CH_OFFSET:
       assert(is_write);
       for (size_t i = 0; i < 8; i++) {

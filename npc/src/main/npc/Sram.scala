@@ -64,7 +64,7 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
 
   private val backend = Module(new SramRPortBlackBox(addrWidth, dataWidth))
 
-  object State extends CvtChiselEnum {
+  private object State extends CvtChiselEnum {
     val S_Idle      = Value
     val S_Read      = Value
     val S_WaitReady = Value
@@ -153,7 +153,7 @@ class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
 
   private val backend = Module(new SramWPortBlackBox(addrWidth, dataWidth))
 
-  object State extends CvtChiselEnum {
+  private object State extends CvtChiselEnum {
     val S_Idle      = Value
     val S_Write     = Value
     val S_WaitReady = Value
