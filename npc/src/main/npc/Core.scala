@@ -38,9 +38,28 @@ class Core extends Module {
   readArb.io.masterReq(1)  <> lsu.io.rReq
   readArb.io.masterResp(1) <> lsu.io.rResp
 
+  val memRXbar = Module(
+    new Xbar(
+      new MemReadReq(XLen.W),
+      new MemReadResp(XLen.W),
+      Seq(
+        Seq("b00000010_00000000_0???????_????????".BP, "b00000010_00000000_10??????_????????".BP),
+        Seq("b10000000_????????_????????_????????".BP)
+      ),
+      (req: MemReadReq) => req.addr,
+      (resp: MemReadResp) => resp.rResp
+    )
+  )
+  memRXbar.io.masterReq  <> readArb.io.slaveReq
+  memRXbar.io.masterResp <> readArb.io.slaveResp
+
+  val clint = Module(new Clint)
+  clint.io.rReq  <> memRXbar.io.slaveReq(0)
+  clint.io.rResp <> memRXbar.io.slaveResp(0)
+
   val memRPort = Module(new SramRPort(XLen.W, 32.W))
-  memRPort.io.req  <> readArb.io.slaveReq
-  memRPort.io.resp <> readArb.io.slaveResp
+  memRPort.io.req  <> memRXbar.io.slaveReq(1)
+  memRPort.io.resp <> memRXbar.io.slaveResp(1)
 
   val memWXbar = Module(
     new Xbar(

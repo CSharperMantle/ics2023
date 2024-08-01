@@ -7,15 +7,15 @@
 #include <npc.h>
 #endif
 
-#define RTC_ADDR_REG_US_L (RTC_ADDR + 0)
-#define RTC_ADDR_REG_US_H (RTC_ADDR + 4)
+#define CLINT_MTIME_REG_L (CLINT_ADDR + 0xbff8)
+#define CLINT_MTIME_REG_H (CLINT_MTIME_REG_L + 0x4)
 
 void __am_timer_init() {}
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  const uint32_t us_l = inl(RTC_ADDR_REG_US_L);
-  const uint32_t us_h = inl(RTC_ADDR_REG_US_H);
-  uptime->us = ((uint64_t)us_h << 32) | ((uint64_t)us_l);
+  const uint32_t cycles_l = inl(CLINT_MTIME_REG_L);
+  const uint32_t cycles_h = inl(CLINT_MTIME_REG_H);
+  uptime->us = (((uint64_t)cycles_h << 32) | ((uint64_t)cycles_l)) / 1000 * NS_PER_CYCLE;
 }
 
 void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {

@@ -55,7 +55,7 @@ class CsrFile extends Module {
 
   val io = IO(new CsrFileIO)
 
-  private val csrs = Mem(1 << Regs.getWidth, UInt(npc.XLen.W))
+  private val csrs = Mem(Regs.all.length, UInt(XLen.W))
 
   private val csrOpDec = Decoder1H(
     Seq(

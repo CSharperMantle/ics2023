@@ -6,7 +6,9 @@
 
 #define nemu_trap(code) asm volatile("mv a0, %0; ebreak" : : "r"(code))
 
-#define RTC_ADDR  0xa0000048
-#define UART_ADDR 0x10000000
+#define NS_PER_CYCLE 200
+
+#define CLINT_ADDR 0x02000000
+#define UART_ADDR  0x10000000
 
 #endif /* NPC_H_INCLUDED_ */

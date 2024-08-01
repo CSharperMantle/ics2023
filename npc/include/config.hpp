@@ -11,6 +11,5 @@
 #define CONFIG_IRINGBUF_NR_ELEM 32
 
 #define CONFIG_DEVICE
-#define CONFIG_RTC_MMIO    0xa0000048
 
 #endif /* NPC_CONFIG_HPP_ */

@@ -1,5 +1,6 @@
 
 #include <cerrno>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -83,6 +84,12 @@ void assert_fail_msg() {
 #endif
 }
 
+// static uint64_t get_time() {
+//   const auto now = std::chrono::high_resolution_clock::now().time_since_epoch();
+//   const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now);
+//   return ns.count();
+// }
+
 int main(int argc, char *argv[]) {
   size_t len_img = 0;
   if (argc < 2) {
@@ -131,6 +138,7 @@ int main(int argc, char *argv[]) {
     difftest->sync_dut(dut);
     difftest->assert_gpr();
     difftest->cycle_preamble();
+
     do {
       cycle();
       if (dut.io_pc != last_pc) {
@@ -141,6 +149,7 @@ int main(int argc, char *argv[]) {
         Assert(last_pc_count < CONFIG_SIM_STUCK_THRESHOLD, "simulation cannot progress");
       }
     } while (!dut.io_retired);
+
     iringbuf.emplace_back(dut.io_pc, dut.io_instr, dut.io_instrCycles);
     Assert(!dut.io_inval, "instruction retired as invalid");
   } while (!dut.io_break);
