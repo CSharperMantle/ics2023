@@ -76,11 +76,11 @@ class SramRPort(addrWidth: Width, dataWidth: Width) extends Module {
   backend.io.rEn   := y === S_Read
   backend.io.rAddr := addr
 
+  io.req.ready := y === S_Read
+
   io.resp.bits.data  := data
   io.resp.bits.rResp := RResp.Okay.U
   io.resp.valid      := y === S_WaitReady
-
-  io.req.ready := y === S_Read
 }
 
 class SramWPortBlackBoxIO(addrWidth: Width, dataWidth: Width) extends Bundle {
@@ -154,7 +154,7 @@ class SramWPort(addrWidth: Width, dataWidth: Width) extends Module {
   backend.io.wData := io.req.bits.wData
   backend.io.wMask := io.req.bits.wMask
 
-  io.req.ready := y === S_WaitReady
+  io.req.ready := y === S_Write
 
   io.resp.valid      := y === S_WaitReady
   io.resp.bits.bResp := BResp.Okay.U

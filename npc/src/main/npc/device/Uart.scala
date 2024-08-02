@@ -26,6 +26,7 @@ class UartBlackBox extends BlackBox with HasBlackBoxInline {
        |  always @(*) begin
        |    if (en) begin
        |      $$write("%c", ch);
+       |      $$fflush(1);
        |    end
        |  end
        |endmodule

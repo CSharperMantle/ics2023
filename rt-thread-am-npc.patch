@@ -1,0 +1,200 @@
+diff --git a/.clangd b/.clangd
+new file mode 120000
+index 0000000..e8b2762
+--- /dev/null
++++ b/.clangd
+@@ -0,0 +1 @@
++../nemu/.clangd
+\ No newline at end of file
+diff --git a/.gitignore b/.gitignore
+index 558b09f..49d66fd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -51,3 +51,6 @@ tags
+ CMakeLists.txt
+ cmake-build-debug
+ *.mk
++
++compile_commands.json
++.cache
+diff --git a/bsp/abstract-machine/src/context.c b/bsp/abstract-machine/src/context.c
+index ee38829..8f411b9 100644
+--- a/bsp/abstract-machine/src/context.c
++++ b/bsp/abstract-machine/src/context.c
+@@ -1,31 +1,79 @@
++#include "rtdef.h"
+ #include <am.h>
+ #include <klib.h>
+ #include <rtthread.h>
+ 
+-static Context* ev_handler(Event e, Context *c) {
++typedef struct CallContext {
++  void *tentry;
++  void *parameter;
++  void *texit;
++} CallContext_t;
++
++static __attribute__((noreturn)) void kthread(void *arg) {
++  const CallContext_t *const ctx = arg;
++  ((void (*)(void *))(ctx->tentry))(ctx->parameter);
++  ((void (*)(void))(ctx->texit))();
++  while (1) {
++    ;
++  }
++}
++
++static rt_ubase_t ctx_from = 0;
++static rt_ubase_t ctx_to = 0;
++
++static Context *ev_handler(Event e, Context *c) {
+   switch (e.event) {
+-    default: printf("Unhandled event ID = %d\n", e.event); assert(0);
++  case EVENT_YIELD:
++    if (ctx_from != 0) {
++      *((Context **)ctx_from) = c;
++    }
++    c = *((Context **)ctx_to);
++    break;
++  case EVENT_IRQ_TIMER:
++    // printf("Warn: EVENT_IRQ_TIMER at ctx %p\n", c);
++    break;
++  default:
++    printf("Unhandled event ID = %d\n", e.event);
++    assert(0);
+   }
+   return c;
+ }
+ 
+-void __am_cte_init() {
+-  cte_init(ev_handler);
+-}
++void __am_cte_init(void) { cte_init(ev_handler); }
+ 
+ void rt_hw_context_switch_to(rt_ubase_t to) {
+-  assert(0);
++  ctx_from = 0;
++  ctx_to = to;
++  yield();
+ }
+ 
+ void rt_hw_context_switch(rt_ubase_t from, rt_ubase_t to) {
+-  assert(0);
++  ctx_from = from;
++  ctx_to = to;
++  yield();
+ }
+ 
+-void rt_hw_context_switch_interrupt(void *context, rt_ubase_t from, rt_ubase_t to, struct rt_thread *to_thread) {
++void rt_hw_context_switch_interrupt(void *context, rt_ubase_t from,
++                                    rt_ubase_t to,
++                                    struct rt_thread *to_thread) {
+   assert(0);
+ }
+ 
+-rt_uint8_t *rt_hw_stack_init(void *tentry, void *parameter, rt_uint8_t *stack_addr, void *texit) {
+-  assert(0);
+-  return NULL;
++rt_uint8_t *rt_hw_stack_init(void *tentry, void *parameter,
++                             rt_uint8_t *stack_addr, void *texit) {
++  rt_uint8_t *sp =
++      (rt_uint8_t *)RT_ALIGN_DOWN((uintptr_t)stack_addr, sizeof(uintptr_t));
++  sp -= sizeof(CallContext_t);
++
++  CallContext_t *const callCtx = (CallContext_t *)sp;
++  *callCtx = (CallContext_t){
++      .tentry = tentry,
++      .parameter = parameter,
++      .texit = texit,
++  };
++
++  Context *const ctx =
++      kcontext((Area){.start = NULL, .end = sp}, kthread, callCtx);
++
++  return (rt_uint8_t *)ctx;
+ }
+diff --git a/bsp/abstract-machine/src/libc.c b/bsp/abstract-machine/src/libc.c
+index 696a72d..86d873a 100644
+--- a/bsp/abstract-machine/src/libc.c
++++ b/bsp/abstract-machine/src/libc.c
+@@ -1,20 +1,77 @@
+ #include <klib.h>
+ #include <rtthread.h>
++#include <limits.h>
+ 
+ char *strchr(const char *s, int c) {
+-  assert(0);
++  while (*s != (char)c) {
++    if (*(s++) == '\0') {
++      return NULL;
++    }
++  }
++  return (char *)s;
+ }
+ 
+ char *strrchr(const char *s, int c) {
+-  assert(0);
++  char *last = NULL;
++  do {
++    if (*s == (char)c) {
++      last = (char *)s;
++    }
++  } while (*s++);
++  return last;
+ }
+ 
+ char *strstr(const char *haystack, const char *needle) {
+   return rt_strstr(haystack, needle);
+ }
+ 
+-long strtol(const char *restrict nptr, char **restrict endptr, int base) {
+-  assert(0);
++long strtol(const char *nptr, char **endptr, int base) {
++  if (base < 0 || base == 1 || base > 36) {
++    return 0;
++  }
++
++  while (isspace((unsigned char)*nptr))
++    nptr++;
++  int neg = *nptr == '-';
++  if (*nptr == '+' || *nptr == '-')
++    nptr++;
++
++  if (base == 0) {
++    if (*nptr == '0') {
++      base = 8;
++      if ((nptr[1] == 'x' || nptr[1] == 'X') && isxdigit(nptr[2])) {
++        nptr += 2;
++        base = 16;
++      }
++    } else
++      base = 10;
++  } else if (base == 16 && *nptr == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
++    nptr += 2;
++  }
++
++  long long ret = 0;
++  while (1) {
++    int digit;
++    if (isdigit((unsigned char)*nptr))
++      digit = *nptr - '0';
++    else if (isalpha((unsigned char)*nptr))
++      digit = toupper((unsigned char)*nptr) - 'A' + 10;
++    else
++      break;
++
++    if (digit >= base)
++      break;
++    if (ret > (LLONG_MAX - digit) / base) {
++      ret = LLONG_MAX;
++    } else {
++      ret = ret * base + digit;
++      nptr++;
++    }
++  }
++
++  if (endptr)
++    *endptr = (char *)nptr;
++  return (neg ? -ret : ret);
+ }
+ 
+ char *strncat(char *restrict dst, const char *restrict src, size_t sz) {
