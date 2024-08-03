@@ -102,7 +102,7 @@ class Lsu extends Module {
   private val wEn = io.msgIn.valid & memAction1H(2)
   private val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
-  io.rReq.bits.addr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
+  io.rReq.bits.addr := memRAddr
   io.rReq.bits.size := memSize
   private val readData = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
@@ -133,7 +133,7 @@ class Lsu extends Module {
     )
   )
   io.wReq.bits.wData := memWDataShifted
-  io.wReq.bits.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
+  io.wReq.bits.wAddr := memWAddr
   io.wReq.bits.wSize := memSize
 
   private val memWMaskShifted = Mux1H(

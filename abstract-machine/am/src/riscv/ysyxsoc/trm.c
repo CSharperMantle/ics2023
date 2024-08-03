@@ -1,3 +1,4 @@
+#include "uart16550.h"
 #include <am.h>
 
 #ifndef __ISA_RISCV32E__
@@ -19,10 +20,12 @@ Area heap = RANGE(&_heap_start, &_sram_end);
 #endif
 static const char mainargs[] = MAINARGS;
 
-#define PERIP_UART16550_OFF_TXR 0x0l
-
 void putch(char ch) {
-  outb(PERIP_UART16550_ADDR + PERIP_UART16550_OFF_TXR, ch);
+  Uart16550Lsr_t lsr;
+  do {
+    lsr.as_byte = inb(PERIP_UART16550_ADDR + UART16550_REG_LSR);
+  } while (!lsr.thre);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_TXR, ch);
 }
 
 __attribute__((noreturn)) void halt(int code) {
@@ -36,14 +39,45 @@ extern char _data;
 extern char _edata;
 extern char _data_load;
 
-void _trm_init(void) {
-  // Initialized SRAM content
+static inline void bootstrap_sram(void) {
   const size_t len = &_edata - &_data;
   uint8_t *const pdata_b = (uint8_t *)&_data;
   const uint8_t *const pdata_load_b = (uint8_t *)&_data_load;
   for (size_t i = 0; i < len; i++) {
     pdata_b[i] = pdata_load_b[i];
   }
+}
+
+static inline void init_uart16550(void) {
+  Uart16550Lcr_t lcr;
+  lcr = (Uart16550Lcr_t){
+      .dlab = 1,
+      .set_break = 0,
+      .stick_parity = 0,
+      .eps = 0,
+      .pen = 0,
+      .stb = 0,
+      .wls = 0b11,
+  };
+  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_byte);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_DLM, 0x00);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_DLL, 0x6f);
+  lcr = (Uart16550Lcr_t){
+      .dlab = 0,
+      .set_break = 0,
+      .stick_parity = 0,
+      .eps = 0,
+      .pen = 0,
+      .stb = 0,
+      .wls = 0b11,
+  };
+  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_byte);
+}
+
+void _trm_init(void) {
+  // Initialized SRAM content
+  bootstrap_sram();
+  init_uart16550();
 
   const int ret = main(mainargs);
   halt(ret);

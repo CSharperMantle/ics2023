@@ -10,6 +10,6 @@
 // #define CONFIG_ISA64
 #define CONFIG_IRINGBUF_NR_ELEM 32
 
-#define CONFIG_DEVICE
+// #define CONFIG_DEVICE
 
 #endif /* NPC_CONFIG_HPP_ */
