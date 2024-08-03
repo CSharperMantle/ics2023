@@ -8,8 +8,12 @@ LDFLAGS   += -T $(AM_HOME)/am/src/platform/ysyxsoc/linker.ld \
 						 --defsym=_sram_start=0x0f000000 --defsym=_stack_size=0x1000 \
 						 --defsym=_mrom_start=0x20000000 --defsym=_entry_offset=0x0
 LDFLAGS   += --gc-sections -e _start
+CFLAGS += -DYSYXSOC
 CFLAGS += -DMAINARGS=\"$(mainargs)\"
 CFLAGS += -I$(AM_HOME)/am/src/platform/ysyxsoc/include
+
+ASFLAGS += -DYSYXSOC
+
 .PHONY: $(AM_HOME)/am/src/riscv/npc/trm.c
 
 image: $(IMAGE).elf

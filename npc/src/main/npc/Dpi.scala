@@ -62,9 +62,9 @@ class Dpi extends Module {
 
   private val backend = Module(new DpiBlackBox)
   backend.io.clock   := clock.asBool
-  backend.io.retired := io.retired
+  backend.io.retired := ~reset.asBool & io.retired
   backend.io.ebreak  := io.ebreak
-  backend.io.bad     := io.bad
+  backend.io.bad     := ~reset.asBool & io.bad
   backend.io.pc      := io.pc
   backend.io.cycles  := io.cycles
   backend.io.instr   := io.instr

@@ -1,5 +1,5 @@
 .section entry, "ax"
-.globl _start
+.weak _start
 .type _start, @function
 
 _start:

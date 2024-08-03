@@ -127,6 +127,9 @@ int main(int argc, char *argv[]) {
 
   sim_init();
   dut.reset = 1;
+  for (size_t i = 0; i < 16; i++) {
+    cycle();
+  }
   cycle();
   dut.reset = 0;
   difftest->sync_dut(dut);
