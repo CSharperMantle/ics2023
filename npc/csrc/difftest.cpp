@@ -72,7 +72,7 @@ void DiffTest::skip_next() {
   }
   auto p_ctr =
       std::find_if(skip_ctr.begin(), skip_ctr.end(), [](int ctr) { return ctr == SKIP_CTR_FREE; });
-  Assert(p_ctr != skip_ctr.end(), "unreachable");
+  Assert(p_ctr != skip_ctr.end(), "%s", "unreachable");
   *p_ctr = SKIP_CTR_START;
 }
 
@@ -99,7 +99,7 @@ void DiffTest::sync_dut(const VDut &vdut) {
   if (dylib == nullptr) {
     return;
   }
-  Assert(0, "difftest not implemented for soc");
+  Assert(0, "%s", "difftest not implemented for soc");
 #if 0
   memcpy(dut.gpr,
          vdut.rootp->Top__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory.data(),

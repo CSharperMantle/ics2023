@@ -7,25 +7,11 @@
 #include "mem/host.hpp"
 #include "mem/paddr.hpp"
 
-/*
-import "DPI-C" function void soc_dpi_ebreak(input bad);
-import "DPI-C" function void soc_dpi_report_pc(input $xLenType pc);
-import "DPI-C" function void soc_dpi_report_cycles(input byte pc);
-*/
-
 DutDpiState dut_dpi_state;
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-word_t npc_dpi_pmem_read(sword_t mem_r_addr) {
-  assert(0);
-  return 0;
-}
-void npc_dpi_pmem_write(char mem_mask, word_t mem_w_addr, word_t mem_w_data) {
-  assert(0);
-}
 
 void soc_dpi_ebreak(bool bad) {
   dut_dpi_state.ebreak = true;
@@ -41,11 +27,15 @@ void soc_dpi_report_state(bool retired, word_t pc, uint8_t cycles, uint32_t inst
 }
 
 void flash_read(int32_t addr, int32_t *data) {
-  assert(0);
+  const paddr_t addr_ = static_cast<paddr_t>(addr) & ~0x3u;
+  assert(in_flash(addr_));
+  *data = do_flash_read(flash_guest_to_host(addr_));
 }
 
 void mrom_read(int32_t addr, int32_t *data) {
-  *data = paddr_read(static_cast<paddr_t>(addr) & ~0x3u);
+  const paddr_t addr_ = static_cast<paddr_t>(addr) & ~0x3u;
+  assert(in_mrom(addr_));
+  *data = do_mrom_read(mrom_guest_to_host(addr_));
 }
 
 #ifdef __cplusplus

@@ -3,7 +3,6 @@
 
 #include "common.hpp"
 #include "debug.hpp"
-#include "device/mmio.hpp"
 #include "dpi.hpp"
 #include "mem/paddr.hpp"
 
@@ -33,44 +32,5 @@ static void out_of_bound(paddr_t addr) {
 }
 
 static word_t pmem_read(paddr_t addr) {
-  return host_read(guest_to_host(addr));
-}
-
-static void pmem_write(paddr_t addr, uint8_t mask, word_t data) {
-  host_write(guest_to_host(addr), mask, data);
-}
-
-word_t paddr_read(paddr_t addr) {
-  word_t val = 0;
-#ifdef CONFIG_MTRACE
-  print_mtrace(addr, true, 0, 0);
-#endif
-  if (likely(in_pmem(addr))) {
-    val = pmem_read(addr);
-  } else {
-#ifdef CONFIG_DEVICE
-    val = mmio_read(addr);
-#else
-    out_of_bound(addr);
-#endif
-  }
-#ifdef CONFIG_MTRACE
-  print_mtrace(addr, true, val, 1);
-#endif
-  return val;
-}
-
-void paddr_write(paddr_t addr, uint8_t mask, word_t data) {
-#ifdef CONFIG_MTRACE
-  print_mtrace(addr, false, data, mask);
-#endif
-  if (likely(in_pmem(addr))) {
-    pmem_write(addr, mask, data);
-  } else {
-#ifdef CONFIG_DEVICE
-    mmio_write(addr, mask, data);
-#else
-    out_of_bound(addr);
-#endif
-  }
+  return do_mrom_read(mrom_guest_to_host(addr));
 }

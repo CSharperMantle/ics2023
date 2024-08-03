@@ -7,11 +7,12 @@ constexpr size_t PAGE_SHIFT = 12;
 constexpr size_t PAGE_SIZE = 1ul << PAGE_SHIFT;
 constexpr size_t PAGE_MASK = PAGE_SIZE - 1;
 
-constexpr bool in_pmem(paddr_t addr) {
-  return addr - PMEM_LEFT < PMEM_SIZE;
+constexpr bool in_mrom(paddr_t addr) {
+  return addr - MROM_LEFT < MROM_SIZE;
 }
 
-word_t paddr_read(paddr_t addr);
-void paddr_write(paddr_t addr, uint8_t mask, word_t data);
+constexpr bool in_flash(paddr_t addr) {
+  return addr < FLASH_SIZE;
+}
 
 #endif /* NPC_PMEM_HPP_ */

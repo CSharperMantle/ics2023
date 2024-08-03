@@ -9,7 +9,6 @@
 
 #include "common.hpp"
 #include "debug.hpp"
-#include "device/device.hpp"
 #include "difftest.hpp"
 #include "dpi.hpp"
 #include "mem/host.hpp"
@@ -92,7 +91,7 @@ int main(int argc, char *argv[]) {
   size_t len_img = 0;
   if (argc < 2) {
     Warn("no image file provided, fallback to builtin image");
-    std::memcpy(host_mem, DEFAULT_IMG, sizeof(DEFAULT_IMG));
+    std::memcpy(mrom, DEFAULT_IMG, sizeof(DEFAULT_IMG));
     len_img = sizeof(DEFAULT_IMG);
   } else {
     FILE *const f_img = std::fopen(argv[1], "rb");
@@ -100,13 +99,18 @@ int main(int argc, char *argv[]) {
     std::fseek(f_img, 0, SEEK_END);
     len_img = static_cast<size_t>(std::ftell(f_img));
     Log("image \"%s\", size=%zu", argv[1], len_img);
-    if (len_img > sizeof(host_mem)) {
-      Warn("image too large, will be clipped to %zu", sizeof(host_mem));
+    if (len_img > sizeof(mrom)) {
+      Warn("image too large, will be clipped to %zu", sizeof(mrom));
     }
     fseek(f_img, 0, SEEK_SET);
     const size_t nbytes_read =
-        fread(guest_to_host(RESET_VECTOR), 1, std::min(sizeof(host_mem), len_img), f_img);
+        fread(mrom_guest_to_host(RESET_VECTOR), 1, std::min(sizeof(mrom), len_img), f_img);
     Assert(nbytes_read == len_img, "cannot read %zu bytes, %zu already read", len_img, nbytes_read);
+  }
+
+  // TODO: init flash
+  for (size_t i = 0; i < FLASH_SIZE; i++) {
+    flash[i] = i & 0xff;
   }
 
   const char *env_ref_so = getenv("NPC_DIFFTEST_REF_SO");
@@ -118,10 +122,6 @@ int main(int argc, char *argv[]) {
     Log("difftest: loading ref so \"%s\"", env_ref_so);
     difftest = std::make_unique<DiffTest>(env_ref_so, len_img);
   }
-
-#ifdef CONFIG_DEVICE
-  init_device();
-#endif
 
   init_disasm("riscv32-pc-linux-gnu");
 
@@ -151,12 +151,12 @@ int main(int argc, char *argv[]) {
         last_pc_count = 0;
       } else {
         last_pc_count++;
-        Assert(last_pc_count < CONFIG_SIM_STUCK_THRESHOLD, "simulation cannot progress");
+        Assert(last_pc_count < CONFIG_SIM_STUCK_THRESHOLD, "%s", "simulation cannot progress");
       }
     } while (!dut_dpi_state.retired);
 
     iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.instr_cycles);
-    Assert(!dut_dpi_state.bad, "instruction retired as invalid");
+    Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
   } while (!dut_dpi_state.ebreak);
 
   const word_t retval = dut_dpi_state.reg_a0;
