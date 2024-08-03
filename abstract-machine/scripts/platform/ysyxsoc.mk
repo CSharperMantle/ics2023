@@ -1,12 +1,14 @@
 AM_SRCS := riscv/ysyxsoc/start.S \
            riscv/ysyxsoc/trm.c \
+           riscv/ysyxsoc/cte.c \
+           riscv/ysyxsoc/trap.S \
+           platform/dummy/ioe.c \
            platform/dummy/vme.c \
            platform/dummy/mpe.c
 
 CFLAGS    += -fdata-sections -ffunction-sections
 LDFLAGS   += -T $(AM_HOME)/am/src/platform/ysyxsoc/linker.ld \
-						 --defsym=_sram_start=0x0f000000 --defsym=_stack_size=0x1000 \
-						 --defsym=_mrom_start=0x20000000 --defsym=_entry_offset=0x0
+						 --defsym=_stack_size=4K
 LDFLAGS   += --gc-sections -e _start
 CFLAGS += -DYSYXSOC
 CFLAGS += -DMAINARGS=\"$(mainargs)\"

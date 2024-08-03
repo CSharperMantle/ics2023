@@ -11,10 +11,9 @@ extern char _heap_start;
 int main(const char *args);
 
 extern char _sram_start;
-#define SRAM_SIZE (8 * 1024)
-#define SRAM_END  ((uintptr_t)&_sram_start + SRAM_SIZE)
+extern char _sram_end;
+Area heap = RANGE(&_heap_start, &_sram_end);
 
-Area heap = RANGE(&_heap_start, SRAM_END);
 #ifndef MAINARGS
 #define MAINARGS ""
 #endif
@@ -33,7 +32,19 @@ __attribute__((noreturn)) void halt(int code) {
     ;
 }
 
-void _trm_init() {
-  int ret = main(mainargs);
+extern char _data;
+extern char _edata;
+extern char _data_load;
+
+void _trm_init(void) {
+  // Initialized SRAM content
+  const size_t len = &_edata - &_data;
+  uint8_t *const pdata_b = (uint8_t *)&_data;
+  const uint8_t *const pdata_load_b = (uint8_t *)&_data_load;
+  for (size_t i = 0; i < len; i++) {
+    pdata_b[i] = pdata_load_b[i];
+  }
+
+  const int ret = main(mainargs);
   halt(ret);
 }
