@@ -6,18 +6,16 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <verilated.h>
-#include <verilated_vcd_c.h>
 
-#include "VTop.h"
-#include "VTop__Syms.h"
 #include "common.hpp"
 #include "debug.hpp"
 #include "device/device.hpp"
 #include "difftest.hpp"
+#include "dpi.hpp"
 #include "mem/host.hpp"
 #include "util/disasm.hpp"
 #include "util/iringbuf.hpp"
+#include "verilation.hpp"
 
 static const uint32_t DEFAULT_IMG[] = {
     0x00000297, // auipc t0,0
@@ -27,7 +25,7 @@ static const uint32_t DEFAULT_IMG[] = {
     0xdeadbeef, // some data
 };
 
-VTop dut{};
+VDut dut{};
 
 std::unique_ptr<DiffTest> difftest{};
 
@@ -141,27 +139,27 @@ int main(int argc, char *argv[]) {
 
     do {
       cycle();
-      if (dut.io_pc != last_pc) {
-        last_pc = dut.io_pc;
+      if (dut_dpi_state.pc != last_pc) {
+        last_pc = dut_dpi_state.pc;
         last_pc_count = 0;
       } else {
         last_pc_count++;
         Assert(last_pc_count < CONFIG_SIM_STUCK_THRESHOLD, "simulation cannot progress");
       }
-    } while (!dut.io_retired);
+    } while (!dut_dpi_state.retired);
 
-    iringbuf.emplace_back(dut.io_pc, dut.io_instr, dut.io_instrCycles);
-    Assert(!dut.io_inval, "instruction retired as invalid");
-  } while (!dut.io_break);
+    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.instr_cycles);
+    Assert(!dut_dpi_state.bad, "instruction retired as invalid");
+  } while (!dut_dpi_state.ebreak);
 
-  const word_t retval = dut.io_a0;
+  const word_t retval = dut_dpi_state.reg_a0;
   if (retval == 0) {
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
-        static_cast<word_t>(dut.io_pc));
+        static_cast<word_t>(dut_dpi_state.pc));
   } else {
     assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
-        static_cast<word_t>(dut.io_pc));
+        static_cast<word_t>(dut_dpi_state.pc));
   }
 
   sim_exit();

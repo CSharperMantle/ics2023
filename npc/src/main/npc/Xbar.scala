@@ -8,6 +8,7 @@ import npc._
 
 class MemReadReq(width: Width) extends Bundle {
   val addr = UInt(width)
+  val size = UInt(AxSize.W)
 }
 
 class MemReadResp(width: Width) extends Bundle {
@@ -15,28 +16,15 @@ class MemReadResp(width: Width) extends Bundle {
   val rResp = UInt(2.W)
 }
 
-object BResp extends CvtChiselEnum {
-  val Okay   = Value
-  val ExOkay = Value
-  val SlvErr = Value
-  val DecErr = Value
-}
-
 class MemWriteReq(addrWidth: Width, dataWidth: Width) extends Bundle {
   val wAddr = UInt(addrWidth)
   val wData = UInt(dataWidth)
   val wMask = UInt(8.W)
+  val wSize = UInt(AxSize.W)
 }
 
 class MemWriteResp extends Bundle {
   val bResp = UInt(2.W)
-}
-
-object RResp extends CvtChiselEnum {
-  val Okay   = Value
-  val ExOkay = Value
-  val SlvErr = Value
-  val DecErr = Value
 }
 
 class GenericArbiterIO[TReq <: Data, TResp <: Data](

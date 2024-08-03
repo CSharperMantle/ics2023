@@ -1,16 +1,16 @@
 #include <array>
 #include <cstdint>
 
-#include "VTop.h"
 #include "common.hpp"
 #include "debug.hpp"
 #include "device/mmio.hpp"
+#include "dpi.hpp"
 #include "mem/paddr.hpp"
 
 #ifdef CONFIG_MTRACE
 static void print_mtrace(paddr_t addr, bool read, word_t data, uint8_t mask) {
   extern VTop dut;
-  const word_t pc = static_cast<word_t>(dut.io_pc);
+  const word_t pc = static_cast<word_t>(dut_dpi_state.pc);
   if (read) {
     if (mask == 0) {
       Log("pc=" FMT_WORD ": mem: %s " FMT_PADDR "; ->", pc, "R", addr);
@@ -29,8 +29,7 @@ static void print_mtrace(paddr_t addr, bool read, word_t data, uint8_t mask) {
 #endif
 
 static void out_of_bound(paddr_t addr) {
-  extern VTop dut;
-  panic("out of bound: pc=" FMT_WORD ", " FMT_PADDR, static_cast<word_t>(dut.io_pc), addr);
+  panic("out of bound: pc=" FMT_WORD ", " FMT_PADDR, static_cast<word_t>(dut_dpi_state.pc), addr);
 }
 
 static word_t pmem_read(paddr_t addr) {

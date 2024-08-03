@@ -4,12 +4,11 @@
 #include <dlfcn.h>
 #include <tuple>
 
-#include "VTop.h"
-#include "VTop__Syms.h"
 #include "common.hpp"
 #include "debug.hpp"
 #include "difftest.hpp"
 #include "mem/host.hpp"
+#include "verilation.hpp"
 
 const std::array<const char *, 32> REG_NAMES{"$0", "ra", "sp",  "gp",  "tp", "t0", "t1", "t2",
                                              "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5",
@@ -29,6 +28,10 @@ const std::array<std::tuple<DiffTest::CsrIdx, size_t, const char *>, 9> CSR_MAPP
 };
 
 DiffTest::DiffTest(const char *soname, size_t img_size) {
+  dylib = nullptr;
+  return;
+
+#if 0
   if (soname == nullptr) {
     dylib = nullptr;
     return;
@@ -53,6 +56,7 @@ DiffTest::DiffTest(const char *soname, size_t img_size) {
 
   ref_difftest_init(0);
   ref_difftest_memcpy(RESET_VECTOR, guest_to_host(RESET_VECTOR), img_size, CopyDir::ToRef);
+#endif
 }
 
 DiffTest::~DiffTest() {
@@ -91,7 +95,12 @@ void DiffTest::assert_gpr() {
   }
 }
 
-void DiffTest::sync_dut(const VTop &vdut) {
+void DiffTest::sync_dut(const VDut &vdut) {
+  if (dylib == nullptr) {
+    return;
+  }
+  Assert(0, "difftest not implemented for soc");
+#if 0
   memcpy(dut.gpr,
          vdut.rootp->Top__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory.data(),
          sizeof(dut.gpr));
@@ -99,7 +108,8 @@ void DiffTest::sync_dut(const VTop &vdut) {
     dut.csr[std::get<0>(p)] =
         vdut.rootp->Top__DOT__core__DOT__csr__DOT__csrs_ext__DOT__Memory.data()[std::get<1>(p)];
   }
-  dut.pc = vdut.io_pc;
+  dut.pc = vdut_dpi_state.pc;
+#endif
 }
 
 void DiffTest::cycle_preamble() {

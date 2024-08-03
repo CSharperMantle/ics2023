@@ -4,9 +4,9 @@
 #include <array>
 #include <utility>
 
-#include "VTop.h"
 #include "common.hpp"
 #include "mem/host.hpp"
+#include "verilation.hpp"
 
 struct DiffTest {
   enum CopyDir { ToDut = 0, ToRef };
@@ -35,7 +35,7 @@ struct DiffTest {
   void skip_next();
   void assert_gpr();
   void cycle_preamble();
-  void sync_dut(const VTop &vdut);
+  void sync_dut(const VDut &vdut);
   void cycle();
 
 private:

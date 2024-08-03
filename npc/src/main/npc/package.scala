@@ -37,10 +37,9 @@ object npc {
   val Arch = ArchType.MultiCycle
 
   val XLen = 32
-  require(XLen == 32 || XLen == 64)
   require(XLen == 32, "RV64 not implemented")
 
-  val InitPCVal = BigInt("80000000", 16)
+  val InitPCVal = BigInt("20000000", 16)
 
   object PrivMode {
     val M = 3

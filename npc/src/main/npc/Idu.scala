@@ -383,7 +383,7 @@ class Idu extends Module {
     InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Unk01,  ImmR.BP,    PcSnpc.BP,  SrcAR0.BP,   SrcBImm.BP, AluOpFunct3.BP, MemNone.BP, WbAlu.BP,  1.N, ExcpAdjNone.BP),
     InstrPat(7.X,           5.X,         5.X, 3.X,       5.X, Unk10,  ImmR.BP,    PcSnpc.BP,  SrcAR0.BP,   SrcBImm.BP, AluOpFunct3.BP, MemNone.BP, WbAlu.BP,  1.N, ExcpAdjNone.BP)
   )
-  val fields = Seq(
+  private val fields = Seq(
     BreakField,
     MemWidthField,
     AluCalcOpField,

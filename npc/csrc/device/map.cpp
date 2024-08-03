@@ -2,11 +2,11 @@
 #include <cstdint>
 #include <memory>
 
-#include "VTop.h"
 #include "common.hpp"
 #include "debug.hpp"
 #include "device/map.hpp"
 #include "difftest.hpp"
+#include "dpi.hpp"
 #include "mem/host.hpp"
 #include "mem/paddr.hpp"
 
@@ -25,11 +25,10 @@ uint8_t *new_space(int size) {
 }
 
 static void check_bound(IOMap *map, paddr_t addr) {
-  extern VTop dut;
   Assert(map != nullptr,
          "address (" FMT_PADDR ") is out of bound at pc = " FMT_WORD,
          addr,
-         static_cast<word_t>(dut.io_pc));
+         static_cast<word_t>(dut_dpi_state.pc));
   Assert(addr <= map->high && addr >= map->low,
          "address (" FMT_PADDR ") is out of bound {%s} [" FMT_PADDR ", " FMT_PADDR
          "] at pc = " FMT_WORD,
@@ -37,7 +36,7 @@ static void check_bound(IOMap *map, paddr_t addr) {
          map->name,
          map->low,
          map->high,
-         static_cast<word_t>(dut.io_pc));
+         static_cast<word_t>(dut_dpi_state.pc));
 }
 
 static void invoke_callback(io_callback_t c, paddr_t offset, uint8_t mask, bool is_write) {

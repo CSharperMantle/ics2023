@@ -97,10 +97,10 @@ class SramWPortBlackBox(addrWidth: Width, dataWidth: Width)
 
   val io = IO(new SramWPortBlackBoxIO(addrWidth, dataWidth))
 
-  val addrType     = getDpiType(addrWidth)
-  val addrWidthVal = addrWidth.asInstanceOf[KnownWidth].value
-  val dataType     = getDpiType(dataWidth)
-  val dataWidthVal = dataWidth.asInstanceOf[KnownWidth].value
+  private val addrType     = getDpiType(addrWidth)
+  private val addrWidthVal = addrWidth.asInstanceOf[KnownWidth].value
+  private val dataType     = getDpiType(dataWidth)
+  private val dataWidthVal = dataWidth.asInstanceOf[KnownWidth].value
   setInline(
     "SramWPortBlackBox.sv",
     s"""

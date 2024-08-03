@@ -44,6 +44,7 @@ class Ifu extends Module {
   private val instr = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
   io.rReq.bits.addr := pc
+  io.rReq.bits.size := AxSize.Bytes4.U
   io.rReq.valid     := ~reset.asBool & (y === S_Idle)
   io.rResp.ready    := y === S_ReadDone
 

@@ -81,6 +81,14 @@ class Lsu extends Module {
       memWidth1H(3) -> 0.U(8.W)
     )
   )
+  private val memSize = Mux1H(
+    Seq(
+      memWidth1H(0) -> AxSize.Bytes1.U,
+      memWidth1H(1) -> AxSize.Bytes2.U,
+      memWidth1H(2) -> AxSize.Bytes4.U,
+      memWidth1H(3) -> AxSize.Bytes1.U
+    )
+  )
 
   private val memAlignDec = Decoder1H(
     Seq(
@@ -95,6 +103,7 @@ class Lsu extends Module {
   private val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
   io.rReq.bits.addr := Cat(memRAddr(XLen - 1, 2), Fill(2, 0.B))
+  io.rReq.bits.size := memSize
   private val readData = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
   private val memRAlign1H = memAlignDec(memRAddr(1, 0))
@@ -125,6 +134,8 @@ class Lsu extends Module {
   )
   io.wReq.bits.wData := memWDataShifted
   io.wReq.bits.wAddr := Cat(memWAddr(XLen - 1, 2), Fill(2, 0.B))
+  io.wReq.bits.wSize := memSize
+
   private val memWMaskShifted = Mux1H(
     Seq(
       memWAlign1H(0) -> memMask,
@@ -134,7 +145,6 @@ class Lsu extends Module {
       memWAlign1H(4) -> 0.U
     )
   )
-
   io.wReq.bits.wMask := MuxCase(
     0.U,
     Seq(
