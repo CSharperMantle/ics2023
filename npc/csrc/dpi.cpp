@@ -45,7 +45,7 @@ void flash_read(int32_t addr, int32_t *data) {
 }
 
 void mrom_read(int32_t addr, int32_t *data) {
-  assert(0);
+  *data = paddr_read(static_cast<paddr_t>(addr));
 }
 
 #ifdef __cplusplus

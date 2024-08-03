@@ -100,8 +100,12 @@ int main(int argc, char *argv[]) {
     std::fseek(f_img, 0, SEEK_END);
     len_img = static_cast<size_t>(std::ftell(f_img));
     Log("image \"%s\", size=%zu", argv[1], len_img);
+    if (len_img > sizeof(host_mem)) {
+      Warn("image too large, will be clipped to %zu", sizeof(host_mem));
+    }
     fseek(f_img, 0, SEEK_SET);
-    const size_t nbytes_read = fread(guest_to_host(RESET_VECTOR), 1, len_img, f_img);
+    const size_t nbytes_read =
+        fread(guest_to_host(RESET_VECTOR), 1, std::min(sizeof(host_mem), len_img), f_img);
     Assert(nbytes_read == len_img, "cannot read %zu bytes, %zu already read", len_img, nbytes_read);
   }
 

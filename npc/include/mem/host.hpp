@@ -6,8 +6,8 @@
 
 #include "common.hpp"
 
-constexpr size_t PMEM_SIZE = 0x8000000;
-constexpr size_t PMEM_LEFT = 0x80000000;
+constexpr size_t PMEM_SIZE = 0x1000;
+constexpr size_t PMEM_LEFT = 0x20000000;
 constexpr size_t PMEM_RIGHT = PMEM_LEFT + PMEM_SIZE - 1;
 constexpr size_t RESET_VECTOR = PMEM_LEFT + 0;
 

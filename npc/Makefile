@@ -15,7 +15,7 @@ MAINARGS ?=
 VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert  \
-				--trace --timescale "1ns/1ns" --no-timing
+				--trace --timescale "1ns/1ns" --no-timing --autoflush
 
 CONFIG_LLVM_CONFIG ?= llvm-config-15
 
