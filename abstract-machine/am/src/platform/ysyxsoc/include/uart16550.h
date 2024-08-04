@@ -33,7 +33,7 @@ typedef union Uart16550Lcr {
     // Divisor latch access bit
     uint8_t dlab : 1;
   };
-  uint8_t as_byte;
+  uint8_t as_u8;
 } Uart16550Lcr_t;
 
 typedef union Uart16550Ier {
@@ -49,7 +49,7 @@ typedef union Uart16550Ier {
     // Reserved
     uint8_t resv0 : 4;
   };
-  uint8_t as_byte;
+  uint8_t as_u8;
 } Uart16550Ier_t;
 
 typedef union Uart16550Fcr {
@@ -65,7 +65,7 @@ typedef union Uart16550Fcr {
     // Receiver FIFO trigger level
     uint8_t rcvr_fifo_trig_lvl : 2;
   };
-  uint8_t as_byte;
+  uint8_t as_u8;
 } Uart16550Fcr_t;
 
 typedef union Uart16550Lsr {
@@ -87,7 +87,7 @@ typedef union Uart16550Lsr {
     // Error in RCVR FIFO
     uint8_t e_rcvr_fifo : 1;
   };
-  uint8_t as_byte;
+  uint8_t as_u8;
 } Uart16550Lsr_t;
 
 #endif

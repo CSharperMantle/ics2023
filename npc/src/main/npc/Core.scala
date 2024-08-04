@@ -45,6 +45,7 @@ class Core extends Module {
         Seq(
           "b00001111_????????_????????_????????".BP, // SRAM
           "b00010000_00000000_0000????_????????".BP, // UART16550
+          "b00010000_00000000_0001????_????????".BP, // SPI master
           "b00100000_00000000_0000????_????????".BP, // MROM
           "b0011????_????????_????????_????????".BP  // Flash
         )
@@ -69,7 +70,7 @@ class Core extends Module {
   io.master.arid    := 0.U
   io.master.arlen   := 0.U
   io.master.arsize  := outRReq.bits.size
-  io.master.arburst := AxBurst.Incr.U
+  io.master.arburst := AxBurst.Fixed.U
 
   io.master.rready    := outRResp.ready
   outRResp.valid      := io.master.rvalid
@@ -84,7 +85,7 @@ class Core extends Module {
   io.master.awid    := 0.U
   io.master.awlen   := 0.U
   io.master.awsize  := lsu.io.wReq.bits.wSize
-  io.master.awburst := AxBurst.Incr.U
+  io.master.awburst := AxBurst.Fixed.U
 
   io.master.wvalid        := lsu.io.wReq.valid
   io.master.wdata         := lsu.io.wReq.bits.wData

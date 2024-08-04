@@ -23,7 +23,7 @@ static const char mainargs[] = MAINARGS;
 void putch(char ch) {
   Uart16550Lsr_t lsr;
   do {
-    lsr.as_byte = inb(PERIP_UART16550_ADDR + UART16550_REG_LSR);
+    lsr.as_u8 = inb(PERIP_UART16550_ADDR + UART16550_REG_LSR);
   } while (!lsr.thre);
   outb(PERIP_UART16550_ADDR + UART16550_REG_TXR, ch);
 }
@@ -59,9 +59,9 @@ static inline void init_uart16550(void) {
       .stb = 0,
       .wls = 0b11,
   };
-  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_byte);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_u8);
   outb(PERIP_UART16550_ADDR + UART16550_REG_DLM, 0x00);
-  outb(PERIP_UART16550_ADDR + UART16550_REG_DLL, 0x6f);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_DLL, 0x02); // TODO: Make it concrete
   lcr = (Uart16550Lcr_t){
       .dlab = 0,
       .set_break = 0,
@@ -71,7 +71,7 @@ static inline void init_uart16550(void) {
       .stb = 0,
       .wls = 0b11,
   };
-  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_byte);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_u8);
 }
 
 void _trm_init(void) {
