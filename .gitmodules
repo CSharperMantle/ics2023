@@ -1,9 +1,12 @@
 [submodule "ysyxSoC"]
-	url = git@github.com:CSharperMantle/ysyxSoC.git
-	branch = ysyx6
+	path = ysyxSoC
+	url = git@github.com:OSCPU/ysyxSoC.git
 [submodule "rt-thread-am"]
 	path = rt-thread-am
 	url = git@github.com:CSharperMantle/rt-thread-am.git
 [submodule "am-kernels"]
 	path = am-kernels
 	url = git@github.com:CSharperMantle/am-kernels.git
+[submodule "./ysyxSoC"]
+	url = git@github.com:CSharperMantle/ysyxSoC.git
+	branch = ysyx6
