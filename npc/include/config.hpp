@@ -1,7 +1,7 @@
 #ifndef NPC_CONFIG_HPP_
 #define NPC_CONFIG_HPP_
 
-#define CONFIG_DUMP_WAVE 1
+#define CONFIG_DUMP_WAVE 0
 
 #define CONFIG_RT_CHECK
 // #define CONFIG_MTRACE

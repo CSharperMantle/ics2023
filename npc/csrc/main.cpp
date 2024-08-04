@@ -24,6 +24,10 @@ static const uint32_t DEFAULT_IMG[] = {
     0xdeadbeef, // some data
 };
 
+static const uint8_t IMG_CHAR_TEST[] = {
+    0xb7, 0x07, 0x00, 0x10, 0x13, 0x07, 0x10, 0x04, 0x23, 0x80, 0xe7, 0x00, 0x13, 0x07, 0x17, 0x00,
+    0x23, 0x80, 0xe7, 0x00, 0x13, 0x00, 0x00, 0x00, 0x73, 0x00, 0x10, 0x00, 0x6f, 0xf0, 0x9f, 0xff};
+
 VDut dut{};
 
 std::unique_ptr<DiffTest> difftest{};
@@ -109,9 +113,8 @@ int main(int argc, char *argv[]) {
   }
 
   // TODO: init flash
-  for (size_t i = 0; i < FLASH_SIZE; i++) {
-    flash[i] = i & 0xff;
-  }
+  ((uint32_t *)flash)[0] = static_cast<uint32_t>(sizeof(IMG_CHAR_TEST));
+  std::memcpy(flash + sizeof(uint32_t), IMG_CHAR_TEST, sizeof(IMG_CHAR_TEST));
 
   const char *env_ref_so = getenv("NPC_DIFFTEST_REF_SO");
   if (env_ref_so == nullptr || std::strlen(env_ref_so) == 0) {
@@ -161,12 +164,12 @@ int main(int argc, char *argv[]) {
 
   const word_t retval = dut_dpi_state.reg_a0;
   if (retval == 0) {
-    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD,
-        static_cast<word_t>(dut_dpi_state.pc));
+    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD, dut_dpi_state.pc);
   } else {
     assert_fail_msg();
-    Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " at pc = " FMT_WORD,
-        static_cast<word_t>(dut_dpi_state.pc));
+    Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " (" FMT_WORD ") at pc = " FMT_WORD,
+        dut_dpi_state.reg_a0,
+        dut_dpi_state.pc);
   }
 
   sim_exit();
