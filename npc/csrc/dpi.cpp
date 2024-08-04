@@ -27,7 +27,7 @@ void soc_dpi_report_state(bool retired, word_t pc, uint8_t cycles, uint32_t inst
 }
 
 void flash_read(int32_t addr, int32_t *data) {
-  const paddr_t addr_ = static_cast<paddr_t>(addr) & ~0x3u;
+  const paddr_t addr_ = static_cast<paddr_t>(addr + FLASH_LEFT) & ~0x3u;
   assert(in_flash(addr_));
   *data = do_flash_read(flash_guest_to_host(addr_));
 }

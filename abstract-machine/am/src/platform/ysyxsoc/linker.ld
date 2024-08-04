@@ -6,8 +6,9 @@ PHDRS {
 }
 
 MEMORY {
-  sram : ORIGIN = 0x0f000000, LENGTH = 8K
-  mrom : ORIGIN = 0x20000000, LENGTH = 4K
+  sram  : ORIGIN = 0x0f000000, LENGTH = 8K
+  mrom  : ORIGIN = 0x20000000, LENGTH = 4K
+  flash : ORIGIN = 0x30000000, LENGTH = 16M
 }
 
 SECTIONS {
@@ -15,25 +16,27 @@ SECTIONS {
   _sram_end = _sram_start + LENGTH(sram);
   _mrom_start = ORIGIN(mrom);
   _mrom_end = _mrom_start + LENGTH(mrom);
+  _flash_start = ORIGIN(flash);
+  _flash_end = _flash_start + LENGTH(flash);
 
-  . = _mrom_start;
+  . = _flash_start;
 
   .text : {
     *(entry)
     *(.text*)
-  } > mrom AT> mrom : text
+  } > flash AT> flash : text
   etext = .;
   _etext = .;
 
   .rodata : {
     *(.rodata*)
     *(.srodata*)
-  } > mrom AT> mrom
+  } > flash AT> flash
 
   .data : {
     *(.data*)
     *(.sdata*)
-  } > sram AT> mrom : data
+  } > sram AT> flash : data
 
   _data = ADDR(.data);
   edata = _data + SIZEOF(.data);
@@ -47,7 +50,7 @@ SECTIONS {
     *(.bss*)
     *(.sbss*)
     *(.scommon)
-  } > sram AT> mrom
+  } > sram AT> flash
   end = .;
   _end = .;
 

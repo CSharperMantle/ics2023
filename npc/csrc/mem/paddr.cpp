@@ -8,7 +8,6 @@
 
 #ifdef CONFIG_MTRACE
 static void print_mtrace(paddr_t addr, bool read, word_t data, uint8_t mask) {
-  extern VTop dut;
   const word_t pc = static_cast<word_t>(dut_dpi_state.pc);
   if (read) {
     if (mask == 0) {

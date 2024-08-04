@@ -12,7 +12,7 @@ constexpr bool in_mrom(paddr_t addr) {
 }
 
 constexpr bool in_flash(paddr_t addr) {
-  return addr < FLASH_SIZE;
+  return addr - FLASH_LEFT < FLASH_SIZE;
 }
 
 #endif /* NPC_PMEM_HPP_ */

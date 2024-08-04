@@ -24,10 +24,6 @@ static const uint32_t DEFAULT_IMG[] = {
     0xdeadbeef, // some data
 };
 
-static const uint8_t IMG_CHAR_TEST[] = {
-    0xb7, 0x07, 0x00, 0x10, 0x13, 0x07, 0x10, 0x04, 0x23, 0x80, 0xe7, 0x00, 0x13, 0x07, 0x17, 0x00,
-    0x23, 0x80, 0xe7, 0x00, 0x13, 0x00, 0x00, 0x00, 0x73, 0x00, 0x10, 0x00, 0x6f, 0xf0, 0x9f, 0xff};
-
 VDut dut{};
 
 std::unique_ptr<DiffTest> difftest{};
@@ -85,17 +81,11 @@ void assert_fail_msg() {
 #endif
 }
 
-// static uint64_t get_time() {
-//   const auto now = std::chrono::high_resolution_clock::now().time_since_epoch();
-//   const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now);
-//   return ns.count();
-// }
-
 int main(int argc, char *argv[]) {
   size_t len_img = 0;
   if (argc < 2) {
     Warn("no image file provided, fallback to builtin image");
-    std::memcpy(mrom, DEFAULT_IMG, sizeof(DEFAULT_IMG));
+    std::memcpy(flash, DEFAULT_IMG, sizeof(DEFAULT_IMG));
     len_img = sizeof(DEFAULT_IMG);
   } else {
     FILE *const f_img = std::fopen(argv[1], "rb");
@@ -103,18 +93,14 @@ int main(int argc, char *argv[]) {
     std::fseek(f_img, 0, SEEK_END);
     len_img = static_cast<size_t>(std::ftell(f_img));
     Log("image \"%s\", size=%zu", argv[1], len_img);
-    if (len_img > sizeof(mrom)) {
-      Warn("image too large, will be clipped to %zu", sizeof(mrom));
+    if (len_img > sizeof(flash)) {
+      Warn("image too large, will be clipped to %zu", sizeof(flash));
     }
     fseek(f_img, 0, SEEK_SET);
     const size_t nbytes_read =
-        fread(mrom_guest_to_host(RESET_VECTOR), 1, std::min(sizeof(mrom), len_img), f_img);
+        fread(flash_guest_to_host(RESET_VECTOR), 1, std::min(sizeof(flash), len_img), f_img);
     Assert(nbytes_read == len_img, "cannot read %zu bytes, %zu already read", len_img, nbytes_read);
   }
-
-  // TODO: init flash
-  ((uint32_t *)flash)[0] = static_cast<uint32_t>(sizeof(IMG_CHAR_TEST));
-  std::memcpy(flash + sizeof(uint32_t), IMG_CHAR_TEST, sizeof(IMG_CHAR_TEST));
 
   const char *env_ref_so = getenv("NPC_DIFFTEST_REF_SO");
   if (env_ref_so == nullptr || std::strlen(env_ref_so) == 0) {
