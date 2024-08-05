@@ -74,18 +74,18 @@ static inline void init_uart16550(void) {
   outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_u8);
 }
 
-static void print_vendor_info(void) {
-  uintptr_t mvendorid, marchid;
-  asm volatile ("csrr %0, mvendorid" : "=r"(mvendorid));
-  asm volatile ("csrr %0, marchid" : "=r"(marchid));
-  printf("AM on NPC (mvendorid=0x%08x; marchid=0x%08x)\n", mvendorid, marchid);
-}
+// static void print_vendor_info(void) {
+//   uintptr_t mvendorid, marchid;
+//   asm volatile ("csrr %0, mvendorid" : "=r"(mvendorid));
+//   asm volatile ("csrr %0, marchid" : "=r"(marchid));
+//   printf("AM @ NPC (mvendorid=0x%08x; marchid=0x%08x)\n", mvendorid, marchid);
+// }
 
 void _trm_init(void) {
   // Initialized SRAM content
   bootstrap_sram();
   init_uart16550();
-  print_vendor_info();
+  // print_vendor_info();
 
   const int ret = main(mainargs);
   halt(ret);

@@ -27,20 +27,21 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  input          [31:0] instr,
        |  input [${XLen - 1}:0] a0
        |);
-       |  import "DPI-C" function void soc_dpi_ebreak(input bad);
+       |  import "DPI-C" function void soc_dpi_ebreak();
        |  import "DPI-C" function void soc_dpi_report_state(input           retired,
        |                                                    input $xLenType pc,
        |                                                    input byte      cycles,
        |                                                    input int       instr,
-       |                                                    input $xLenType a0);
+       |                                                    input $xLenType a0,
+       |                                                    input           bad);
        |
        |  always @(posedge clock) begin
        |    if (retired) begin
        |      if (ebreak) begin
-       |        soc_dpi_ebreak(bad);
+       |        soc_dpi_ebreak();
        |      end
        |    end
-       |    soc_dpi_report_state(retired, pc, cycles, instr, a0);
+       |    soc_dpi_report_state(retired, pc, cycles, instr, a0, bad);
        |  end
        |endmodule
        |""".stripMargin

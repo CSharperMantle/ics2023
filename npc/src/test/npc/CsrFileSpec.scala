@@ -18,7 +18,7 @@ class CsrFileSpec extends AnyFlatSpec {
       dut.clock.step()
       dut.reset.poke(false)
 
-      dut.io.conn.csrIdx.poke("h340".U)
+      dut.io.conn.csrAddr.poke("h340".U)
       dut.io.conn.s1.poke("hdeadbeef".U)
       dut.io.conn.csrOp.poke(Unk.U)
       dut.io.conn.csrVal.expect(0.U)

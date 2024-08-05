@@ -69,7 +69,7 @@ static void print_iringbuf() {
     auto instr_disasm = disasm(std::get<0>(instr),
                                reinterpret_cast<const uint8_t *>(&std::get<1>(instr)),
                                sizeof(std::get<1>(instr)));
-    Log(FMT_WORD "\t%hhu\t%s", std::get<0>(instr), std::get<2>(instr), instr_disasm.c_str());
+    Log("%hhu\t" FMT_WORD "\t%s", std::get<2>(instr), std::get<0>(instr), instr_disasm.c_str());
   }
   Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
 }

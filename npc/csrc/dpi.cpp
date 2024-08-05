@@ -13,17 +13,17 @@ DutDpiState dut_dpi_state;
 extern "C" {
 #endif /* __cplusplus */
 
-void soc_dpi_ebreak(bool bad) {
+void soc_dpi_ebreak(void) {
   dut_dpi_state.ebreak = true;
-  dut_dpi_state.bad = bad;
 }
 
-void soc_dpi_report_state(bool retired, word_t pc, uint8_t cycles, uint32_t instr, word_t a0) {
+void soc_dpi_report_state(bool retired, word_t pc, uint8_t cycles, uint32_t instr, word_t a0, bool bad) {
   dut_dpi_state.retired = retired;
   dut_dpi_state.pc = pc;
   dut_dpi_state.instr_cycles = cycles;
   dut_dpi_state.instr = instr;
   dut_dpi_state.reg_a0 = a0;
+  dut_dpi_state.bad = bad;
 }
 
 void flash_read(int32_t addr, int32_t *data) {

@@ -145,7 +145,7 @@ class Xbar[TReq <: Data, TResp <: Data](
     inTrans,
     Mux1H(
       (0 until n).map(i => addrSel1H(i) -> io.slaveReq(i).ready) ++ Seq(
-        addrSel1H(addrSelDec.bitBad) -> io.masterReq.valid
+        addrBad -> io.masterReq.valid
       )
     ),
     0.B
@@ -155,19 +155,19 @@ class Xbar[TReq <: Data, TResp <: Data](
     inTrans,
     Mux1H(
       (0 until n).map(i => addrSel1H(i) -> io.slaveResp(i).valid) ++ Seq(
-        addrSel1H(addrSelDec.bitBad) -> 1.B
+        addrBad -> 1.B
       )
     ),
     0.B
   )
   io.masterResp.bits := Mux1H(
     (0 until n).map(i => addrSel1H(i) -> io.slaveResp(i).bits) ++ Seq(
-      addrSel1H(addrSelDec.bitBad) -> io.slaveResp(0).bits
+      addrBad -> io.slaveResp(0).bits
     )
   )
   selResp(io.masterResp.bits) := Mux1H(
     (0 until n).map(i => addrSel1H(i) -> selResp(io.slaveResp(i).bits)) ++ Seq(
-      addrSel1H(addrSelDec.bitBad) -> BResp.DecErr.U
+      addrBad -> BResp.DecErr.U
     )
   )
   for ((slave, i) <- io.slaveResp.zipWithIndex) {

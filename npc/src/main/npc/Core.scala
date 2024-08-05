@@ -27,7 +27,7 @@ class Core extends Module {
   private val pcUpdate = Module(new PcUpdate)
 
   private val readArb = Module(
-    new GenericArbiter(new MemReadReq(XLen.W), new MemReadResp(32.W), 2)
+    new GenericArbiter(new MemReadReq(32.W), new MemReadResp(32.W), 2)
   )
   readArb.io.masterReq(0)  <> ifu.io.rReq
   readArb.io.masterResp(0) <> ifu.io.rResp
@@ -36,8 +36,8 @@ class Core extends Module {
 
   private val memRXbar = Module(
     new Xbar(
-      new MemReadReq(XLen.W),
-      new MemReadResp(XLen.W),
+      new MemReadReq(32.W),
+      new MemReadResp(32.W),
       Seq(
         Seq(
           "b00000010_00000000_????????_????????".BP // CLINT
@@ -79,21 +79,39 @@ class Core extends Module {
   // rlast
   // rid
 
-  lsu.io.wReq.ready := io.master.awready & io.master.wready
-  io.master.awvalid := lsu.io.wReq.valid
-  io.master.awaddr  := lsu.io.wReq.bits.wAddr
-  io.master.awid    := 0.U
-  io.master.awlen   := 0.U
-  io.master.awsize  := lsu.io.wReq.bits.wSize
-  io.master.awburst := AxBurst.Fixed.U
+  private val memWXbar = Module(
+    new Xbar(
+      new MemWriteReq(32.W, 32.W),
+      new MemWriteResp,
+      Seq(
+        Seq(
+          "b00001111_????????_????????_????????".BP, // SRAM
+          "b00010000_00000000_0000????_????????".BP, // UART16550
+          "b00010000_00000000_0001????_????????".BP  // SPI master
+        )
+      ),
+      (req: MemWriteReq) => req.wAddr,
+      (resp: MemWriteResp) => resp.bResp
+    )
+  )
+  memWXbar.io.masterReq  <> lsu.io.wReq
+  memWXbar.io.masterResp <> lsu.io.wResp
 
-  io.master.wvalid        := lsu.io.wReq.valid
-  io.master.wdata         := lsu.io.wReq.bits.wData
-  io.master.wstrb         := lsu.io.wReq.bits.wMask(3, 0)
-  io.master.wlast         := lsu.io.wReq.valid
-  io.master.bready        := lsu.io.wResp.ready
-  lsu.io.wResp.valid      := io.master.bvalid
-  lsu.io.wResp.bits.bResp := io.master.bresp
+  memWXbar.io.slaveReq(0).ready := io.master.awready & io.master.wready
+  io.master.awvalid             := memWXbar.io.slaveReq(0).valid
+  io.master.awaddr              := memWXbar.io.slaveReq(0).bits.wAddr
+  io.master.awid                := 0.U
+  io.master.awlen               := 0.U
+  io.master.awsize              := memWXbar.io.slaveReq(0).bits.wSize
+  io.master.awburst             := AxBurst.Fixed.U
+
+  io.master.wvalid                    := memWXbar.io.slaveReq(0).valid
+  io.master.wdata                     := memWXbar.io.slaveReq(0).bits.wData
+  io.master.wstrb                     := memWXbar.io.slaveReq(0).bits.wMask(3, 0)
+  io.master.wlast                     := memWXbar.io.slaveReq(0).valid
+  io.master.bready                    := memWXbar.io.slaveResp(0).ready
+  memWXbar.io.slaveResp(0).valid      := io.master.bvalid
+  memWXbar.io.slaveResp(0).bits.bResp := io.master.bresp
   // bid
 
   StageConnect(idu.io.msgIn, ifu.io.msgOut)

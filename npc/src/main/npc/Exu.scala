@@ -97,7 +97,7 @@ class Exu extends Module {
   io.gprRead.rs2Idx := io.msgIn.bits.rs2Idx
 
   io.csrConn.s1      := srcA
-  io.csrConn.csrIdx  := io.msgIn.bits.imm(11, 0)
+  io.csrConn.csrAddr := io.msgIn.bits.imm(11, 0)
   io.csrConn.csrOp   := Mux(io.msgIn.valid, io.msgIn.bits.csrOp, CsrOp.Unk.U)
   io.csrConn.excpAdj := Mux(io.msgIn.valid, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
   io.csrConn.pc      := io.msgIn.bits.pc
