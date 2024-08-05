@@ -34,6 +34,8 @@ LDFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --libs)
 VSRCS = $(shell find $(abspath ./build) -regextype posix-extended -regex "^.*\.(sv|v)$$")
 CSRCS = $(shell find $(abspath ./csrc) -regextype posix-extended -regex "^.*\.(c|cc|cpp)$$")
 
+SCALA_SRCS = $(shell find $(abspath ./src/main) -regextype posix-extended -regex "^.*\.scala$$")
+
 # ysyxSoC
 SOC_HOME ?= $(NPC_HOME)/../ysyxSoC
 SOC_PERIPH_VSRCS = $(shell find $(abspath $(SOC_HOME)/perip) -regextype posix-extended -regex "^.*\.(sv|v)$$")
@@ -49,22 +51,24 @@ INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS)
 CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -g
 
+$(VSRCS): $(SCALA_SRCS)
+	$(call git_commit, "generate verilog")
+	mkdir -p $(BUILD_DIR)
+	mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
+
 # $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
-$(BIN): $(VSRCS) $(CSRCS)
+$(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS)
 	./script/remove_f.py $(VSRCS)
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \
-		--top-module $(TOP_NAME) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $^ \
+		--top-module $(TOP_NAME) $^ \
 		$(addprefix -CFLAGS , $(CXXFLAGS)) $(addprefix -LDFLAGS , $(LDFLAGS)) \
 		$(SOC_INCFLAGS) --Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 
 test:
 	mill -i $(PRJ_NAME).test
 
-verilog:
-	$(call git_commit, "generate verilog")
-	mkdir -p $(BUILD_DIR)
-	mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
+verilog: $(VSRCS)
 
 help:
 	mill -i $(PRJ_NAME).runMain Elaborate --help

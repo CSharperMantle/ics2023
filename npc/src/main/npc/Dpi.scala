@@ -23,14 +23,14 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  input                 ebreak,
        |  input                 bad,
        |  input [${XLen - 1}:0] pc,
-       |  input           [7:0] cycles,
+       |  input          [15:0] cycles,
        |  input          [31:0] instr,
        |  input [${XLen - 1}:0] a0
        |);
        |  import "DPI-C" function void soc_dpi_ebreak();
        |  import "DPI-C" function void soc_dpi_report_state(input           retired,
        |                                                    input $xLenType pc,
-       |                                                    input byte      cycles,
+       |                                                    input shortint  cycles,
        |                                                    input int       instr,
        |                                                    input $xLenType a0,
        |                                                    input           bad);
@@ -53,7 +53,7 @@ class DpiIO extends Bundle {
   val ebreak  = Input(Bool())
   val bad     = Input(Bool())
   val pc      = Input(UInt(XLen.W))
-  val cycles  = Input(UInt(8.W))
+  val cycles  = Input(UInt(16.W))
   val instr   = Input(UInt(32.W))
   val a0      = Input(UInt(XLen.W))
 }

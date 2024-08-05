@@ -9,7 +9,7 @@ struct DutDpiState {
   bool ebreak;
   bool bad;
   bool retired;
-  uint8_t instr_cycles;
+  uint16_t instr_cycles;
   word_t pc;
   uint32_t instr;
   word_t reg_a0;

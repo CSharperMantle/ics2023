@@ -17,7 +17,7 @@ void soc_dpi_ebreak(void) {
   dut_dpi_state.ebreak = true;
 }
 
-void soc_dpi_report_state(bool retired, word_t pc, uint8_t cycles, uint32_t instr, word_t a0, bool bad) {
+void soc_dpi_report_state(bool retired, word_t pc, uint16_t cycles, uint32_t instr, word_t a0, bool bad) {
   dut_dpi_state.retired = retired;
   dut_dpi_state.pc = pc;
   dut_dpi_state.instr_cycles = cycles;

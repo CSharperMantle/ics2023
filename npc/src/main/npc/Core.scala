@@ -125,7 +125,7 @@ class Core extends Module {
   StageConnect(ifu.io.msgIn, pcUpdate.io.msgOut)
 
   private val retired     = pcUpdate.io.msgOut.valid
-  private val instrCycles = RegInit(0.U(8.W))
+  private val instrCycles = RegInit(0.U(16.W))
   instrCycles := Mux(retired, 0.U, instrCycles + 1.U)
 
   private val dpi = Module(new Dpi)
