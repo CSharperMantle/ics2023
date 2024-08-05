@@ -180,7 +180,7 @@ class Lsu extends Module {
       S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
       S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
       S_Read      -> Mux(io.rResp.valid, S_ReadDone, S_Read),
-      S_ReadDone  -> Mux(wEn, S_Write, S_WaitReady),
+      S_ReadDone  -> Mux(wEn, S_WriteReq, S_WaitReady),
       S_WriteReq  -> Mux(io.wReq.ready, S_Write, S_WriteReq),
       S_Write     -> Mux(io.wResp.valid, S_WriteDone, S_Write),
       S_WriteDone -> S_WaitReady,

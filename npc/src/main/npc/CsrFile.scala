@@ -111,6 +111,7 @@ class CsrFile extends Module {
   //                                                | MPP              |               | MPIE      |              | MIE       |
   private val mstatusAdjMret  = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), 1.U(1.W),   mstatus(6, 4), mstatus(7), mstatus(2, 0))
   private val mstatusAdjEcall = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), mstatus(3), mstatus(6, 4), 0.U(1.W),   mstatus(2, 0))
+  // scalafmt: { align.tokens.add = [] }
   csrs(MstatusIdx.U) := Mux1H(
     Seq(
       excpAdj1H(0) -> mstatus,

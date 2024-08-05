@@ -6,6 +6,14 @@ import chisel3.util._
 import common._
 import npc._
 
+object PcSel extends CvtChiselEnum {
+  val PcSnpc  = Value
+  val PcAlu   = Value
+  val PcBr    = Value
+  val PcMepc  = Value
+  val PcMtvec = Value
+}
+
 class PcUpdate2IfuMsg extends Bundle {
   val pc    = Output(UInt(XLen.W))
   val dnpc  = Output(UInt(XLen.W))
@@ -24,11 +32,11 @@ class PcUpdate extends Module {
   private val brTarget = Mux(io.msgIn.bits.brTaken, io.msgIn.bits.pc + io.msgIn.bits.imm, snpc)
   private val pcSelDec = Decoder1H(
     Seq(
-      InstrPcSel.PcSnpc.BP  -> 0,
-      InstrPcSel.PcAlu.BP   -> 1,
-      InstrPcSel.PcBr.BP    -> 2,
-      InstrPcSel.PcMepc.BP  -> 3,
-      InstrPcSel.PcMtvec.BP -> 4
+      PcSel.PcSnpc.BP  -> 0,
+      PcSel.PcAlu.BP   -> 1,
+      PcSel.PcBr.BP    -> 2,
+      PcSel.PcMepc.BP  -> 3,
+      PcSel.PcMtvec.BP -> 4
     )
   )
   private val pcSel1H = pcSelDec(io.msgIn.bits.pcSel)
