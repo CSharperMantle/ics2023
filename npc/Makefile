@@ -33,6 +33,7 @@ LDFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --libs)
 
 VSRCS = $(shell find $(abspath ./build) -regextype posix-extended -regex "^.*\.(sv|v)$$")
 CSRCS = $(shell find $(abspath ./csrc) -regextype posix-extended -regex "^.*\.(c|cc|cpp)$$")
+HEADERS = $(shell find $(INC_PATH) -regextype posix-extended -regex "^.*\.(h|hpp)$$")
 
 SCALA_SRCS = $(shell find $(abspath ./src/main) -regextype posix-extended -regex "^.*\.scala$$")
 
@@ -57,11 +58,11 @@ $(VSRCS): $(SCALA_SRCS)
 	mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
 
 # $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
-$(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS)
+$(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS) $(HEADERS)
 	./script/remove_f.py $(VSRCS)
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \
-		--top-module $(TOP_NAME) $^ \
+		--top-module $(TOP_NAME) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(VSRCS) $(CSRCS) \
 		$(addprefix -CFLAGS , $(CXXFLAGS)) $(addprefix -LDFLAGS , $(LDFLAGS)) \
 		$(SOC_INCFLAGS) --Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 

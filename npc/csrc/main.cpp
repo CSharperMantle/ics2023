@@ -69,7 +69,10 @@ static void print_iringbuf() {
     auto instr_disasm = disasm(std::get<0>(instr),
                                reinterpret_cast<const uint8_t *>(&std::get<1>(instr)),
                                sizeof(std::get<1>(instr)));
-    Log("%hhu\t" FMT_WORD "\t%s", std::get<2>(instr), std::get<0>(instr), instr_disasm.c_str());
+    Log("%" PRIu16 "\t" FMT_WORD "\t%s",
+        std::get<2>(instr),
+        std::get<0>(instr),
+        instr_disasm.c_str());
   }
   Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
 }
@@ -150,6 +153,7 @@ int main(int argc, char *argv[]) {
 
   const word_t retval = dut_dpi_state.reg_a0;
   if (retval == 0) {
+    assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD, dut_dpi_state.pc);
   } else {
     assert_fail_msg();

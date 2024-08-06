@@ -31,7 +31,7 @@ case class CsrPropPattern(
 }
 
 object CsrPropIdxField extends DecodeField[CsrPropPattern, UInt] {
-  override def name = "idx"
+  override def name       = "idx"
   override def chiselType = UInt(KnownCsrIdx.W)
   override def genTable(op: CsrPropPattern): BitPat = op.idx
 }
@@ -44,7 +44,7 @@ object CsrPropIsConstField extends BoolDecodeField[CsrPropPattern] {
 }
 
 object CsrPropConstValField extends DecodeField[CsrPropPattern, UInt] {
-  override def name = "constVal"
+  override def name       = "constVal"
   override def chiselType = UInt(XLen.W)
   override def genTable(op: CsrPropPattern): BitPat = {
     op.constVal match {
@@ -124,13 +124,12 @@ class CsrFile extends Module {
   private val csrPropDecoder = new DecodeTable(csrPropTable, csrPropFields)
   private val csrPropBundle  = csrPropDecoder.decode(io.conn.csrAddr)
 
-  private val regIdx = csrPropBundle(CsrPropIdxField)
-
+  private val csrIdx     = csrPropBundle(CsrPropIdxField)
   private val csrIsConst = csrPropBundle(CsrPropIsConstField)
 
-  private val csrVal = Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(regIdx))
+  private val csrVal = Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(csrIdx))
   io.conn.csrVal := csrVal
-  csrs(regIdx) := Mux(
+  csrs(csrIdx) := Mux(
     csrIsConst,
     csrVal,
     Mux1H(
