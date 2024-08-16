@@ -8,4 +8,6 @@
 #define CLINT_REG_MTIME_L 0xbff8l
 #define CLINT_REG_MTIME_H 0xbffcl
 
+#define NS_PER_CYCLE 250
+
 #endif /* CLINT_H_INCLUDED_ */

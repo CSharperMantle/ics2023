@@ -1,7 +1,7 @@
 #include <klib-macros.h>
 #include <klib.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 
@@ -69,9 +69,9 @@ int strncmp(const char *s1, const char *s2, size_t n) {
 }
 
 void *memset(void *s, int c, size_t n) {
-  unsigned char *buf = (unsigned char *)s;
+  uint8_t *const buf_b = (uint8_t *)s;
   for (size_t i = 0; i < n; i++) {
-    buf[i] = (unsigned char)c;
+    buf_b[i] = (uint8_t)c;
   }
   return s;
 }
@@ -97,14 +97,11 @@ void *memmove(void *dst, const void *src, size_t n) {
   return dst;
 }
 
-void *memcpy(void *out, const void *in, size_t n) {
-  if (n == 0) {
-    return out;
-  }
-  unsigned char *buf_out = (unsigned char *)out;
-  unsigned char *buf_in = (unsigned char *)in;
-  while (n--) {
-    buf_out[n] = buf_in[n];
+void *memcpy(void *restrict out, const void *restrict in, size_t n) {
+  uint8_t *const out_b = (uint8_t *)out;
+  uint8_t *const in_b = (uint8_t *)in;
+  for (size_t i = 0; i < n; i++) {
+    out_b[i] = in_b[i];
   }
   return out;
 }

@@ -46,13 +46,15 @@ SECTIONS {
   _edata_load = _data_load + SIZEOF(.data);
 
   .bss : {
-  _bss_start = .;
     *(.bss*)
     *(.sbss*)
     *(.scommon)
   } > sram AT> flash
   end = .;
   _end = .;
+
+  _bss_start = ADDR(.bss);
+  _ebss = _bss_start + SIZEOF(.bss);
 
   _stack_top = .;
   . += _stack_size;

@@ -30,22 +30,26 @@ void putch(char ch) {
 
 __attribute__((noreturn)) void halt(int code) {
   nemu_trap(code);
-  __builtin_unreachable();
   while (1)
     ;
+  __builtin_unreachable();
 }
 
 extern char _data;
 extern char _edata;
 extern char _data_load;
+extern char _bss_start;
+extern char _ebss;
 
 static inline void bootstrap_sram(void) {
-  const size_t len = &_edata - &_data;
+  const size_t data_len = &_edata - &_data;
   uint8_t *const pdata_b = (uint8_t *)&_data;
   const uint8_t *const pdata_load_b = (uint8_t *)&_data_load;
-  for (size_t i = 0; i < len; i++) {
-    pdata_b[i] = pdata_load_b[i];
-  }
+  memcpy(pdata_b, pdata_load_b, data_len);
+
+  const size_t bss_len = &_ebss - &_bss_start;
+  uint8_t *const bss_start_b = (uint8_t *)&_bss_start;
+  memset(bss_start_b, 0, bss_len);
 }
 
 static inline void init_uart16550(void) {
@@ -74,18 +78,18 @@ static inline void init_uart16550(void) {
   outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_u8);
 }
 
-// static void print_vendor_info(void) {
-//   uintptr_t mvendorid, marchid;
-//   asm volatile ("csrr %0, mvendorid" : "=r"(mvendorid));
-//   asm volatile ("csrr %0, marchid" : "=r"(marchid));
-//   printf("AM @ NPC (mvendorid=0x%08x; marchid=0x%08x)\n", mvendorid, marchid);
-// }
+static void print_vendor_info(void) {
+  uintptr_t mvendorid, marchid;
+  asm volatile("csrr %0, mvendorid" : "=r"(mvendorid));
+  asm volatile("csrr %0, marchid" : "=r"(marchid));
+  printf("AM on NPC mvendorid=0x%08x; marchid=0x%08x\n", mvendorid, marchid);
+}
 
 void _trm_init(void) {
   // Initialized SRAM content
   bootstrap_sram();
   init_uart16550();
-  // print_vendor_info();
+  print_vendor_info();
 
   const int ret = main(mainargs);
   halt(ret);

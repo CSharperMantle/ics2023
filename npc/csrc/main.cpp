@@ -153,7 +153,6 @@ int main(int argc, char *argv[]) {
 
   const word_t retval = dut_dpi_state.reg_a0;
   if (retval == 0) {
-    assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD, dut_dpi_state.pc);
   } else {
     assert_fail_msg();
