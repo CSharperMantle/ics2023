@@ -183,10 +183,10 @@ class AluSpec extends AnyFlatSpec {
       dut.reset.poke(false)
 
       dut.io.brCond.poke(Eq.U)
-      dut.io.brInvalid.expect(false.B)
+      dut.io.brBad.expect(false.B)
 
       dut.io.brCond.poke(Unk.U)
-      dut.io.brInvalid.expect(true.B)
+      dut.io.brBad.expect(true.B)
     }
   }
 }

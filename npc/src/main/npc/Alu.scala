@@ -33,14 +33,14 @@ object AluBrCond extends CvtChiselEnum {
 }
 
 class AluIO extends Bundle {
-  val calcOp    = Input(UInt(AluCalcOp.W))
-  val calcDir   = Input(UInt(AluCalcDir.W))
-  val brCond    = Input(UInt(AluBrCond.W))
-  val s1        = Input(UInt(XLen.W))
-  val s2        = Input(UInt(XLen.W))
-  val d         = Output(UInt(XLen.W))
-  val brTaken   = Output(Bool())
-  val brInvalid = Output(Bool())
+  val calcOp  = Input(UInt(AluCalcOp.W))
+  val calcDir = Input(UInt(AluCalcDir.W))
+  val brCond  = Input(UInt(AluBrCond.W))
+  val s1      = Input(UInt(XLen.W))
+  val s2      = Input(UInt(XLen.W))
+  val d       = Output(UInt(XLen.W))
+  val brTaken = Output(Bool())
+  val brBad   = Output(Bool())
 }
 
 class Alu extends Module {
@@ -114,5 +114,5 @@ class Alu extends Module {
       brOp1Hot(6) -> 0.U
     )
   )
-  io.brInvalid := brOp1Hot(6)
+  io.brBad := brOp1Hot(6)
 }

@@ -290,7 +290,7 @@ class Idu2ExuMsg extends Bundle {
   val srcASel    = Output(SrcASelField.chiselType)
   val srcBSel    = Output(SrcBSelField.chiselType)
   val excpAdj    = Output(ExcpAdjField.chiselType)
-  val inval      = Output(Bool())
+  val bad        = Output(Bool())
   // Pass-through for Exu
   val pc        = Output(UInt(XLen.W))
   val memAction = Output(MemActionField.chiselType)
@@ -409,7 +409,7 @@ class Idu extends Module {
   io.msgOut.bits.srcASel    := res(SrcASelField)
   io.msgOut.bits.srcBSel    := res(SrcBSelField)
   io.msgOut.bits.excpAdj    := res(ExcpAdjField)
-  io.msgOut.bits.inval      := res(InstrInvalField)
+  io.msgOut.bits.bad        := io.msgIn.bits.bad | res(InstrInvalField)
 
   io.msgOut.bits.pc        := io.msgIn.bits.pc
   io.msgOut.bits.memAction := res(MemActionField)

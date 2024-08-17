@@ -21,7 +21,7 @@ class Wbu2PcUpdateMsg extends Bundle {
   val d       = Output(UInt(XLen.W))
   val mepc    = Output(UInt(XLen.W))
   val mtvec   = Output(UInt(XLen.W))
-  val inval   = Output(Bool())
+  val bad     = Output(Bool())
 }
 
 class WbuIO extends Bundle {
@@ -60,7 +60,7 @@ class Wbu extends Module {
     )
   )
 
-  io.gprWrite.wEn    := io.msgIn.valid & io.msgIn.bits.wbEn
+  io.gprWrite.wEn    := io.msgIn.valid & ~io.msgIn.bits.bad & io.msgIn.bits.wbEn
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
 
@@ -71,7 +71,7 @@ class Wbu extends Module {
   io.msgOut.bits.d       := io.msgIn.bits.d
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
-  io.msgOut.bits.inval   := io.msgIn.bits.inval | (io.msgIn.bits.wbEn & wbSel1H(wbSelDec.bitBad))
+  io.msgOut.bits.bad     := io.msgIn.bits.bad | (io.msgIn.bits.wbEn & wbSel1H(wbSelDec.bitBad))
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

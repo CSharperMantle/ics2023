@@ -8,6 +8,7 @@ import npc._
 
 class Ifu2IduMsg extends Bundle {
   val instr = Output(UInt(32.W))
+  val bad   = Output(Bool())
   // Pass-through for Idu
   val pc = Output(UInt(XLen.W))
 }
@@ -22,22 +23,27 @@ class IfuIO extends Bundle {
 class Ifu extends Module {
   val io = IO(new IfuIO)
 
-  private val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), io.msgIn.valid)
+  private val canUpdatePc = io.msgIn.valid & ~io.msgIn.bits.bad
+
+  private val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), canUpdatePc)
+
+  // PC does not align to 4 bytes
+  private val pcBad = ~(pc(1, 0) === 0.U)
 
   private object State extends CvtChiselEnum {
     val S_Idle      = Value
+    val S_ReadReq   = Value
     val S_Read      = Value
-    val S_ReadDone  = Value
-    val S_WaitReady = Value
+    val S_Wait4Next = Value
   }
   import State._
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.rReq.ready, S_Read, S_Idle),
-      S_Read      -> Mux(io.rResp.valid, S_ReadDone, S_Read),
-      S_ReadDone  -> S_WaitReady,
-      S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
+      S_Idle      -> Mux(pcBad, S_Wait4Next, S_ReadReq),
+      S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
+      S_Read      -> Mux(io.rResp.valid, S_Wait4Next, S_Read),
+      S_Wait4Next -> Mux(io.msgOut.ready, S_ReadReq, S_Wait4Next)
     )
   )
 
@@ -45,12 +51,13 @@ class Ifu extends Module {
 
   io.rReq.bits.addr := pc
   io.rReq.bits.size := AxSize.Bytes4.U
-  io.rReq.valid     := ~reset.asBool & (y === S_Idle)
-  io.rResp.ready    := y === S_ReadDone
+  io.rReq.valid     := y === S_ReadReq
+  io.rResp.ready    := y === S_Wait4Next
 
+  io.msgOut.bits.bad   := (~reset.asBool) & pcBad
   io.msgOut.bits.instr := instr
   io.msgOut.bits.pc    := pc
 
-  io.msgIn.ready  := y === S_WaitReady
-  io.msgOut.valid := y === S_WaitReady
+  io.msgIn.ready  := y === S_Wait4Next
+  io.msgOut.valid := y === S_Wait4Next
 }

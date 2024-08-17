@@ -15,9 +15,9 @@ object PcSel extends CvtChiselEnum {
 }
 
 class PcUpdate2IfuMsg extends Bundle {
-  val pc    = Output(UInt(XLen.W))
-  val dnpc  = Output(UInt(XLen.W))
-  val inval = Output(Bool())
+  val pc   = Output(UInt(XLen.W))
+  val dnpc = Output(UInt(XLen.W))
+  val bad  = Output(Bool())
 }
 
 class PcUpdateIO extends Bundle {
@@ -51,9 +51,9 @@ class PcUpdate extends Module {
     )
   )
 
-  io.msgOut.bits.pc    := io.msgIn.bits.pc
-  io.msgOut.bits.dnpc  := dnpc
-  io.msgOut.bits.inval := io.msgIn.bits.inval | pcSel1H(pcSelDec.bitBad)
+  io.msgOut.bits.pc   := io.msgIn.bits.pc
+  io.msgOut.bits.dnpc := dnpc
+  io.msgOut.bits.bad  := io.msgIn.bits.bad | pcSel1H(pcSelDec.bitBad)
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

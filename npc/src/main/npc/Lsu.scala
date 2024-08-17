@@ -2,6 +2,7 @@ package npc
 
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.decode._
 
 import common._
 import npc._
@@ -28,7 +29,7 @@ class Lsu2WbuMsg extends Bundle {
   val csrVal   = Output(UInt(XLen.W))
   val rdIdx    = Output(UInt(5.W))
   val wbEn     = Output(WbEnField.chiselType)
-  val inval    = Output(Bool())
+  val bad      = Output(Bool())
   // Pass-through for Wbu
   val pcSel   = Output(PcSelField.chiselType)
   val brTaken = Output(Bool())
@@ -51,9 +52,8 @@ class Lsu extends Module {
 
   val io = IO(new LsuIO)
 
-  private val memRAddr = io.msgIn.bits.d
-  private val memWAddr = io.msgIn.bits.d
-  private val memWData = io.msgIn.bits.rs2
+  private val addr  = io.msgIn.bits.d
+  private val wData = io.msgIn.bits.rs2
 
   private val memActionDec = Decoder1H(
     Seq(
@@ -98,58 +98,82 @@ class Lsu extends Module {
       "b11".BP -> 3
     )
   )
+  private val memAlign1H = memAlignDec(addr(1, 0))
+
+  /*
+   * Properly aligned access:
+   * Byte: 0123
+   *       +
+   *       ++
+   *       ++++
+   *        +
+   *         +
+   *         ++
+   *          +
+   */
+  private val alignBadTable = TruthTable(
+    Seq(
+      "b00".BP ## MemWidth.LenB.BP -> 1.N,
+      "b00".BP ## MemWidth.LenH.BP -> 1.N,
+      "b00".BP ## MemWidth.LenW.BP -> 1.N,
+      "b01".BP ## MemWidth.LenB.BP -> 1.N,
+      "b10".BP ## MemWidth.LenB.BP -> 1.N,
+      "b10".BP ## MemWidth.LenH.BP -> 1.N,
+      "b11".BP ## MemWidth.LenB.BP -> 1.N
+    ),
+    1.Y
+  )
+  private val alignBad = decoder(Cat(addr(1, 0), io.msgIn.bits.memWidth), alignBadTable) === 1.Y
 
   private val wEn = io.msgIn.valid & memAction1H(2)
   private val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
 
-  io.rReq.bits.addr := memRAddr
+  io.rReq.bits.addr := addr
   io.rReq.bits.size := memSize
-  private val readData = RegEnable(io.rResp.bits.data, io.rResp.valid)
+  private val rData = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
-  private val memRAlign1H = memAlignDec(memRAddr(1, 0))
-  private val memRDataShifted = Mux1H(
+  private val rDataShifted = Mux1H(
     Seq(
-      memRAlign1H(0) -> readData,
-      memRAlign1H(1) -> Cat(Fill(8, 0.B), readData(XLen - 1, 8)),
-      memRAlign1H(2) -> Cat(Fill(16, 0.B), readData(XLen - 1, 16)),
-      memRAlign1H(3) -> Cat(Fill(24, 0.B), readData(XLen - 1, 24)),
-      memRAlign1H(4) -> 0.U
+      memAlign1H(0) -> rData,
+      memAlign1H(1) -> Cat(Fill(8, 0.B), rData(XLen - 1, 8)),
+      memAlign1H(2) -> Cat(Fill(16, 0.B), rData(XLen - 1, 16)),
+      memAlign1H(3) -> Cat(Fill(24, 0.B), rData(XLen - 1, 24)),
+      memAlign1H(4) -> 0.U
     )
   )
 
   private val sext = Module(new SExtender)
-  sext.io.sextData := memRDataShifted
+  sext.io.sextData := rDataShifted
   sext.io.sextW    := io.msgIn.bits.memWidth
   sext.io.sextU    := memAction1H(1)
 
-  private val memWAlign1H = memAlignDec(memWAddr(1, 0))
-  private val memWDataShifted = Mux1H(
+  private val wDataShifted = Mux1H(
     Seq(
-      memWAlign1H(0) -> memWData,
-      memWAlign1H(1) -> Cat(memWData(XLen - 9, 0), Fill(8, 0.B)),
-      memWAlign1H(2) -> Cat(memWData(XLen - 17, 0), Fill(16, 0.B)),
-      memWAlign1H(3) -> Cat(memWData(XLen - 25, 0), Fill(24, 0.B)),
-      memWAlign1H(4) -> 0.U
+      memAlign1H(0) -> wData,
+      memAlign1H(1) -> Cat(wData(XLen - 9, 0), Fill(8, 0.B)),
+      memAlign1H(2) -> Cat(wData(XLen - 17, 0), Fill(16, 0.B)),
+      memAlign1H(3) -> Cat(wData(XLen - 25, 0), Fill(24, 0.B)),
+      memAlign1H(4) -> 0.U
     )
   )
-  io.wReq.bits.wData := memWDataShifted
-  io.wReq.bits.wAddr := memWAddr
+  io.wReq.bits.wData := wDataShifted
+  io.wReq.bits.wAddr := addr
   io.wReq.bits.wSize := memSize
 
-  private val memWMaskShifted = Mux1H(
+  private val wMaskShifted = Mux1H(
     Seq(
-      memWAlign1H(0) -> memMask,
-      memWAlign1H(1) -> Cat(memMask(6, 0), Fill(1, 0.B)),
-      memWAlign1H(2) -> Cat(memMask(5, 0), Fill(2, 0.B)),
-      memWAlign1H(3) -> Cat(memMask(4, 0), Fill(3, 0.B)),
-      memWAlign1H(4) -> 0.U
+      memAlign1H(0) -> memMask,
+      memAlign1H(1) -> Cat(memMask(6, 0), Fill(1, 0.B)),
+      memAlign1H(2) -> Cat(memMask(5, 0), Fill(2, 0.B)),
+      memAlign1H(3) -> Cat(memMask(4, 0), Fill(3, 0.B)),
+      memAlign1H(4) -> 0.U
     )
   )
   io.wReq.bits.wMask := MuxCase(
     0.U,
     Seq(
       rEn -> memMask,
-      wEn -> memWMaskShifted
+      wEn -> wMaskShifted
     )
   )
 
@@ -161,17 +185,18 @@ class Lsu extends Module {
     val S_WriteReq  = Value
     val S_Write     = Value
     val S_WriteDone = Value
-    val S_WaitReady = Value
+    val S_Wait4Next = Value
   }
   import State._
   private val firstAction =
     MuxCase(
       S_Idle,
       Seq(
-        (~rEn & ~wEn) -> S_WaitReady,
-        (rEn & ~wEn)  -> S_ReadReq,
-        (~rEn & wEn)  -> S_WriteReq,
-        (rEn & wEn)   -> S_ReadReq
+        (~rEn & ~wEn)            -> S_Wait4Next,
+        ((rEn | wEn) & alignBad) -> S_Wait4Next,
+        (rEn & ~wEn & ~alignBad) -> S_ReadReq,
+        (~rEn & wEn & ~alignBad) -> S_WriteReq,
+        (rEn & wEn & ~alignBad)  -> S_ReadReq
       )
     )
   private val y = RegInit(S_Idle)
@@ -180,11 +205,11 @@ class Lsu extends Module {
       S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
       S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
       S_Read      -> Mux(io.rResp.valid, S_ReadDone, S_Read),
-      S_ReadDone  -> Mux(wEn, S_WriteReq, S_WaitReady),
+      S_ReadDone  -> Mux(wEn, S_WriteReq, S_Wait4Next),
       S_WriteReq  -> Mux(io.wReq.ready, S_Write, S_WriteReq),
       S_Write     -> Mux(io.wResp.valid, S_WriteDone, S_Write),
-      S_WriteDone -> S_WaitReady,
-      S_WaitReady -> Mux(io.msgOut.ready, S_Idle, S_WaitReady)
+      S_WriteDone -> S_Wait4Next,
+      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
     )
   )
 
@@ -204,11 +229,11 @@ class Lsu extends Module {
   io.msgOut.bits.csrVal   := io.msgIn.bits.csrVal
   io.msgOut.bits.rdIdx    := io.msgIn.bits.rdIdx
   io.msgOut.bits.wbEn     := io.msgIn.bits.wbEn
-  io.msgOut.bits.inval := io.msgIn.bits.inval |
+  io.msgOut.bits.bad := io.msgIn.bits.bad |
     memAction1H(memActionDec.bitBad) |
-    (rEn & memRAlign1H(memAlignDec.bitBad)) |
+    ((rEn | wEn) & alignBad) |
+    ((rEn | wEn) & memAlign1H(memAlignDec.bitBad)) |
     (rEn & ~(memRResp === RResp.Okay.U)) |
-    (wEn & memWAlign1H(memAlignDec.bitBad)) |
     (wEn & ~(memWResp === BResp.Okay.U))
 
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
@@ -217,6 +242,6 @@ class Lsu extends Module {
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
 
-  io.msgIn.ready  := y === S_WaitReady
-  io.msgOut.valid := y === S_WaitReady
+  io.msgIn.ready  := y === S_Wait4Next
+  io.msgOut.valid := y === S_Wait4Next
 }

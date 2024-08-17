@@ -23,7 +23,7 @@ class Exu2LsuMsg extends Bundle {
   val memWidth  = Output(MemWidthField.chiselType)
   val d         = Output(UInt(XLen.W))
   val rs2       = Output(UInt(XLen.W))
-  val inval     = Output(Bool())
+  val bad       = Output(Bool())
   // Pass-through for Lsu
   val pc      = Output(UInt(XLen.W))
   val wbEn    = Output(WbEnField.chiselType)
@@ -106,7 +106,7 @@ class Exu extends Module {
   io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
   io.msgOut.bits.d         := alu.io.d
   io.msgOut.bits.rs2       := io.gprRead.rs2
-  io.msgOut.bits.inval := io.msgIn.bits.inval |
+  io.msgOut.bits.bad := io.msgIn.bits.bad |
     srcASel1H(srcASelDec.bitBad) |
     srcBSel1H(srcBSelDec.bitBad)
 

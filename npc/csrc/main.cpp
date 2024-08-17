@@ -40,9 +40,9 @@ static void step_and_dump_wave() {
 }
 
 static void cycle() {
-  dut.clock = 0;
-  step_and_dump_wave();
   dut.clock = 1;
+  step_and_dump_wave();
+  dut.clock = 0;
   step_and_dump_wave();
 }
 

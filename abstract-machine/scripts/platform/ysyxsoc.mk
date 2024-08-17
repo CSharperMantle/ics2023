@@ -10,7 +10,7 @@ LDFLAGS += -T $(AM_HOME)/am/src/platform/ysyxsoc/linker.ld \
 					--defsym=_stack_size=4K
 LDFLAGS += --gc-sections -e _start
 
-CFLAGS += -fdata-sections -ffunction-sections -g
+CFLAGS += -fdata-sections -ffunction-sections
 CFLAGS += -DYSYXSOC
 CFLAGS += -DMAINARGS=\"$(mainargs)\"
 CFLAGS += -I$(AM_HOME)/am/src/platform/ysyxsoc/include

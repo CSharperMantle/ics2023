@@ -131,7 +131,7 @@ class Core extends Module {
   private val dpi = Module(new Dpi)
   dpi.io.retired := retired
   dpi.io.ebreak  := idu.io.break
-  dpi.io.bad     := pcUpdate.io.msgOut.bits.inval
+  dpi.io.bad     := pcUpdate.io.msgOut.bits.bad
   dpi.io.pc      := pcUpdate.io.msgOut.bits.pc
   dpi.io.cycles  := instrCycles
   dpi.io.instr   := ifu.io.msgOut.bits.instr
