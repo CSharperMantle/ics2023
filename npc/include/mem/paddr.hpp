@@ -15,4 +15,8 @@ constexpr bool in_flash(paddr_t addr) {
   return addr - FLASH_LEFT < FLASH_SIZE;
 }
 
+constexpr bool in_psram(paddr_t addr) {
+  return addr - PSRAM_LEFT < PSRAM_SIZE;
+}
+
 #endif /* NPC_PMEM_HPP_ */

@@ -9,6 +9,27 @@
 
 DutDpiState dut_dpi_state;
 
+#ifdef CONFIG_MTRACE
+static void print_mtrace(const char *tag, paddr_t addr, bool read, word_t data, uint8_t mask) {
+  const word_t pc = static_cast<word_t>(dut_dpi_state.pc);
+  if (read) {
+    if (mask == 0) {
+      Log("pc=" FMT_WORD ": %s: %s " FMT_PADDR "; ->", pc, tag, "R", addr);
+    } else {
+      Log("pc=" FMT_WORD ": %s: %s " FMT_PADDR "; <- data=" FMT_WORD, pc, tag, "R", addr, data);
+    }
+  } else {
+    Log("pc=" FMT_WORD ": %s: %s " FMT_PADDR "; data=" FMT_WORD "; mask=0x%02hhx",
+        pc,
+        tag,
+        "W",
+        addr,
+        data,
+        mask);
+  }
+}
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -26,16 +47,40 @@ void soc_dpi_report_state(bool retired, word_t pc, uint16_t cycles, uint32_t ins
   dut_dpi_state.bad = bad;
 }
 
-void flash_read(int32_t addr, int32_t *data) {
-  const paddr_t addr_ = static_cast<paddr_t>(addr + FLASH_LEFT) & ~0x3u;
-  assert(in_flash(addr_));
-  *data = do_flash_read(flash_guest_to_host(addr_));
+void soc_dpi_psram_read(int32_t addr, int32_t *data) {
+  const paddr_t addr_ = static_cast<paddr_t>(addr + PSRAM_LEFT) & ~0x3u;
+  assert(in_psram(addr_));
+  *data = do_psram_read(psram_guest_to_host(addr_));
+#ifdef CONFIG_MTRACE
+  print_mtrace("psram", addr, true, *data, 0x0f);
+#endif
+}
+
+void soc_dpi_psram_write(uint32_t addr, uint32_t data) {
+  const paddr_t addr_ = static_cast<paddr_t>(addr + PSRAM_LEFT) & ~0x3u;
+  assert(in_psram(addr_));
+  do_psram_write(psram_guest_to_host(addr_), data);
+#ifdef CONFIG_MTRACE
+  print_mtrace("psram", addr, false, data, 0x0f);
+#endif
 }
 
 void mrom_read(int32_t addr, int32_t *data) {
   const paddr_t addr_ = static_cast<paddr_t>(addr) & ~0x3u;
   assert(in_mrom(addr_));
   *data = do_mrom_read(mrom_guest_to_host(addr_));
+#ifdef CONFIG_MTRACE
+  print_mtrace("mrom", addr, true, *data, 0x0f);
+#endif
+}
+
+void flash_read(int32_t addr, int32_t *data) {
+  const paddr_t addr_ = static_cast<paddr_t>(addr + FLASH_LEFT) & ~0x3u;
+  assert(in_flash(addr_));
+  *data = do_flash_read(flash_guest_to_host(addr_));
+#ifdef CONFIG_MTRACE
+  print_mtrace("flash", addr, true, *data, 0x0f);
+#endif
 }
 
 #ifdef __cplusplus
