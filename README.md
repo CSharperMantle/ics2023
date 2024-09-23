@@ -9,4 +9,4 @@ refer to <https://nju-projectn.github.io/ics-pa-gitbook/ics2023/> and <https://y
 ## Progress
 
 * Completed PA0-4
-* Completed YSYX "Basic" stage steps prior to #18
+* Completed YSYX "Basic" stage steps prior to #24
