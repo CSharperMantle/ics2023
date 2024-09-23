@@ -11,9 +11,8 @@
 extern char _heap_start;
 int main(const char *args);
 
-extern char _sram_start;
-extern char _sram_end;
-Area heap = RANGE(&_heap_start, &_sram_end);
+extern char _psram_end;
+Area heap = RANGE(&_heap_start, &_psram_end);
 
 #ifndef MAINARGS
 #define MAINARGS ""
@@ -38,18 +37,34 @@ __attribute__((noreturn)) void halt(int code) {
 extern char _data;
 extern char _edata;
 extern char _data_load;
+extern char _data_extra;
+extern char _edata_extra;
+extern char _data_extra_load;
 extern char _bss_start;
 extern char _ebss;
+extern char _bss_extra_start;
+extern char _ebss_extra;
 
-static inline void bootstrap_sram(void) {
+static inline void bootstrap_ram(void) {
   const size_t data_len = &_edata - &_data;
-  uint8_t *const pdata_b = (uint8_t *)&_data;
-  const uint8_t *const pdata_load_b = (uint8_t *)&_data_load;
-  memcpy(pdata_b, pdata_load_b, data_len);
+  if (data_len != 0) {
+    uint8_t *const pdata_b = (uint8_t *)&_data;
+    const uint8_t *const pdata_load_b = (uint8_t *)&_data_load;
+    memcpy(pdata_b, pdata_load_b, data_len);
+  }
+
+  const size_t data_extra_len = &_edata_extra - &_data_extra;
+  if (data_extra_len != 0) {
+    uint8_t *const pdata_extra_b = (uint8_t *)&_data_extra;
+    const uint8_t *const pdata_extra_load_b = (uint8_t *)&_data_extra_load;
+    memcpy(pdata_extra_b, pdata_extra_load_b, data_extra_len);
+  }
 
   const size_t bss_len = &_ebss - &_bss_start;
-  uint8_t *const bss_start_b = (uint8_t *)&_bss_start;
-  memset(bss_start_b, 0, bss_len);
+  if (bss_len != 0) {
+    uint8_t *const bss_start_b = (uint8_t *)&_bss_start;
+    memset(bss_start_b, 0, bss_len);
+  }
 }
 
 static inline void init_uart16550(void) {
@@ -86,8 +101,8 @@ static void print_vendor_info(void) {
 }
 
 void _trm_init(void) {
-  // Initialized SRAM content
-  bootstrap_sram();
+  // Initialized RAM content
+  bootstrap_ram();
   init_uart16550();
   print_vendor_info();
 

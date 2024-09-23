@@ -85,6 +85,8 @@ void assert_fail_msg() {
 }
 
 int main(int argc, char *argv[]) {
+  std::setbuf(stdout, NULL);
+
   size_t len_img = 0;
   if (argc < 2) {
     Warn("no image file provided, fallback to builtin image");

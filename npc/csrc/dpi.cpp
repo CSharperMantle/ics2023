@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cinttypes>
 #include <cstdio>
 
 #include "common.hpp"
@@ -38,7 +39,8 @@ void soc_dpi_ebreak(void) {
   dut_dpi_state.ebreak = true;
 }
 
-void soc_dpi_report_state(bool retired, word_t pc, uint16_t cycles, uint32_t instr, word_t a0, bool bad) {
+void soc_dpi_report_state(
+    bool retired, word_t pc, uint16_t cycles, uint32_t instr, word_t a0, bool bad) {
   dut_dpi_state.retired = retired;
   dut_dpi_state.pc = pc;
   dut_dpi_state.instr_cycles = cycles;
@@ -56,13 +58,39 @@ void soc_dpi_psram_read(int32_t addr, int32_t *data) {
 #endif
 }
 
-void soc_dpi_psram_write(uint32_t addr, uint32_t data) {
-  const paddr_t addr_ = static_cast<paddr_t>(addr + PSRAM_LEFT) & ~0x3u;
-  assert(in_psram(addr_));
-  do_psram_write(psram_guest_to_host(addr_), data);
+void soc_dpi_psram_write(uint32_t addr, uint32_t data, uint8_t nybbles) {
+  static const uint32_t MASKS[] = {
+      0x00000000,
+      0x0000000f,
+      0x000000ff,
+      0x00000fff,
+      0x0000ffff,
+      0x000fffff,
+      0x00ffffff,
+      0x0fffffff,
+      0xffffffff,
+  };
+  Assert(nybbles % ARRLEN(MASKS) == nybbles, "invalid nybbles present");
+  switch (nybbles) {
+    case 0: data = 0; break;
+    case 1: data >>= 24; break;
+    case 2: data >>= 24; break;
+    case 3: data >>= 16; break;
+    case 4: data >>= 16; break;
+    case 5: data >>= 8; break;
+    case 6: data >>= 8; break;
+    default: break;
+  }
 #ifdef CONFIG_MTRACE
-  print_mtrace("psram", addr, false, data, 0x0f);
+  print_mtrace("psram", addr, false, data, nybbles);
 #endif
+  const paddr_t addr_ = static_cast<paddr_t>(addr + PSRAM_LEFT);
+  Assert(in_psram(addr_), "not in psram: 0x%08" PRIx32, addr);
+  const uint32_t mask = MASKS[nybbles];
+  uint32_t data_ = do_psram_read(psram_guest_to_host(addr_));
+  data_ &= ~mask;
+  data_ |= data & mask;
+  do_psram_write(psram_guest_to_host(addr_), data_);
 }
 
 void mrom_read(int32_t addr, int32_t *data) {

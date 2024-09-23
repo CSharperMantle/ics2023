@@ -43,12 +43,12 @@
        __func__,                                                                                   \
        ##__VA_ARGS__)
 
+extern void assert_fail_msg();
 #define Assert(cond, format, ...)                                                                  \
   do {                                                                                             \
     if (!(cond)) {                                                                                 \
       std::fflush(stdout);                                                                         \
       std::fprintf(stderr, ANSI_FMT(format, ANSI_FG_RED) "\n", ##__VA_ARGS__);                     \
-      extern void assert_fail_msg();                                                               \
       assert_fail_msg();                                                                           \
       assert(cond);                                                                                \
     }                                                                                              \
