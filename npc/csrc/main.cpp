@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
   const char *env_ref_so = getenv("NPC_DIFFTEST_REF_SO");
   if (env_ref_so == nullptr || std::strlen(env_ref_so) == 0) {
     Log("difftest: not initialized; NPC_DIFFTEST_REF_SO=%s",
-        env_ref_so == nullptr ? "(not found)" : env_ref_so);
+        env_ref_so == nullptr ? "(null)" : env_ref_so);
     difftest = std::make_unique<DiffTest>(nullptr, len_img);
   } else {
     Log("difftest: loading ref so \"%s\"", env_ref_so);

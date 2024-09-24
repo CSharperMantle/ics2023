@@ -7,7 +7,7 @@ AM_SRCS := riscv/ysyxsoc/start.S \
            platform/dummy/mpe.c
 
 LDFLAGS += -T $(AM_HOME)/am/src/platform/ysyxsoc/linker.ld \
-					--defsym=_stack_size=16K
+					--defsym=_stack_size=1K
 LDFLAGS += --gc-sections -e _start
 
 CFLAGS += -fdata-sections -ffunction-sections
