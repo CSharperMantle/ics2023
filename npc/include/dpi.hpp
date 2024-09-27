@@ -9,10 +9,12 @@ struct DutDpiState {
   bool ebreak;
   bool bad;
   bool retired;
+  bool mem_en;
   uint16_t instr_cycles;
   word_t pc;
   uint32_t instr;
   word_t reg_a0;
+  word_t rw_addr;
 };
 
 extern DutDpiState dut_dpi_state;

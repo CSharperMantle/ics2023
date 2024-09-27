@@ -1,13 +1,40 @@
 menu "Memory Configuration"
 
 config MBASE
+  depends on TARGET_NATIVE_ELF
   hex "Memory base address"
-  default 0x0        if ISA_x86
+  default 0x00000000 if ISA_x86
   default 0x80000000
 
 config MSIZE
+  depends on TARGET_NATIVE_ELF
   hex "Memory size"
   default 0x8000000
+
+config SRAM_SIZE
+  depends on TARGET_SHARE
+  hex "SRAM size"
+  default 0x2000
+
+config MROM_SIZE
+  depends on TARGET_SHARE
+  hex "MROM size"
+  default 0x1000
+
+config FLASH_SIZE
+  depends on TARGET_SHARE
+  hex "Flash size"
+  default 0x1000000
+
+config PSRAM_SIZE
+  depends on TARGET_SHARE
+  hex "PSRAM size"
+  default 0x400000
+
+config SDRAM_SIZE
+  depends on TARGET_SHARE
+  hex "SDRAM size"
+  default 0x2000000
 
 config PC_RESET_OFFSET
   hex "Offset of reset vector from the base of memory"
@@ -25,7 +52,7 @@ config PMEM_GARRAY
 endchoice
 
 config MEM_RANDOM
-  depends on MODE_SYSTEM && !DIFFTEST && !TARGET_AM
+  depends on TARGET_NATIVE_ELF && MODE_SYSTEM && !DIFFTEST && !TARGET_AM
   bool "Initialize the memory with random values"
   default y
   help

@@ -128,7 +128,12 @@ config CC_DEBUG
 
 config CC_ASAN
   depends on MODE_SYSTEM
-  bool "Enable address sanitizer"
+  bool "Enable AddressSanitizer"
+  default n
+
+config CC_UBSAN
+  depends on MODE_SYSTEM
+  bool "Enable UBSan"
   default n
 
 config CC_RPASS_MISSED

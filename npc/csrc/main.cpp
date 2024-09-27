@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -6,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <type_traits>
 
 #include "common.hpp"
 #include "debug.hpp"
@@ -84,6 +86,16 @@ void assert_fail_msg() {
 #endif
 }
 
+template <typename T1,
+          typename T2,
+          typename T3,
+          typename = std::enable_if_t<std::is_arithmetic<T1>::value>>
+static constexpr bool is_between(T1 x, T2 min, T3 max) noexcept {
+  using common_t = std::common_type_t<T1, T2, T3>;
+  return static_cast<common_t>(x) >= static_cast<common_t>(min)
+         && static_cast<common_t>(x) <= static_cast<common_t>(max);
+}
+
 int main(int argc, char *argv[]) {
   std::setbuf(stdout, NULL);
 
@@ -126,18 +138,13 @@ int main(int argc, char *argv[]) {
   }
   cycle();
   dut.reset = 0;
-  difftest->sync_dut(dut);
-  difftest->cycle_preamble();
+
+  difftest->sync_dut_state(dut);
 
   static word_t last_pc = 0;
   static size_t last_pc_count = 0;
 
   do {
-    difftest->cycle();
-    difftest->sync_dut(dut);
-    difftest->assert_gpr();
-    difftest->cycle_preamble();
-
     do {
       cycle();
       if (dut_dpi_state.pc != last_pc) {
@@ -148,6 +155,17 @@ int main(int argc, char *argv[]) {
         Assert(last_pc_count < CONFIG_SIM_STUCK_THRESHOLD, "%s", "simulation cannot progress");
       }
     } while (!dut_dpi_state.retired);
+
+    if (dut_dpi_state.mem_en
+        && std::none_of(
+            REF_MEM_BACKED_AREAS.cbegin(), REF_MEM_BACKED_AREAS.cend(), [=](const auto &area) {
+              return is_between(
+                  dut_dpi_state.rw_addr, std::get<1>(area), std::get<1>(area) + std::get<2>(area));
+            })) {
+      difftest->skip_next_ref();
+    }
+    difftest->step_ref(dut);
+    difftest->check_regs(dut);
 
     iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.instr_cycles);
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");

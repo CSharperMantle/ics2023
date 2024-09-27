@@ -39,13 +39,21 @@ void soc_dpi_ebreak(void) {
   dut_dpi_state.ebreak = true;
 }
 
-void soc_dpi_report_state(
-    bool retired, word_t pc, uint16_t cycles, uint32_t instr, word_t a0, bool bad) {
+void soc_dpi_report_state(bool retired,
+                          word_t pc,
+                          uint16_t cycles,
+                          uint32_t instr,
+                          word_t a0,
+                          bool memEn,
+                          word_t rwAddr,
+                          bool bad) {
   dut_dpi_state.retired = retired;
   dut_dpi_state.pc = pc;
   dut_dpi_state.instr_cycles = cycles;
   dut_dpi_state.instr = instr;
   dut_dpi_state.reg_a0 = a0;
+  dut_dpi_state.mem_en = memEn;
+  dut_dpi_state.rw_addr = rwAddr;
   dut_dpi_state.bad = bad;
 }
 

@@ -1,8 +1,10 @@
 #ifndef NPC_HOST_HPP_
 #define NPC_HOST_HPP_
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <tuple>
 
 #include "common.hpp"
 
@@ -26,6 +28,8 @@ using paddr_t = word_t;
 extern uint8_t mrom[MROM_SIZE];
 extern uint8_t flash[FLASH_SIZE];
 extern uint8_t psram[PSRAM_SIZE];
+
+extern const std::array<std::tuple<const char *, word_t, size_t>, 5> REF_MEM_BACKED_AREAS;
 
 constexpr void *mrom_guest_to_host(word_t paddr) {
   return &mrom[paddr - MROM_LEFT];

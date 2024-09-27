@@ -18,15 +18,18 @@
 
 #include <common.h>
 
-#define CSR_IDX_SATP     0x180
-#define CSR_IDX_MSTATUS  0x300
-#define CSR_IDX_MIE      0x304
-#define CSR_IDX_MTVEC    0x305
-#define CSR_IDX_MSCRATCH 0x340
-#define CSR_IDX_MEPC     0x341
-#define CSR_IDX_MCAUSE   0x342
-#define CSR_IDX_MTVAL    0x343
-#define CSR_IDX_MIP      0x344
+#define CSR_IDX_SATP      0x180
+#define CSR_IDX_MSTATUS   0x300
+#define CSR_IDX_MIE       0x304
+#define CSR_IDX_MTVEC     0x305
+#define CSR_IDX_MSCRATCH  0x340
+#define CSR_IDX_MEPC      0x341
+#define CSR_IDX_MCAUSE    0x342
+#define CSR_IDX_MTVAL     0x343
+#define CSR_IDX_MIP       0x344
+#define CSR_IDX_MVENDORID 0xf11
+#define CSR_IDX_MARCHID   0xf12
+#define CSR_IDX_MIMPID    0xf13
 
 static inline int check_gpr_idx(size_t idx) {
   IFDEF(CONFIG_RT_CHECK, assert(likely(idx < MUXDEF(CONFIG_RVE, 16, 32))));

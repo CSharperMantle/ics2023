@@ -27,6 +27,10 @@ typedef struct {
   bool intr;
 } MUXDEF(CONFIG_RV64, riscv64_CPU_state, riscv32_CPU_state);
 
+#define MVENDORID 0x79737978
+#define MARCHID   0x015fdf40
+#define MIMPID    0x00000001
+
 // decode
 typedef struct {
   union {

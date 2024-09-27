@@ -6,6 +6,8 @@
 #include <memory/vaddr.h>
 #include <stdio.h>
 
+#ifndef CONFIG_TARGET_SHARE
+
 #if defined(CONFIG_PMEM_MALLOC)
 #define PMEM_SIZE (CONFIG_MSIZE)
 #else // CONFIG_PMEM_GARRAY
@@ -14,7 +16,13 @@
 
 #define CHUNK_SIZE 8192
 
+#endif
+
 int ckpt_load_from(const char *filename) {
+#ifdef CONFIG_TARGET_SHARE
+  puts("no checkpoint support in REF mode");
+  return -1;
+#else
   FILE *f = fopen(filename, "rb");
   if (f == NULL) {
     return -1;
@@ -35,9 +43,14 @@ int ckpt_load_from(const char *filename) {
   } else {
     return 0;
   }
+#endif
 }
 
 int ckpt_save_to(const char *filename) {
+#ifdef CONFIG_TARGET_SHARE
+  puts("no checkpoint support in REF mode");
+  return -1;
+#else
   FILE *f = fopen(filename, "wb");
   if (f == NULL) {
     return -1;
@@ -67,4 +80,5 @@ int ckpt_save_to(const char *filename) {
   } else {
     return 0;
   }
+#endif
 }

@@ -13,6 +13,8 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+#include "isa-def.h"
+#include "local-include/reg.h"
 #include <isa.h>
 #include <memory/paddr.h>
 
@@ -33,7 +35,9 @@ static void restart() {
   /* The zero register is always 0. */
   cpu.gpr[0] = 0;
   cpu.csr[CSR_IDX_MSTATUS] = MUXDEF(CONFIG_RV64, 0xa00001800, 0x1800);
-
+  cpu.csr[CSR_IDX_MVENDORID] = MVENDORID;
+  cpu.csr[CSR_IDX_MARCHID] = MARCHID;
+  cpu.csr[CSR_IDX_MIMPID] = MIMPID;
 
   cpu.intr = false;
   cpu.priv = PRIV_MODE_M;

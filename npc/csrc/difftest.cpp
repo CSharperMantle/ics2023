@@ -10,12 +10,10 @@
 #include "mem/host.hpp"
 #include "verilation.hpp"
 
-const std::array<const char *, 32> REG_NAMES{"$0", "ra", "sp",  "gp",  "tp", "t0", "t1", "t2",
-                                             "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5",
-                                             "a6", "a7", "s2",  "s3",  "s4", "s5", "s6", "s7",
-                                             "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"};
+const std::array<const char *, 16> REG_NAMES = {
+    "$0", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5"};
 
-const std::array<std::tuple<DiffTest::CsrIdx, size_t, const char *>, 9> CSR_MAPPING{
+const std::array<std::tuple<DiffTest::CsrIdx, size_t, const char *>, 11> CSR_MAPPING = {
     std::make_tuple(DiffTest::Satp, 0, "satp"),
     std::make_tuple(DiffTest::Mstatus, 1, "mstatus"),
     std::make_tuple(DiffTest::Mie, 2, "mie"),
@@ -24,14 +22,18 @@ const std::array<std::tuple<DiffTest::CsrIdx, size_t, const char *>, 9> CSR_MAPP
     std::make_tuple(DiffTest::Mepc, 5, "mepc"),
     std::make_tuple(DiffTest::Mcause, 6, "mcause"),
     std::make_tuple(DiffTest::Mtval, 7, "mtval"),
-    std::make_tuple(DiffTest::Mip, 8, "mip"),
+    std::make_tuple(DiffTest::Mvendorid, 8, "mvendorid"),
+    std::make_tuple(DiffTest::Marchid, 9, "marchid"),
+    std::make_tuple(DiffTest::Mimpid, 10, "mimpid"),
 };
 
-DiffTest::DiffTest(const char *soname, size_t img_size) {
-  dylib = nullptr;
-  return;
+template <typename TSym> static inline void loadsym(void *dl, const char *name, TSym &dst) {
+  auto ptr = reinterpret_cast<TSym>(dlsym(dl, name));
+  assert(ptr != NULL);
+  dst = ptr;
+}
 
-#if 0
+DiffTest::DiffTest(const char *soname, size_t img_size) {
   if (soname == nullptr) {
     dylib = nullptr;
     return;
@@ -39,24 +41,14 @@ DiffTest::DiffTest(const char *soname, size_t img_size) {
 
   dylib = dlopen(soname, RTLD_LAZY);
   Assert(dylib != nullptr, "%s", dlerror());
-  ref_difftest_memcpy =
-      reinterpret_cast<decltype(ref_difftest_memcpy)>(dlsym(dylib, "difftest_memcpy"));
-  assert(ref_difftest_memcpy);
-  ref_difftest_regcpy =
-      reinterpret_cast<decltype(ref_difftest_regcpy)>(dlsym(dylib, "difftest_regcpy"));
-  assert(ref_difftest_regcpy);
-  ref_difftest_exec = reinterpret_cast<decltype(ref_difftest_exec)>(dlsym(dylib, "difftest_exec"));
-  assert(ref_difftest_exec);
-  ref_difftest_raise_intr =
-      reinterpret_cast<decltype(ref_difftest_raise_intr)>(dlsym(dylib, "difftest_raise_intr"));
-  assert(ref_difftest_raise_intr);
-  void (*ref_difftest_init)(int) =
-      reinterpret_cast<decltype(ref_difftest_init)>(dlsym(dylib, "difftest_init"));
-  assert(ref_difftest_init);
+  loadsym(dylib, "difftest_memcpy", ref_difftest_memcpy);
+  loadsym(dylib, "difftest_regcpy", ref_difftest_regcpy);
+  loadsym(dylib, "difftest_exec", ref_difftest_exec);
+  loadsym(dylib, "difftest_raise_intr", ref_difftest_raise_intr);
+  loadsym(dylib, "difftest_init", ref_difftest_init);
 
   ref_difftest_init(0);
-  ref_difftest_memcpy(RESET_VECTOR, guest_to_host(RESET_VECTOR), img_size, CopyDir::ToRef);
-#endif
+  ref_difftest_memcpy(RESET_VECTOR, flash_guest_to_host(RESET_VECTOR), img_size, CopyDir::ToRef);
 }
 
 DiffTest::~DiffTest() {
@@ -66,77 +58,76 @@ DiffTest::~DiffTest() {
   dlclose(dylib);
 }
 
-void DiffTest::skip_next() {
+void DiffTest::sync_dut_state(const VDut &vdut) {
   if (dylib == nullptr) {
     return;
   }
-  auto p_ctr =
-      std::find_if(skip_ctr.begin(), skip_ctr.end(), [](int ctr) { return ctr == SKIP_CTR_FREE; });
-  Assert(p_ctr != skip_ctr.end(), "%s", "unreachable");
-  *p_ctr = SKIP_CTR_START;
+  vdut_to_cpu_state(vdut);
 }
 
-void DiffTest::assert_gpr() {
+void DiffTest::skip_next_ref() {
   if (dylib == nullptr) {
     return;
   }
-  if (skip_check) {
-    skip_check = false;
-    return;
-  }
-  // Assert(ref.pc == dut.pc, "pc mismatch: ref=" FMT_WORD ", dut=" FMT_WORD, ref.pc, dut.pc);
-  for (size_t i = 0; i < 32; i++) {
-    Assert(ref.gpr[i] == dut.gpr[i],
-           "pc=" FMT_WORD ": gpr \"%s\" mismatch: ref=" FMT_WORD ", dut=" FMT_WORD,
-           dut.pc,
-           REG_NAMES[i],
-           ref.gpr[i],
-           dut.gpr[i]);
-  }
+  skip_next = true;
 }
 
-void DiffTest::sync_dut(const VDut &vdut) {
+void DiffTest::step_ref(const VDut &vdut) {
   if (dylib == nullptr) {
     return;
   }
-  Assert(0, "%s", "difftest not implemented for soc");
-#if 0
-  memcpy(dut.gpr,
-         vdut.rootp->Top__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory.data(),
-         sizeof(dut.gpr));
-  for (const auto &p : CSR_MAPPING) {
-    dut.csr[std::get<0>(p)] =
-        vdut.rootp->Top__DOT__core__DOT__csr__DOT__csrs_ext__DOT__Memory.data()[std::get<1>(p)];
-  }
-  dut.pc = vdut_dpi_state.pc;
-#endif
-}
-
-void DiffTest::cycle_preamble() {
-  if (dylib == nullptr) {
+  if (skip_next) {
+    vdut_to_cpu_state(vdut);
+    ref_difftest_regcpy(&cpu_state, CopyDir::ToRef);
     return;
-  }
-  skip_cycle = false;
-  for (auto &ctr : skip_ctr) {
-    if (ctr == SKIP_CTR_FREE) {
-      continue;
-    } else if (ctr == 0) {
-      skip_check = skip_cycle = true;
-    }
-    ctr--;
-  }
-  ref_difftest_regcpy(const_cast<CpuState *>(&dut), CopyDir::ToRef);
-}
-
-void DiffTest::cycle() {
-  if (dylib == nullptr) {
-    return;
-  }
-  if (skip_cycle) {
-    ref_difftest_regcpy(&ref, CopyDir::ToDut);
-    skip_cycle = false;
   } else {
     ref_difftest_exec(1);
-    ref_difftest_regcpy(&ref, CopyDir::ToDut);
   }
+}
+
+void DiffTest::check_regs(const VDut &vdut) {
+  if (dylib == nullptr) {
+    return;
+  }
+  bool mismatch = false;
+
+  vdut_to_cpu_state(vdut);
+  CpuState ref;
+  ref_difftest_regcpy(&ref, CopyDir::ToDut);
+
+  if (ref.pc != cpu_state.pc) {
+    mismatch = true;
+    Error("pc mismatch: ref=" FMT_WORD ", dut=" FMT_WORD, ref.pc, cpu_state.pc);
+  }
+  for (size_t i = 0; i < ARRLEN(ref.gpr); i++) {
+    if (ref.gpr[i] != cpu_state.gpr[i]) {
+      mismatch = true;
+      Error("pc=" FMT_WORD ": gpr %s mismatch: ref=" FMT_WORD ", dut=" FMT_WORD,
+            cpu_state.pc,
+            REG_NAMES[i],
+            ref.gpr[i],
+            cpu_state.gpr[i]);
+    }
+  }
+  Assert(!mismatch, "state mismatch; aborting");
+}
+
+void DiffTest::vdut_to_cpu_state(const VDut &vdut) {
+  if (dylib == nullptr) {
+    return;
+  }
+  memcpy(
+      cpu_state.gpr,
+      vdut.rootp
+          ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory
+          .data(),
+      sizeof(cpu_state.gpr));
+  for (const auto &p : CSR_MAPPING) {
+    cpu_state.csr[std::get<0>(p)] =
+        vdut.rootp
+            ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__csr__DOT__csrs_ext__DOT__Memory
+            .data()[std::get<1>(p)];
+  }
+  cpu_state.pc =
+      vdut.rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc;
 }

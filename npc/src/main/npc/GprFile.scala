@@ -27,7 +27,7 @@ class GprFileIO extends Bundle {
 class GprFile extends Module {
   val io = IO(new GprFileIO)
 
-  private val regs = Mem(32, UInt(npc.XLen.W))
+  private val regs = Mem(16, UInt(npc.XLen.W))
 
   io.read.rs1 := Mux(io.read.rs1Idx.orR, regs(io.read.rs1Idx), 0.U)
   io.read.rs2 := Mux(io.read.rs2Idx.orR, regs(io.read.rs2Idx), 0.U)
