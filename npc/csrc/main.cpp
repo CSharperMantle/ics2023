@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <nvboard.h>
 #include <type_traits>
 
 #include "common.hpp"
@@ -17,6 +18,8 @@
 #include "util/disasm.hpp"
 #include "util/iringbuf.hpp"
 #include "verilation.hpp"
+
+extern void nvboard_bind_all_pins(VDut *);
 
 static const uint32_t DEFAULT_IMG[] = {
     0x00000297, // auipc t0,0
@@ -46,6 +49,7 @@ static void cycle() {
   step_and_dump_wave();
   dut.clock = 0;
   step_and_dump_wave();
+  nvboard_update();
 }
 
 static void sim_init() {
@@ -93,7 +97,7 @@ template <typename T1,
 static constexpr bool is_between(T1 x, T2 min, T3 max) noexcept {
   using common_t = std::common_type_t<T1, T2, T3>;
   return static_cast<common_t>(x) >= static_cast<common_t>(min)
-         && static_cast<common_t>(x) <= static_cast<common_t>(max);
+         && static_cast<common_t>(x) < static_cast<common_t>(max);
 }
 
 int main(int argc, char *argv[]) {
@@ -132,6 +136,8 @@ int main(int argc, char *argv[]) {
   init_disasm("riscv32-pc-linux-gnu");
 
   sim_init();
+  nvboard_bind_all_pins(&dut);
+  nvboard_init();
   dut.reset = 1;
   for (size_t i = 0; i < 16; i++) {
     cycle();
@@ -181,6 +187,7 @@ int main(int argc, char *argv[]) {
         dut_dpi_state.pc);
   }
 
+  nvboard_quit();
   sim_exit();
   return retval != 0;
 }

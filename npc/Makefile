@@ -23,9 +23,9 @@ default: verilog $(BIN)
 
 $(shell mkdir -p $(BUILD_DIR))
 
-# SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
-# $(SRC_AUTO_BIND): $(NXDC_FILES)
-# 	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
+$(SRC_AUTO_BIND): $(NXDC_FILES)
+	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
 
 # LLVM flags
 CXXFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --cxxflags) -fPIE
@@ -45,8 +45,8 @@ SOC_INCFLAGS = $(addprefix -I, $(abspath $(SOC_INC_PATHS)))
 SOC_TOP_VSRC = $(abspath $(SOC_HOME)/build/ysyxSoCFull.v)
 
 # NVBoard interop: rules
-# include $(NVBOARD_HOME)/scripts/nvboard.mk
-# CSRCS += $(SRC_AUTO_BIND)
+include $(NVBOARD_HOME)/scripts/nvboard.mk
+CSRCS += $(SRC_AUTO_BIND)
 
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS)
@@ -57,12 +57,11 @@ $(VSRCS): $(SCALA_SRCS)
 	mkdir -p $(BUILD_DIR)
 	mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
 
-# $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
-$(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS) $(HEADERS)
+$(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) $(HEADERS)
 	./script/remove_f.py $(VSRCS)
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \
-		--top-module $(TOP_NAME) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(VSRCS) $(CSRCS) \
+		--top-module $(TOP_NAME) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) \
 		$(addprefix -CFLAGS , $(CXXFLAGS)) $(addprefix -LDFLAGS , $(LDFLAGS)) \
 		$(SOC_INCFLAGS) --Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 
