@@ -148,6 +148,11 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
 }
 
 static int decode_exec(Decode *s) {
+  R(0) = 0; // reset $zero to 0
+  CSR(CSR_IDX_MVENDORID) = MVENDORID;
+  CSR(CSR_IDX_MARCHID) = MARCHID;
+  CSR(CSR_IDX_MIMPID) = MIMPID;
+
   int rd = 0;
   word_t src1 = 0, src2 = 0, imm = 0;
   s->dnpc = s->snpc;
@@ -292,7 +297,7 @@ static int decode_exec(Decode *s) {
 
   // clang-format on
   INSTPAT_END();
-
+  
   R(0) = 0; // reset $zero to 0
   CSR(CSR_IDX_MVENDORID) = MVENDORID;
   CSR(CSR_IDX_MARCHID) = MARCHID;

@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "debug.hpp"
 #include "difftest.hpp"
+#include "dpi.hpp"
 #include "mem/host.hpp"
 #include "verilation.hpp"
 
@@ -76,9 +77,14 @@ void DiffTest::step_ref(const VDut &vdut) {
   if (dylib == nullptr) {
     return;
   }
+
+  CpuState ref;
+  ref_difftest_regcpy(&ref, CopyDir::ToDut);
+
   if (skip_next) {
     vdut_to_cpu_state(vdut);
     ref_difftest_regcpy(&cpu_state, CopyDir::ToRef);
+    skip_next = false;
     return;
   } else {
     ref_difftest_exec(1);
@@ -130,4 +136,5 @@ void DiffTest::vdut_to_cpu_state(const VDut &vdut) {
   }
   cpu_state.pc =
       vdut.rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc;
+  cpu_state.priv = CpuState::Priv::ModeM;
 }

@@ -67,7 +67,7 @@ const PmemArea_t PMEM_AREAS[] = {
 
 static const PmemArea_t *lookup_pmem(paddr_t addr, int len) {
   for (size_t i = 0; i < ARRLEN(PMEM_AREAS); i++) {
-    if (addr >= PMEM_AREAS[i].gbase && addr + len < PMEM_AREAS[i].gbase + PMEM_AREAS[i].len) {
+    if (addr >= PMEM_AREAS[i].gbase && addr + len - 1 < PMEM_AREAS[i].gbase + PMEM_AREAS[i].len) {
       return &PMEM_AREAS[i];
     }
   }
@@ -109,7 +109,6 @@ uint8_t *guest_to_host(paddr_t paddr) {
          "addr " FMT_PADDR " in area \"%s\" is not backed by host memory",
          paddr,
          area->name);
-  Log(FMT_PADDR " (%s) -> %p", paddr, area->name, area->ops.hbase + (paddr - area->gbase));
   return area->ops.hbase + (paddr - area->gbase);
 }
 

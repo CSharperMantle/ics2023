@@ -23,7 +23,7 @@ const char *regs[] = {"$0", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s
 #define FMT_INT_LADJ_W_ MUXDEF(CONFIG_ISA64, "%-*" PRId64, "%-*" PRId32)
 
 void isa_reg_display() {
-  for (int i = 0; i < ARRLEN(regs); i++) {
+  for (int i = 0; i < ARRLEN(cpu.gpr); i++) {
     printf("%-*s " FMT_WORD " " FMT_INT_LADJ_W_ "%c",
            8,
            reg_name(i),

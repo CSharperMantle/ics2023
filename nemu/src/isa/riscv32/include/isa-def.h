@@ -80,9 +80,9 @@ enum {
 };
 
 enum {
-  PRIV_MODE_U = 0,
-  PRIV_MODE_S = 1,
-  PRIV_MODE_M = 3,
+    PRIV_MODE_U = 0,
+    PRIV_MODE_S = 1,
+    PRIV_MODE_M = 3,
 };
 
 typedef union Pte_ {

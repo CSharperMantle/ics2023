@@ -39,7 +39,8 @@ object npc {
   val XLen = 32
   require(XLen == 32, "RV64 not implemented")
 
-  val InitPCVal = BigInt("30000000", 16)
+  val InitPCVal      = BigInt("30000000", 16)
+  val InitMstatusVal = BigInt("1800", 16)
 
   object PrivMode {
     val M = 3

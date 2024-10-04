@@ -40,6 +40,12 @@ private:
     paddr_t pc;
     int priv;
     bool intr;
+
+    enum Priv : int {
+      ModeU = 0,
+      ModeS = 1,
+      ModeM = 3,
+    };
   };
 
   void *dylib = nullptr;
