@@ -1,11 +1,55 @@
-#include <am.h>
-#include <klib-macros.h>
 #ifndef __ISA_RISCV32E__
 // For clangd
 #include "../../platform/ysyxsoc/include/ysyxsoc.h"
 #else
 #include <ysyxsoc.h>
 #endif
+#include <am.h>
+#include <klib-macros.h>
+
+static void am_uart_init(void) {
+  Uart16550Lcr_t lcr;
+  lcr = (Uart16550Lcr_t){
+      .dlab = 1,
+      .set_break = 0,
+      .stick_parity = 0,
+      .eps = 0,
+      .pen = 0,
+      .stb = 0,
+      .wls = 0b11,
+  };
+  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_u8);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_DLM, 0x00);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_DLL, 0x01); // TODO: Make it concrete
+  lcr = (Uart16550Lcr_t){
+      .dlab = 0,
+      .set_break = 0,
+      .stick_parity = 0,
+      .eps = 0,
+      .pen = 0,
+      .stb = 0,
+      .wls = 0b11,
+  };
+  outb(PERIP_UART16550_ADDR + UART16550_REG_LCR, lcr.as_u8);
+}
+
+static void am_uart_config(AM_UART_CONFIG_T *cfg) {
+  cfg->present = true;
+}
+
+static void am_uart_tx(AM_UART_TX_T *tx) {
+  Uart16550Lsr_t lsr;
+  do {
+    lsr.as_u8 = inb(PERIP_UART16550_ADDR + UART16550_REG_LSR);
+  } while (!lsr.thre);
+  outb(PERIP_UART16550_ADDR + UART16550_REG_TXR, tx->data);
+}
+
+static void am_uart_rx(AM_UART_RX_T *rx) {
+  Uart16550Lsr_t lsr;
+  lsr.as_u8 = inb(PERIP_UART16550_ADDR + UART16550_REG_LSR);
+  rx->data = lsr.dr ? inb(PERIP_UART16550_ADDR + UART16550_REG_RXR) : 0xff;
+}
 
 static void am_timer_init(void) {}
 
@@ -30,6 +74,9 @@ static void am_gpu_config(AM_GPU_CONFIG_T *cfg) {
 
 typedef void (*handler_t)(void *);
 static void *regs[128] = {
+    [AM_UART_CONFIG] = am_uart_config,
+    [AM_UART_TX] = am_uart_tx,
+    [AM_UART_RX] = am_uart_rx,
     [AM_TIMER_CONFIG] = am_timer_config,
     [AM_TIMER_UPTIME] = am_timer_uptime,
     [AM_INPUT_CONFIG] = am_input_config,
@@ -41,13 +88,22 @@ static void no_reg(void *buf) {
 }
 
 bool ioe_init(void) {
+  static bool inited = false;
+
+  if (inited) {
+    return true;
+  }
+
+  am_uart_init();
+  am_timer_init();
+
   for (int i = 0; i < LENGTH(regs); i++) {
     if (regs[i] == NULL) {
       regs[i] = no_reg;
     }
   }
 
-  am_timer_init();
+  inited = true;
   return true;
 }
 

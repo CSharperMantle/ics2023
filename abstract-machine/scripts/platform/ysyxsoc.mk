@@ -2,7 +2,7 @@ AM_SRCS := riscv/ysyxsoc/start.S \
            riscv/ysyxsoc/trm.c \
            riscv/ysyxsoc/cte.c \
            riscv/ysyxsoc/trap.S \
-           platform/dummy/ioe.c \
+           riscv/ysyxsoc/ioe.c \
            platform/dummy/vme.c \
            platform/dummy/mpe.c
 
@@ -17,7 +17,7 @@ CFLAGS += -I$(AM_HOME)/am/src/platform/ysyxsoc/include
 
 ASFLAGS += -DYSYXSOC
 
-.PHONY: $(AM_HOME)/am/src/riscv/npc/trm.c
+.PHONY: $(AM_HOME)/am/src/riscv/ysyxsoc/trm.c
 
 image: $(IMAGE).elf
 	@$(OBJDUMP) -d $(IMAGE).elf > $(IMAGE).txt
