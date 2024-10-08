@@ -5,9 +5,10 @@
 #include <riscv/riscv.h>
 
 #include "clint.h"
+#include "gpio.h"
+#include "ps2.h"
 #include "spi.h"
 #include "uart16550.h"
-#include "gpio.h"
 
 #define nemu_trap(code) asm volatile("mv a0, %0; ebreak" : : "r"(code))
 
