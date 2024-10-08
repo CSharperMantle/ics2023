@@ -6,17 +6,16 @@ import chisel3.util._
 import common._
 import npc._
 
-class SExtenderIO extends Bundle {
-  val sextU    = Input(Bool())
-  val sextW    = Input(UInt(MemWidth.W))
-  val sextData = Input(UInt(XLen.W))
-  val sextRes  = Output(UInt(XLen.W))
-}
-
 class SExtender extends Module {
-  import MemWidth._
+  class Port extends Bundle {
+    val sextU    = Input(Bool())
+    val sextW    = Input(UInt(MemWidth.W))
+    val sextData = Input(UInt(XLen.W))
+    val sextRes  = Output(UInt(XLen.W))
+  }
+  val io = IO(new Port)
 
-  val io = IO(new SExtenderIO)
+  import MemWidth._
 
   private val sextResB = Cat(Fill(XLen - 8, Mux(io.sextU, 0.B, io.sextData(7))), io.sextData(7, 0))
   private val sextResH =

@@ -301,14 +301,15 @@ class Idu2ExuMsg extends Bundle {
   val pcSel     = Output(PcSelField.chiselType)
 }
 
-class IduIO extends Bundle {
-  val msgIn  = Flipped(Irrevocable(new Ifu2IduMsg))
-  val msgOut = Irrevocable(new Idu2ExuMsg)
-
-  val break = Output(Bool())
-}
-
 class Idu extends Module {
+  class Port extends Bundle {
+    val msgIn  = Flipped(Irrevocable(new Ifu2IduMsg))
+    val msgOut = Irrevocable(new Idu2ExuMsg)
+
+    val break = Output(Bool())
+  }
+  val io = IO(new Port)
+
   import InstrOpcodeBP._
   import AluOpSel._
   import ImmFmt._
@@ -318,8 +319,6 @@ class Idu extends Module {
   import ExSrcBSel._
   import WbSel._
   import CsrExcpAdj._
-
-  val io = IO(new IduIO())
 
   private val patterns = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }

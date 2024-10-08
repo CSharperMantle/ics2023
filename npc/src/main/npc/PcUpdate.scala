@@ -20,13 +20,12 @@ class PcUpdate2IfuMsg extends Bundle {
   val bad  = Output(Bool())
 }
 
-class PcUpdateIO extends Bundle {
-  val msgIn  = Flipped(Irrevocable(new Wbu2PcUpdateMsg))
-  val msgOut = Irrevocable(new PcUpdate2IfuMsg)
-}
-
 class PcUpdate extends Module {
-  val io = IO(new PcUpdateIO)
+  class Port extends Bundle {
+    val msgIn  = Flipped(Irrevocable(new Wbu2PcUpdateMsg))
+    val msgOut = Irrevocable(new PcUpdate2IfuMsg)
+  }
+  val io = IO(new Port)
 
   private val snpc     = io.msgIn.bits.pc + 4.U
   private val brTarget = Mux(io.msgIn.bits.brTaken, io.msgIn.bits.pc + io.msgIn.bits.imm, snpc)

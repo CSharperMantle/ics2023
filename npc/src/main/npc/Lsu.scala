@@ -38,19 +38,18 @@ class Lsu2WbuMsg extends Bundle {
   val mtvec   = Output(UInt(XLen.W))
 }
 
-class LsuIO extends Bundle {
-  val msgIn  = Flipped(Irrevocable(new Exu2LsuMsg))
-  val msgOut = Irrevocable(new Lsu2WbuMsg)
-  val rReq   = Irrevocable(new MemReadReq(XLen.W))
-  val rResp  = Flipped(Irrevocable(new MemReadResp(XLen.W)))
-  val wReq   = Irrevocable(new MemWriteReq(XLen.W, 32.W))
-  val wResp  = Flipped(Irrevocable(new MemWriteResp))
-}
-
 class Lsu extends Module {
   require(XLen == 32, "Lsu for RV64 is not implemented")
 
-  val io = IO(new LsuIO)
+  class Port extends Bundle {
+    val msgIn  = Flipped(Irrevocable(new Exu2LsuMsg))
+    val msgOut = Irrevocable(new Lsu2WbuMsg)
+    val rReq   = Irrevocable(new MemReadReq(XLen.W))
+    val rResp  = Flipped(Irrevocable(new MemReadResp(XLen.W)))
+    val wReq   = Irrevocable(new MemWriteReq(XLen.W, 32.W))
+    val wResp  = Flipped(Irrevocable(new MemWriteResp))
+  }
+  val io = IO(new Port)
 
   private val addr  = io.msgIn.bits.d
   private val wData = io.msgIn.bits.rs2

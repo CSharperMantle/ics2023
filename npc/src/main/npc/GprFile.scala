@@ -18,14 +18,13 @@ class GprFileWriteConn extends Bundle {
   val rdData = Input(UInt(XLen.W))
 }
 
-class GprFileIO extends Bundle {
-  val read  = new GprFileReadConn
-  val write = new GprFileWriteConn
-  val a0    = Output(UInt(XLen.W))
-}
-
 class GprFile extends Module {
-  val io = IO(new GprFileIO)
+  class Port extends Bundle {
+    val read  = new GprFileReadConn
+    val write = new GprFileWriteConn
+    val a0    = Output(UInt(XLen.W))
+  }
+  val io = IO(new Port)
 
   private val regs = Mem(16, UInt(npc.XLen.W))
 

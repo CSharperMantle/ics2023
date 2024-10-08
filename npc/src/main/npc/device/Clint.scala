@@ -8,22 +8,20 @@ import _root_.npc._
 import common._
 import npc._
 
-class ClintIO extends Bundle {
-  val rReq  = Flipped(Irrevocable(new MemReadReq(32.W)))
-  val rResp = Irrevocable(new MemReadResp(32.W))
-}
-
 class Clint extends Module {
+  class Port extends Bundle {
+    val rReq  = Flipped(Irrevocable(new MemReadReq(32.W)))
+    val rResp = Irrevocable(new MemReadResp(32.W))
+  }
+  val io = IO(new Port)
+
   private object Regs extends CvtChiselEnum {
     val MsipIdx     = Value
     val MtimecmpIdx = Value
     val MtimeIdx    = Value
     val UnkIdx      = Value
   }
-
   import Regs._
-
-  val io = IO(new ClintIO)
 
   private val regs = Mem(Regs.all.length + 1, UInt(64.W))
 

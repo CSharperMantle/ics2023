@@ -37,19 +37,18 @@ class Exu2LsuMsg extends Bundle {
   val mtvec   = Output(UInt(XLen.W))
 }
 
-class ExuIO extends Bundle {
-  val msgIn  = Flipped(Irrevocable(new Idu2ExuMsg))
-  val msgOut = Irrevocable(new Exu2LsuMsg)
-
-  val gprRead = Flipped(new GprFileReadConn)
-  val csrConn = Flipped(new CsrFileConn)
-}
-
 class Exu extends Module {
+  class Port extends Bundle {
+    val msgIn  = Flipped(Irrevocable(new Idu2ExuMsg))
+    val msgOut = Irrevocable(new Exu2LsuMsg)
+
+    val gprRead = Flipped(new GprFileReadConn)
+    val csrConn = Flipped(new CsrFileConn)
+  }
+  val io = IO(new Port)
+
   import ExSrcASel._
   import ExSrcBSel._
-
-  val io = IO(new ExuIO)
 
   private val alu = Module(new Alu)
 

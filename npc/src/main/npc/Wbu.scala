@@ -24,17 +24,16 @@ class Wbu2PcUpdateMsg extends Bundle {
   val bad     = Output(Bool())
 }
 
-class WbuIO extends Bundle {
-  val msgIn  = Flipped(Irrevocable(new Lsu2WbuMsg))
-  val msgOut = Irrevocable(new Wbu2PcUpdateMsg)
-
-  val gprWrite = Flipped(new GprFileWriteConn)
-}
-
 class Wbu extends Module {
-  import WbSel._
+  class Port extends Bundle {
+    val msgIn  = Flipped(Irrevocable(new Lsu2WbuMsg))
+    val msgOut = Irrevocable(new Wbu2PcUpdateMsg)
 
-  val io = IO(new WbuIO)
+    val gprWrite = Flipped(new GprFileWriteConn)
+  }
+  val io = IO(new Port)
+
+  import WbSel._
 
   private val dataAlu  = io.msgIn.bits.d
   private val dataSnpc = io.msgIn.bits.pc + 4.U

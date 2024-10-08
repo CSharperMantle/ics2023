@@ -17,16 +17,15 @@ object ImmFmt extends CvtChiselEnum {
   val ImmJ    = Value
 }
 
-class ImmDecIO extends Bundle {
-  val instr  = Input(UInt(32.W))
-  val immFmt = Input(UInt(ImmFmt.W))
-  val imm    = Output(UInt(XLen.W))
-}
-
 class ImmDec extends Module {
-  import ImmFmt._
+  class Port extends Bundle {
+    val instr  = Input(UInt(32.W))
+    val immFmt = Input(UInt(ImmFmt.W))
+    val imm    = Output(UInt(XLen.W))
+  }
+  val io = IO(new Port)
 
-  val io = IO(new ImmDecIO)
+  import ImmFmt._
 
   private val sign    = io.instr(31)
   private val immR    = 0.U(XLen.W)

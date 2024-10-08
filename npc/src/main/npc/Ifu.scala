@@ -13,15 +13,14 @@ class Ifu2IduMsg extends Bundle {
   val pc = Output(UInt(XLen.W))
 }
 
-class IfuIO extends Bundle {
-  val msgIn  = Flipped(Irrevocable(new PcUpdate2IfuMsg))
-  val msgOut = Irrevocable(new Ifu2IduMsg)
-  val rReq   = Irrevocable(new MemReadReq(XLen.W))
-  val rResp  = Flipped(Irrevocable(new MemReadResp(32.W)))
-}
-
 class Ifu extends Module {
-  val io = IO(new IfuIO)
+  class Port extends Bundle {
+    val msgIn  = Flipped(Irrevocable(new PcUpdate2IfuMsg))
+    val msgOut = Irrevocable(new Ifu2IduMsg)
+    val rReq   = Irrevocable(new MemReadReq(XLen.W))
+    val rResp  = Flipped(Irrevocable(new MemReadResp(32.W)))
+  }
+  val io = IO(new Port)
 
   private val canUpdatePc = io.msgIn.valid & ~io.msgIn.bits.bad
 

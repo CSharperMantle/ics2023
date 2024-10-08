@@ -31,20 +31,18 @@ object AluBrCond extends CvtChiselEnum {
   val Geu = Value
   val Unk = Value
 }
-
-class AluIO extends Bundle {
-  val calcOp  = Input(UInt(AluCalcOp.W))
-  val calcDir = Input(UInt(AluCalcDir.W))
-  val brCond  = Input(UInt(AluBrCond.W))
-  val s1      = Input(UInt(XLen.W))
-  val s2      = Input(UInt(XLen.W))
-  val d       = Output(UInt(XLen.W))
-  val brTaken = Output(Bool())
-  val brBad   = Output(Bool())
-}
-
 class Alu extends Module {
-  val io = IO(new AluIO)
+  class Port extends Bundle {
+    val calcOp  = Input(UInt(AluCalcOp.W))
+    val calcDir = Input(UInt(AluCalcDir.W))
+    val brCond  = Input(UInt(AluBrCond.W))
+    val s1      = Input(UInt(XLen.W))
+    val s2      = Input(UInt(XLen.W))
+    val d       = Output(UInt(XLen.W))
+    val brTaken = Output(Bool())
+    val brBad   = Output(Bool())
+  }
+  val io = IO(new Port)
 
   private val sum  = io.s1 + io.s2
   private val diff = io.s1 + (-io.s2)

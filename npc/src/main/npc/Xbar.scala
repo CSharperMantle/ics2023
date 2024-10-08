@@ -27,24 +27,19 @@ class MemWriteResp extends Bundle {
   val bResp = UInt(2.W)
 }
 
-class GenericArbiterIO[TReq <: Data, TResp <: Data](
-  private val req:  TReq,
-  private val resp: TResp,
-  n:                Int)
-    extends Bundle {
-  val masterReq  = Flipped(Vec(n, Irrevocable(req)))
-  val slaveReq   = Irrevocable(req)
-  val masterResp = Vec(n, Irrevocable(resp))
-  val slaveResp  = Flipped(Irrevocable(resp))
-  val chosen     = Output(UInt(log2Ceil(n).W))
-}
-
 class GenericArbiter[TReq <: Data, TResp <: Data](
   private val req:  TReq,
   private val resp: TResp,
   n:                Int)
     extends Module {
-  val io = IO(new GenericArbiterIO(req, resp, n))
+  class GenericArbiterIO extends Bundle {
+    val masterReq  = Flipped(Vec(n, Irrevocable(req)))
+    val slaveReq   = Irrevocable(req)
+    val masterResp = Vec(n, Irrevocable(resp))
+    val slaveResp  = Flipped(Irrevocable(resp))
+    val chosen     = Output(UInt(log2Ceil(n).W))
+  }
+  val io = IO(new GenericArbiterIO)
 
   private val transactions = RegInit(VecInit(Seq.fill(n)(0.B)))
   for ((trans, i) <- transactions.zipWithIndex) {
@@ -94,17 +89,6 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
   io.chosen := arb.io.chosen
 }
 
-class XbarIO[TReq <: Data, TResp <: Data](
-  private val req:  TReq,
-  private val resp: TResp,
-  n:                Int)
-    extends Bundle {
-  val masterReq  = Flipped(Irrevocable(req))
-  val masterResp = Irrevocable(resp)
-  val slaveReq   = Vec(n, Irrevocable(req))
-  val slaveResp  = Flipped(Vec(n, Irrevocable(resp)))
-}
-
 class Xbar[TReq <: Data, TResp <: Data](
   private val req:      TReq,
   private val resp:     TResp,
@@ -112,8 +96,15 @@ class Xbar[TReq <: Data, TResp <: Data](
   private val selAddr:  TReq => UInt,
   private val selResp:  TResp => UInt)
     extends Module {
-  val n  = addrPats.length
-  val io = IO(new XbarIO(req, resp, n))
+  val n = addrPats.length
+
+  class XbarIO extends Bundle {
+    val masterReq  = Flipped(Irrevocable(req))
+    val masterResp = Irrevocable(resp)
+    val slaveReq   = Vec(n, Irrevocable(req))
+    val slaveResp  = Flipped(Vec(n, Irrevocable(resp)))
+  }
+  val io = IO(new XbarIO)
 
   private val addr = RegInit(0.U)
 

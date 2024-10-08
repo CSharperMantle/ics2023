@@ -78,16 +78,15 @@ class CsrFileConn extends Bundle {
   val mtvec   = Output(UInt(XLen.W))
 }
 
-class CsrFileIO extends Bundle {
-  val conn = new CsrFileConn
-}
-
 class CsrFile extends Module {
+  class Port extends Bundle {
+    val conn = new CsrFileConn
+  }
+  val io = IO(new Port)
+
   import CsrOp._
   import CsrExcpAdj._
   import KnownCsrIdx._
-
-  val io = IO(new CsrFileIO)
 
   private val csrs = Mem(KnownCsrIdx.all.length, UInt(XLen.W))
 

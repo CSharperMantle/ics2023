@@ -6,12 +6,11 @@ import chisel3.util._
 import common._
 import npc._
 
-class DpiBlackBoxIO extends DpiIO {
-  val clock = Input(Bool())
-}
-
 class DpiBlackBox extends BlackBox with HasBlackBoxInline {
-  val io = IO(new DpiBlackBoxIO)
+  class Port extends DpiIO {
+    val clock = Input(Bool())
+  }
+  val io = IO(new Port)
 
   private val xLenType = getDpiType(XLen.W)
   setInline(
