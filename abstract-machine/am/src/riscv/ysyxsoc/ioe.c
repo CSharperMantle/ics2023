@@ -177,7 +177,41 @@ static void am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
 }
 
 static void am_gpu_config(AM_GPU_CONFIG_T *cfg) {
-  cfg->present = false;
+  cfg->present = true;
+  cfg->has_accel = false;
+  cfg->height = 480;
+  cfg->width = 640;
+  cfg->vmemsz = 640 * 480 * sizeof(uint32_t);
+}
+
+static void am_gpu_status(AM_GPU_STATUS_T *status) {
+  status->ready = true;
+}
+
+static void am_gpu_fbdraw(AM_GPU_FBDRAW_T *draw) {
+  const int req_x = draw->x;
+  const int req_y = draw->y;
+  const int req_w = draw->w;
+  const int req_h = draw->h;
+  const uint32_t *const pixels = (uint32_t *)draw->pixels;
+  uint32_t *const fb = (uint32_t *)PERIP_VGA_FB_ADDR;
+  panic_on(req_x + req_w > 640 || req_y + req_h > 480, "fb out of bound");
+  for (int y = 0; y < req_h; y++) {
+    uint32_t *const fb_row = &fb[(req_y + y) * 640];
+    const uint32_t *const pixels_row = &pixels[y * req_w];
+    for (int x = 0; x < req_w; x++) {
+      outl((uintptr_t)&fb_row[req_x + x], pixels_row[x]);
+    }
+  }
+}
+
+void am_gpu_memcpy(AM_GPU_MEMCPY_T *params) {
+  const uint32_t *const src = (uint32_t *)params->src;
+  uint32_t *const fb = (uint32_t *)PERIP_VGA_FB_ADDR;
+  panic_on(params->size % sizeof(uint32_t) != 0, "fb memcpy not aligned to pixels");
+  for (size_t i = 0; i < (size_t)params->size / 4; i++) {
+    outl((uintptr_t)&fb[i], src[i]);
+  }
 }
 
 typedef void (*handler_t)(void *);
@@ -190,6 +224,9 @@ static void *regs[128] = {
     [AM_INPUT_CONFIG] = am_input_config,
     [AM_INPUT_KEYBRD] = am_input_keybrd,
     [AM_GPU_CONFIG] = am_gpu_config,
+    [AM_GPU_STATUS] = am_gpu_status,
+    [AM_GPU_FBDRAW] = am_gpu_fbdraw,
+    [AM_GPU_MEMCPY] = am_gpu_memcpy,
 };
 
 static void no_reg(void *buf) {

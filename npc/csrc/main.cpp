@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
 
   sim_init();
   nvboard_bind_all_pins(&dut);
-  nvboard_init();
+  nvboard_init(1);
   dut.reset = 1;
   for (size_t i = 0; i < 16; i++) {
     cycle();
