@@ -50,6 +50,8 @@ class Exu extends Module {
   import ExSrcASel._
   import ExSrcBSel._
 
+  private val bad = io.msgIn.valid & io.msgIn.bits.bad
+
   private val alu = Module(new Alu)
 
   private val srcASelDec = Decoder1H(
@@ -97,8 +99,8 @@ class Exu extends Module {
 
   io.csrConn.s1      := srcA
   io.csrConn.csrAddr := io.msgIn.bits.imm(11, 0)
-  io.csrConn.csrOp   := Mux(io.msgIn.valid, io.msgIn.bits.csrOp, CsrOp.Unk.U)
-  io.csrConn.excpAdj := Mux(io.msgIn.valid, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
+  io.csrConn.csrOp   := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.csrOp, CsrOp.Unk.U)
+  io.csrConn.excpAdj := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
   io.csrConn.pc      := io.msgIn.bits.pc
 
   io.msgOut.bits.memAction := io.msgIn.bits.memAction

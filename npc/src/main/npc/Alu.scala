@@ -75,18 +75,18 @@ class Alu extends Module {
       AluCalcOp.And.BP  -> 7
     )
   )
-  private val calcOp1Hot = calcOpDec(io.calcOp)
+  private val calcOp1H = calcOpDec(io.calcOp)
   io.d := Mux1H(
     Seq(
-      calcOp1Hot(0) -> add,
-      calcOp1Hot(1) -> shl,
-      calcOp1Hot(2) -> lt,
-      calcOp1Hot(3) -> ltu,
-      calcOp1Hot(4) -> (io.s1 ^ io.s2),
-      calcOp1Hot(5) -> shr,
-      calcOp1Hot(6) -> (io.s1 | io.s2),
-      calcOp1Hot(7) -> (io.s1 & io.s2),
-      calcOp1Hot(8) -> 0.U
+      calcOp1H(0) -> add,
+      calcOp1H(1) -> shl,
+      calcOp1H(2) -> lt,
+      calcOp1H(3) -> ltu,
+      calcOp1H(4) -> (io.s1 ^ io.s2),
+      calcOp1H(5) -> shr,
+      calcOp1H(6) -> (io.s1 | io.s2),
+      calcOp1H(7) -> (io.s1 & io.s2),
+      calcOp1H(8) -> 0.U
     )
   )
 
@@ -100,17 +100,17 @@ class Alu extends Module {
       AluBrCond.Geu.BP -> 5
     )
   )
-  private val brOp1Hot = brOpDec(io.brCond)
+  private val brOp1H = brOpDec(io.brCond)
   io.brTaken := Mux1H(
     Seq(
-      brOp1Hot(0) -> ~neq,
-      brOp1Hot(1) -> neq,
-      brOp1Hot(2) -> lt,
-      brOp1Hot(3) -> ~lt,
-      brOp1Hot(4) -> ltu,
-      brOp1Hot(5) -> ~ltu,
-      brOp1Hot(6) -> 0.U
+      brOp1H(0) -> ~neq,
+      brOp1H(1) -> neq,
+      brOp1H(2) -> lt,
+      brOp1H(3) -> ~lt,
+      brOp1H(4) -> ltu,
+      brOp1H(5) -> ~ltu,
+      brOp1H(6) -> 0.U
     )
   )
-  io.brBad := brOp1Hot(6)
+  io.brBad := brOp1H(6)
 }

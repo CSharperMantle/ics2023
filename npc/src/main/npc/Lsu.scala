@@ -180,46 +180,44 @@ class Lsu extends Module {
     val S_Idle      = Value
     val S_ReadReq   = Value
     val S_Read      = Value
-    val S_ReadDone  = Value
     val S_WriteReq  = Value
     val S_Write     = Value
-    val S_WriteDone = Value
     val S_Wait4Next = Value
   }
   import State._
-  private val firstAction =
-    MuxCase(
-      S_Idle,
-      Seq(
-        (~rEn & ~wEn)            -> S_Wait4Next,
-        ((rEn | wEn) & alignBad) -> S_Wait4Next,
-        (rEn & ~wEn & ~alignBad) -> S_ReadReq,
-        (~rEn & wEn & ~alignBad) -> S_WriteReq,
-        (rEn & wEn & ~alignBad)  -> S_ReadReq
-      )
-    )
-  private val y = RegInit(S_Idle)
-  y := MuxLookup(y, S_Idle)(
+
+  private val firstActionTable = TruthTable(
     Seq(
-      S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
-      S_Read      -> Mux(io.rResp.valid, S_ReadDone, S_Read),
-      S_ReadDone  -> Mux(wEn, S_WriteReq, S_Wait4Next),
-      S_WriteReq  -> Mux(io.wReq.ready, S_Write, S_WriteReq),
-      S_Write     -> Mux(io.wResp.valid, S_WriteDone, S_Write),
-      S_WriteDone -> S_Wait4Next,
-      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
+      "b0000".BP -> S_Wait4Next.BP,
+      "b1???".BP -> S_Wait4Next.BP,
+      "b0??1".BP -> S_Wait4Next.BP,
+      "b01?0".BP -> S_ReadReq.BP,
+      "b0010".BP -> S_WriteReq.BP
+    ),
+    S_Idle.BP
+  )
+  private val firstAction = decoder(Cat(io.msgIn.bits.bad, rEn, wEn, alignBad), firstActionTable)
+
+  private val y = RegInit(S_Idle.U)
+  y := MuxLookup(y, S_Idle.U)(
+    Seq(
+      S_Idle.U      -> Mux(io.msgIn.valid, firstAction, S_Idle.U),
+      S_ReadReq.U   -> Mux(io.rReq.ready, S_Read.U, S_ReadReq.U),
+      S_Read.U      -> Mux(io.rResp.valid, Mux(wEn, S_WriteReq.U, S_Wait4Next.U), S_Read.U),
+      S_WriteReq.U  -> Mux(io.wReq.ready, S_Write.U, S_WriteReq.U),
+      S_Write.U     -> Mux(io.wResp.valid, S_Wait4Next.U, S_Write.U),
+      S_Wait4Next.U -> Mux(io.msgOut.ready, S_Idle.U, S_Wait4Next.U)
     )
   )
 
   private val memRResp = RegEnable(io.rResp.bits.rResp, RResp.Okay.U, io.rResp.valid)
   private val memWResp = RegEnable(io.wResp.bits.bResp, BResp.Okay.U, io.wResp.valid)
 
-  io.rReq.valid  := y === S_ReadReq
-  io.rResp.ready := y === S_ReadDone
+  io.rReq.valid  := y === S_ReadReq.U
+  io.rResp.ready := io.rResp.valid & y === S_Wait4Next.U
 
-  io.wReq.valid  := y === S_WriteReq
-  io.wResp.ready := y === S_WriteDone
+  io.wReq.valid  := y === S_WriteReq.U
+  io.wResp.ready := io.wResp.valid & y === S_Wait4Next.U
 
   io.msgOut.bits.pc       := io.msgIn.bits.pc
   io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel
@@ -241,6 +239,6 @@ class Lsu extends Module {
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
 
-  io.msgIn.ready  := y === S_Wait4Next
-  io.msgOut.valid := y === S_Wait4Next
+  io.msgIn.ready  := y === S_Wait4Next.U
+  io.msgOut.valid := y === S_Wait4Next.U
 }

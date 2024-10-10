@@ -32,14 +32,14 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
   private val resp: TResp,
   n:                Int)
     extends Module {
-  class GenericArbiterIO extends Bundle {
+  class Port extends Bundle {
     val masterReq  = Flipped(Vec(n, Irrevocable(req)))
     val slaveReq   = Irrevocable(req)
     val masterResp = Vec(n, Irrevocable(resp))
     val slaveResp  = Flipped(Irrevocable(resp))
     val chosen     = Output(UInt(log2Ceil(n).W))
   }
-  val io = IO(new GenericArbiterIO)
+  val io = IO(new Port)
 
   private val transactions = RegInit(VecInit(Seq.fill(n)(0.B)))
   for ((trans, i) <- transactions.zipWithIndex) {

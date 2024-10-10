@@ -35,6 +35,8 @@ class Wbu extends Module {
 
   import WbSel._
 
+  private val bad = io.msgIn.bits.bad & ~io.msgIn.bits.bad
+
   private val dataAlu  = io.msgIn.bits.d
   private val dataSnpc = io.msgIn.bits.pc + 4.U
   private val dataMem  = io.msgIn.bits.memRData
@@ -59,7 +61,7 @@ class Wbu extends Module {
     )
   )
 
-  io.gprWrite.wEn    := io.msgIn.valid & ~io.msgIn.bits.bad & io.msgIn.bits.wbEn
+  io.gprWrite.wEn    := io.msgIn.valid & ~bad & io.msgIn.bits.wbEn
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
 

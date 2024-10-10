@@ -9,6 +9,7 @@
 #include <memory>
 #include <nvboard.h>
 #include <type_traits>
+#include <cinttypes>
 
 #include "common.hpp"
 #include "debug.hpp"
@@ -36,12 +37,15 @@ std::unique_ptr<DiffTest> difftest{};
 static VerilatedContext *ctx = nullptr;
 static VerilatedVcdC *tf = nullptr;
 
+static uint64_t cycles = 0;
+
 static void step_and_dump_wave() {
   dut.eval();
   ctx->timeInc(1);
 #if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   tf->dump(ctx->time());
 #endif
+
 }
 
 static void cycle() {
@@ -50,6 +54,7 @@ static void cycle() {
   dut.clock = 0;
   step_and_dump_wave();
   nvboard_update();
+  cycles++;
 }
 
 static void sim_init() {
@@ -60,6 +65,7 @@ static void sim_init() {
   dut.trace(tf, 0);
   tf->open("dump.vcd");
 #endif
+  cycles = 0;
 }
 
 static void sim_exit() {
@@ -179,7 +185,7 @@ int main(int argc, char *argv[]) {
 
   const word_t retval = dut_dpi_state.reg_a0;
   if (retval == 0) {
-    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD, dut_dpi_state.pc);
+    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD "; %" PRIu64 " cycles", dut_dpi_state.pc, cycles);
   } else {
     assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " (" FMT_WORD ") at pc = " FMT_WORD,
