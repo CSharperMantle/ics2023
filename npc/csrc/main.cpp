@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
+#include <cinttypes>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -9,7 +10,6 @@
 #include <memory>
 #include <nvboard.h>
 #include <type_traits>
-#include <cinttypes>
 
 #include "common.hpp"
 #include "debug.hpp"
@@ -45,7 +45,6 @@ static void step_and_dump_wave() {
 #if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   tf->dump(ctx->time());
 #endif
-
 }
 
 static void cycle() {
@@ -57,7 +56,8 @@ static void cycle() {
   cycles++;
 }
 
-static void sim_init() {
+static void sim_init(int argc, char *argv[]) {
+  Verilated::commandArgs(argc, argv);
   ctx = Verilated::defaultContextp();
   tf = new VerilatedVcdC();
 #if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
   init_disasm("riscv32-pc-linux-gnu");
 
-  sim_init();
+  sim_init(argc, argv);
   nvboard_bind_all_pins(&dut);
   nvboard_init(1);
   dut.reset = 1;
@@ -185,7 +185,10 @@ int main(int argc, char *argv[]) {
 
   const word_t retval = dut_dpi_state.reg_a0;
   if (retval == 0) {
-    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD "; %" PRIu64 " cycles", dut_dpi_state.pc, cycles);
+    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD "; %" PRIu64
+                                                         " cycles",
+        dut_dpi_state.pc,
+        cycles);
   } else {
     assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " (" FMT_WORD ") at pc = " FMT_WORD,
