@@ -23,7 +23,7 @@ class Clint extends Module {
   }
   import Regs._
 
-  private val regs = Mem(Regs.all.length + 1, UInt(64.W))
+  private val regs = RegInit(VecInit(Seq.fill(Regs.all.length - 1)(0.U(64.W))))
 
   private val regDecTable = TruthTable(
     Seq(
@@ -37,22 +37,26 @@ class Clint extends Module {
 
   private val rAddr = RegEnable(io.rReq.bits.addr, 0.U, io.rReq.valid)
 
+  private val regData = Mux(rAddr(2), regs(rRegIdx)(63, 32), regs(rRegIdx)(31, 0))
+
   private object State extends CvtChiselEnum {
     val S_Idle      = Value
+    val S_Read      = Value
     val S_WaitReady = Value
   }
   import State._
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.rReq.valid, S_WaitReady, S_Idle),
+      S_Idle      -> Mux(io.rReq.valid, S_Read, S_Idle),
+      S_Read      -> S_WaitReady,
       S_WaitReady -> Mux(io.rResp.ready, S_Idle, S_WaitReady)
     )
   )
 
   io.rReq.ready := io.rReq.valid
 
-  io.rResp.bits.data  := Mux(rAddr(2), regs(rRegIdx)(63, 32), regs(rRegIdx)(31, 0))
+  io.rResp.bits.data  := Mux(rRegIdx === UnkIdx.U, 0.U, regData)
   io.rResp.bits.rResp := Mux(rRegIdx === UnkIdx.U, RResp.DecErr.U, RResp.Okay.U)
   io.rResp.valid      := y === S_WaitReady
 
