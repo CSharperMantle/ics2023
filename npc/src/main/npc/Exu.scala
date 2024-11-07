@@ -139,6 +139,6 @@ class Exu extends Module {
 
   io.gprRead.valid := y === S_RdReg
 
-  io.msgIn.ready  := io.msgOut.ready
+  io.msgIn.ready  := y === S_Wait4Next & io.msgOut.ready
   io.msgOut.valid := y === S_Wait4Next
 }

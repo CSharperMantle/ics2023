@@ -239,6 +239,6 @@ class Lsu extends Module {
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
 
-  io.msgIn.ready  := y === S_Wait4Next.U
+  io.msgIn.ready  := y === S_Wait4Next.U & io.msgOut.ready
   io.msgOut.valid := y === S_Wait4Next.U
 }
