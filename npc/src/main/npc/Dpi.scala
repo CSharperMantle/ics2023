@@ -28,6 +28,7 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  input [${XLen - 1}:0] rwAddr,
        |  input                 bad
        |);
+       |`ifdef VERILATOR
        |  import "DPI-C" function void soc_dpi_ebreak();
        |  import "DPI-C" function void soc_dpi_report_state(input           retired,
        |                                                    input $xLenType pc,
@@ -46,6 +47,7 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |    end
        |    soc_dpi_report_state(retired, pc, cycles, instr, a0, memEn, rwAddr, bad);
        |  end
+       |`endif
        |endmodule
        |""".stripMargin
   )

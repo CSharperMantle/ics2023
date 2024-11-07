@@ -32,7 +32,7 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 CXXFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --cxxflags) -fPIE
 LDFLAGS += $(shell $(CONFIG_LLVM_CONFIG) --libs)
 
-VSRCS = $(shell find $(abspath ./build) -regextype posix-extended -regex "^.*\.(sv|v)$$")
+VSRCS = $(abspath $(BUILD_DIR)/ysyx_23060288.sv)
 CSRCS = $(shell find $(abspath ./csrc) -regextype posix-extended -regex "^.*\.(c|cc|cpp)$$")
 HEADERS = $(shell find $(INC_PATH) -regextype posix-extended -regex "^.*\.(h|hpp)$$")
 
