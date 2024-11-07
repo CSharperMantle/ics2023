@@ -125,7 +125,7 @@ void DiffTest::vdut_to_cpu_state(const VDut &vdut) {
   memcpy(
       cpu_state.gpr,
       vdut.rootp
-          ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_ext__DOT__Memory
+          ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_sram_ext__DOT__Memory
           .data(),
       sizeof(cpu_state.gpr));
   for (const auto &p : CSR_MAPPING) {

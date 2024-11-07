@@ -8,18 +8,15 @@ import common._
 import npc._
 
 object KnownCsrIdx extends CvtChiselEnum {
-  val SatpIdx      = Value
-  val MstatusIdx   = Value
-  val MieIdx       = Value
-  val MtvecIdx     = Value
-  val MscratchIdx  = Value
-  val MepcIdx      = Value
-  val McauseIdx    = Value
-  val MtvalIdx     = Value
-  val MipIdx       = Value
-  val MvendoridIdx = Value
-  val MarchidIdx   = Value
-  val MimpidIdx    = Value
+  val SatpIdx     = Value
+  val MstatusIdx  = Value
+  val MieIdx      = Value
+  val MtvecIdx    = Value
+  val MscratchIdx = Value
+  val MepcIdx     = Value
+  val McauseIdx   = Value
+  val MtvalIdx    = Value
+  val MipIdx      = Value
 }
 
 case class CsrPropPattern(
@@ -101,18 +98,18 @@ class CsrFile extends Module {
 
   private val csrPropTable = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
-    CsrPropPattern(BitPat("h180".U(12.W)), SatpIdx.BP,      None),
-    CsrPropPattern(BitPat("h300".U(12.W)), MstatusIdx.BP,   None),
-    CsrPropPattern(BitPat("h304".U(12.W)), MieIdx.BP,       None),
-    CsrPropPattern(BitPat("h305".U(12.W)), MtvecIdx.BP,     None),
-    CsrPropPattern(BitPat("h340".U(12.W)), MscratchIdx.BP,  None),
-    CsrPropPattern(BitPat("h341".U(12.W)), MepcIdx.BP,      None),
-    CsrPropPattern(BitPat("h342".U(12.W)), McauseIdx.BP,    None),
-    CsrPropPattern(BitPat("h343".U(12.W)), MtvalIdx.BP,     None),
-    CsrPropPattern(BitPat("h344".U(12.W)), MipIdx.BP,       None),
-    CsrPropPattern(BitPat("hf11".U(12.W)), MvendoridIdx.BP, Some("h79737978".U(XLen.W))),
-    CsrPropPattern(BitPat("hf12".U(12.W)), MarchidIdx.BP,   Some("h015fdf40".U(XLen.W))),
-    CsrPropPattern(BitPat("hf13".U(12.W)), MimpidIdx.BP,    Some("h00000001".U(XLen.W)))
+    CsrPropPattern(BitPat("h180".U(12.W)), SatpIdx.BP,     None),
+    CsrPropPattern(BitPat("h300".U(12.W)), MstatusIdx.BP,  None),
+    CsrPropPattern(BitPat("h304".U(12.W)), MieIdx.BP,      None),
+    CsrPropPattern(BitPat("h305".U(12.W)), MtvecIdx.BP,    None),
+    CsrPropPattern(BitPat("h340".U(12.W)), MscratchIdx.BP, None),
+    CsrPropPattern(BitPat("h341".U(12.W)), MepcIdx.BP,     None),
+    CsrPropPattern(BitPat("h342".U(12.W)), McauseIdx.BP,   None),
+    CsrPropPattern(BitPat("h343".U(12.W)), MtvalIdx.BP,    None),
+    CsrPropPattern(BitPat("h344".U(12.W)), MipIdx.BP,      None),
+    CsrPropPattern(BitPat("hf11".U(12.W)), KnownCsrIdx.X,  Some("h79737978".U(XLen.W))), // mvendorid
+    CsrPropPattern(BitPat("hf12".U(12.W)), KnownCsrIdx.X,  Some("h015fdf40".U(XLen.W))), // marchid
+    CsrPropPattern(BitPat("hf13".U(12.W)), KnownCsrIdx.X,  Some("h00000001".U(XLen.W))) // mimpid
     // scalafmt: { align.tokens.add = [] }
   )
   private val csrPropFields = Seq(
@@ -128,10 +125,9 @@ class CsrFile extends Module {
 
   private val csrVal = Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(csrIdx))
   io.conn.csrVal := csrVal
-  csrs(csrIdx) := Mux(
-    csrIsConst,
-    csrVal,
-    Mux1H(
+
+  when(~csrIsConst) {
+    csrs(csrIdx) := Mux1H(
       Seq(
         csrOp1H(0) -> io.conn.s1,
         csrOp1H(1) -> (io.conn.s1 | csrVal),
@@ -139,7 +135,7 @@ class CsrFile extends Module {
         csrOp1H(3) -> csrVal
       )
     )
-  )
+  }
 
   private val excpAdjDec = Decoder1H(
     Seq(
@@ -152,8 +148,10 @@ class CsrFile extends Module {
 
   private val mstatus = csrs(MstatusIdx.U)
 
-  csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
-  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(MepcIdx.U))
+  when(excpAdj1H(1)) {
+    csrs(McauseIdx.U) := ExcpCode.MEnvCall.U(XLen.W)
+    csrs(MepcIdx.U)   := io.conn.pc
+  }
 
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
   //                                                | MPP              |               | MPIE      |              | MIE       |
@@ -165,10 +163,10 @@ class CsrFile extends Module {
     InitMstatusVal.U,
     Mux1H(
       Seq(
-        excpAdj1H(0) -> mstatus,
+        excpAdj1H(0) -> csrs(MstatusIdx.U),
         excpAdj1H(1) -> mstatusAdjEcall,
         excpAdj1H(2) -> mstatusAdjMret,
-        excpAdj1H(3) -> mstatus
+        excpAdj1H(3) -> csrs(MstatusIdx.U)
       )
     )
   )

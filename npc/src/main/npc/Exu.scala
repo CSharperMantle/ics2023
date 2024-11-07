@@ -122,6 +122,23 @@ class Exu extends Module {
   io.msgOut.bits.mepc    := io.csrConn.mepc
   io.msgOut.bits.mtvec   := io.csrConn.mtvec
 
+  private object State extends CvtChiselEnum {
+    val S_Idle      = Value
+    val S_RdReg     = Value
+    val S_Wait4Next = Value
+  }
+  import State._
+  private val y = RegInit(S_Idle)
+  y := MuxLookup(y, S_Idle)(
+    Seq(
+      S_Idle      -> Mux(io.msgIn.valid, S_RdReg, S_Idle),
+      S_RdReg     -> Mux(io.gprRead.ready, S_Wait4Next, S_RdReg),
+      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
+    )
+  )
+
+  io.gprRead.valid := y === S_RdReg
+
   io.msgIn.ready  := io.msgOut.ready
-  io.msgOut.valid := io.msgIn.valid
+  io.msgOut.valid := y === S_Wait4Next
 }
