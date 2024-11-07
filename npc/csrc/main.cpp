@@ -37,7 +37,8 @@ std::unique_ptr<DiffTest> difftest{};
 static VerilatedContext *ctx = nullptr;
 static VerilatedVcdC *tf = nullptr;
 
-static uint64_t cycles = 0;
+static uint64_t n_cycles = 0;
+static uint64_t n_instrs = 0;
 
 static void step_and_dump_wave() {
   dut.eval();
@@ -53,7 +54,7 @@ static void cycle() {
   dut.clock = 0;
   step_and_dump_wave();
   nvboard_update();
-  cycles++;
+  n_cycles++;
 }
 
 static void sim_init(int argc, char *argv[]) {
@@ -65,7 +66,7 @@ static void sim_init(int argc, char *argv[]) {
   dut.trace(tf, 0);
   tf->open("dump.vcd");
 #endif
-  cycles = 0;
+  n_cycles = 0;
 }
 
 static void sim_exit() {
@@ -181,6 +182,8 @@ int main(int argc, char *argv[]) {
 
     iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.instr_cycles);
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
+
+    n_instrs++;
   } while (!dut_dpi_state.ebreak);
 
   const word_t reg_a0 = static_cast<word_t>(
@@ -188,16 +191,15 @@ int main(int argc, char *argv[]) {
           ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_sram_ext__DOT__Memory
               [10]);
   if (reg_a0 == 0) {
-    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD "; %" PRIu64
-                                                         " cycles",
-        dut_dpi_state.pc,
-        cycles);
+    Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD, dut_dpi_state.pc);
   } else {
     assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " (" FMT_WORD ") at pc = " FMT_WORD,
         reg_a0,
         dut_dpi_state.pc);
   }
+  Log("n_instrs=%" PRIu64 "; n_cycles=%" PRIu64, n_instrs, n_cycles);
+  Log("estimated IPC: %.08lf", static_cast<double>(n_instrs) / static_cast<double>(n_cycles));
 
   nvboard_quit();
   sim_exit();
