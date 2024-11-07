@@ -143,7 +143,6 @@ class Core extends Module {
   dpi.io.ebreak  := idu.io.break
   dpi.io.cycles  := instrCycles
   dpi.io.instr   := ifu.io.msgOut.bits.instr
-  dpi.io.a0      := gpr.io.a0
   dpi.io.memEn   := idu.io.msgOut.bits.memAction =/= MemAction.MemNone.U
   dpi.io.rwAddr  := exu.io.msgOut.bits.d
   dpi.io.bad     := pcUpdate.io.msgOut.bits.bad

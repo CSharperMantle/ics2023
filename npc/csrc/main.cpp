@@ -183,8 +183,11 @@ int main(int argc, char *argv[]) {
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
   } while (!dut_dpi_state.ebreak);
 
-  const word_t retval = dut_dpi_state.reg_a0;
-  if (retval == 0) {
+  const word_t reg_a0 = static_cast<word_t>(
+      dut.rootp
+          ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_sram_ext__DOT__Memory
+              [10]);
+  if (reg_a0 == 0) {
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD "; %" PRIu64
                                                          " cycles",
         dut_dpi_state.pc,
@@ -192,11 +195,11 @@ int main(int argc, char *argv[]) {
   } else {
     assert_fail_msg();
     Log("npc: " ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED) " (" FMT_WORD ") at pc = " FMT_WORD,
-        dut_dpi_state.reg_a0,
+        reg_a0,
         dut_dpi_state.pc);
   }
 
   nvboard_quit();
   sim_exit();
-  return retval != 0;
+  return reg_a0 != 0;
 }

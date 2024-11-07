@@ -25,7 +25,6 @@ class GprFile extends Module {
   class Port extends Bundle {
     val read  = new GprFileReadConn
     val write = new GprFileWriteConn
-    val a0    = Output(UInt(XLen.W))
   }
   val io = IO(new Port)
 
@@ -62,8 +61,4 @@ class GprFile extends Module {
   regs.writePorts(0).address := io.write.rdIdx
   regs.writePorts(0).data    := io.write.rdData
   regs.writePorts(0).enable  := io.write.wEn & (io.write.rdIdx =/= 0.U)
-
-  private val reg10 =
-    RegEnable(io.write.rdData, 0.U(XLen.W), io.write.wEn & io.write.rdIdx === 10.U)
-  io.a0 := reg10
 }

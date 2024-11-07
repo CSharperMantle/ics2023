@@ -13,7 +13,6 @@ struct DutDpiState {
   uint16_t instr_cycles;
   word_t pc;
   uint32_t instr;
-  word_t reg_a0;
   word_t rw_addr;
 };
 

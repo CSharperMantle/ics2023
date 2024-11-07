@@ -132,7 +132,7 @@ void DiffTest::vdut_to_cpu_state(const VDut &vdut) {
     cpu_state.csr[std::get<0>(p)] =
         vdut.rootp
             ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__csr__DOT__csrs_ext__DOT__Memory
-            .data()[std::get<1>(p)];
+                [std::get<1>(p)];
   }
   cpu_state.pc =
       vdut.rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc;
