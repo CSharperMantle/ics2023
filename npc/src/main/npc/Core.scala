@@ -133,15 +133,10 @@ class Core extends Module {
   StageConnect(pcUpdate.io.msgIn, wbu.io.msgOut)
   StageConnect(ifu.io.msgIn, pcUpdate.io.msgOut)
 
-  private val retired     = pcUpdate.io.msgOut.valid
-  private val instrCycles = RegInit(0.U(16.W))
-  instrCycles := Mux(retired, 0.U, instrCycles + 1.U)
-
   private val dpi = Module(new Dpi)
-  dpi.io.retired := retired
+  dpi.io.retired := pcUpdate.io.msgOut.valid
   dpi.io.pc      := pcUpdate.io.msgOut.bits.pc
   dpi.io.ebreak  := idu.io.break
-  dpi.io.cycles  := instrCycles
   dpi.io.instr   := ifu.io.msgOut.bits.instr
   dpi.io.memEn   := idu.io.msgOut.bits.memAction =/= MemAction.MemNone.U
   dpi.io.rwAddr  := exu.io.msgOut.bits.d

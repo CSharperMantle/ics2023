@@ -36,7 +36,6 @@ struct DiffTest {
 private:
   struct CpuState {
     word_t gpr[16];
-    word_t csr[4096];
     paddr_t pc;
     int priv;
     bool intr;

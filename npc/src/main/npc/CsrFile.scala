@@ -7,8 +7,7 @@ import chisel3.util.experimental.decode._
 import common._
 import npc._
 
-object KnownCsrIdx extends CvtChiselEnum {
-  val SatpIdx     = Value
+object BackedCsrIdx extends CvtChiselEnum {
   val MstatusIdx  = Value
   val MieIdx      = Value
   val MtvecIdx    = Value
@@ -29,7 +28,7 @@ case class CsrPropPattern(
 
 object CsrPropIdxField extends DecodeField[CsrPropPattern, UInt] {
   override def name       = "idx"
-  override def chiselType = UInt(KnownCsrIdx.W)
+  override def chiselType = UInt(BackedCsrIdx.W)
   override def genTable(op: CsrPropPattern): BitPat = op.idx
 }
 
@@ -83,9 +82,9 @@ class CsrFile extends Module {
 
   import CsrOp._
   import CsrExcpAdj._
-  import KnownCsrIdx._
+  import BackedCsrIdx._
 
-  private val csrs = Mem(KnownCsrIdx.all.length, UInt(XLen.W))
+  private val csrs = RegInit(VecInit(Seq.fill(BackedCsrIdx.all.length)(0.U(XLen.W))))
 
   private val csrOpDec = Decoder1H(
     Seq(
@@ -98,7 +97,6 @@ class CsrFile extends Module {
 
   private val csrPropTable = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
-    CsrPropPattern(BitPat("h180".U(12.W)), SatpIdx.BP,     None),
     CsrPropPattern(BitPat("h300".U(12.W)), MstatusIdx.BP,  None),
     CsrPropPattern(BitPat("h304".U(12.W)), MieIdx.BP,      None),
     CsrPropPattern(BitPat("h305".U(12.W)), MtvecIdx.BP,    None),
@@ -107,9 +105,9 @@ class CsrFile extends Module {
     CsrPropPattern(BitPat("h342".U(12.W)), McauseIdx.BP,   None),
     CsrPropPattern(BitPat("h343".U(12.W)), MtvalIdx.BP,    None),
     CsrPropPattern(BitPat("h344".U(12.W)), MipIdx.BP,      None),
-    CsrPropPattern(BitPat("hf11".U(12.W)), KnownCsrIdx.X,  Some("h79737978".U(XLen.W))), // mvendorid
-    CsrPropPattern(BitPat("hf12".U(12.W)), KnownCsrIdx.X,  Some("h015fdf40".U(XLen.W))), // marchid
-    CsrPropPattern(BitPat("hf13".U(12.W)), KnownCsrIdx.X,  Some("h00000001".U(XLen.W))) // mimpid
+    CsrPropPattern(BitPat("hf11".U(12.W)), BackedCsrIdx.X, Some("h79737978".U(XLen.W))), // mvendorid
+    CsrPropPattern(BitPat("hf12".U(12.W)), BackedCsrIdx.X, Some("h015fdf40".U(XLen.W))), // marchid
+    CsrPropPattern(BitPat("hf13".U(12.W)), BackedCsrIdx.X, Some("h00000001".U(XLen.W))) // mimpid
     // scalafmt: { align.tokens.add = [] }
   )
   private val csrPropFields = Seq(
@@ -126,17 +124,6 @@ class CsrFile extends Module {
   private val csrVal = Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(csrIdx))
   io.conn.csrVal := csrVal
 
-  when(~csrIsConst) {
-    csrs(csrIdx) := Mux1H(
-      Seq(
-        csrOp1H(0) -> io.conn.s1,
-        csrOp1H(1) -> (io.conn.s1 | csrVal),
-        csrOp1H(2) -> (~io.conn.s1 & csrVal),
-        csrOp1H(3) -> csrVal
-      )
-    )
-  }
-
   private val excpAdjDec = Decoder1H(
     Seq(
       ExcpAdjNone.BP  -> 0,
@@ -146,13 +133,10 @@ class CsrFile extends Module {
   )
   private val excpAdj1H = excpAdjDec(io.conn.excpAdj)
 
+  csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
+  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(McauseIdx.U))
+
   private val mstatus = csrs(MstatusIdx.U)
-
-  when(excpAdj1H(1)) {
-    csrs(McauseIdx.U) := ExcpCode.MEnvCall.U(XLen.W)
-    csrs(MepcIdx.U)   := io.conn.pc
-  }
-
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
   //                                                | MPP              |               | MPIE      |              | MIE       |
   private val mstatusAdjEcall = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), mstatus(3), mstatus(6, 4), 0.U(1.W),   mstatus(2, 0))
@@ -173,4 +157,19 @@ class CsrFile extends Module {
 
   io.conn.mepc  := csrs(MepcIdx.U)
   io.conn.mtvec := csrs(MtvecIdx.U)
+
+  // Other writes
+
+  csrs(csrIdx) := Mux(
+    csrIsConst,
+    csrs(csrIdx),
+    Mux1H(
+      Seq(
+        csrOp1H(0) -> io.conn.s1,
+        csrOp1H(1) -> (io.conn.s1 | csrVal),
+        csrOp1H(2) -> (~io.conn.s1 & csrVal),
+        csrOp1H(3) -> csrVal
+      )
+    )
+  )
 }
