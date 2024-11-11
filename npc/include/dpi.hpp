@@ -5,12 +5,21 @@
 
 #include "common.hpp"
 
+struct InstrPerfCounters {
+  uint16_t total_cycles;
+  uint16_t ifu_cycles;
+  uint16_t idu_cycles;
+  uint16_t exu_cycles;
+  uint16_t lsu_cycles;
+  uint16_t wbu_cycles;
+};
+
 struct DutDpiState {
   bool ebreak;
   bool bad;
   bool retired;
   bool mem_en;
-  uint16_t instr_cycles;
+  InstrPerfCounters ctrs;
   word_t pc;
   uint32_t instr;
   word_t rw_addr;

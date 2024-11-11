@@ -32,13 +32,18 @@ static const uint32_t DEFAULT_IMG[] = {
 
 VDut dut{};
 
-std::unique_ptr<DiffTest> difftest{};
+static std::unique_ptr<DiffTest> difftest{};
 
 static VerilatedContext *ctx = nullptr;
 static VerilatedVcdC *tf = nullptr;
 
 static uint64_t n_cycles = 0;
 static uint64_t n_instrs = 0;
+static uint64_t n_cycles_ifu = 0;
+static uint64_t n_cycles_idu = 0;
+static uint64_t n_cycles_exu = 0;
+static uint64_t n_cycles_lsu = 0;
+static uint64_t n_cycles_wbu = 0;
 
 static void step_and_dump_wave() {
   dut.eval();
@@ -54,7 +59,6 @@ static void cycle() {
   dut.clock = 0;
   step_and_dump_wave();
   nvboard_update();
-  n_cycles++;
 }
 
 static void sim_init(int argc, char *argv[]) {
@@ -77,21 +81,47 @@ static void sim_exit() {
 }
 
 static void print_iringbuf() {
-  Log("- - - %d recent instructions (top: oldest)", CONFIG_IRINGBUF_NR_ELEM);
+  LogShort("- - - %d recent instructions (top: oldest)", CONFIG_IRINGBUF_NR_ELEM);
   for (const auto &instr : iringbuf) {
     auto instr_disasm = disasm(std::get<0>(instr),
                                reinterpret_cast<const uint8_t *>(&std::get<1>(instr)),
                                sizeof(std::get<1>(instr)));
-    Log("%" PRIu16 "\t" FMT_WORD "\t%s",
-        std::get<2>(instr),
-        std::get<0>(instr),
-        instr_disasm.c_str());
+    LogShort("%" PRIu16 "\t= (%" PRIu16 "+%" PRIu16 "+%" PRIu16 "+%" PRIu16 "+%" PRIu16
+             ")\t" FMT_WORD "\t%s",
+             std::get<2>(instr).total_cycles,
+             std::get<2>(instr).ifu_cycles,
+             std::get<2>(instr).idu_cycles,
+             std::get<2>(instr).exu_cycles,
+             std::get<2>(instr).lsu_cycles,
+             std::get<2>(instr).wbu_cycles,
+             std::get<0>(instr),
+             instr_disasm.c_str());
   }
-  Log("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
+  LogShort("- - - %d recent instructions (bottom: newest)", CONFIG_IRINGBUF_NR_ELEM);
+}
+
+static void print_stats() {
+  Log("# Instrs: %" PRIu64 "; # Cycles: %" PRIu64, n_instrs, n_cycles);
+  Log("estimated IPC: %.08lf", static_cast<double>(n_instrs) / static_cast<double>(n_cycles));
+  Log("Cycles composition:");
+  Log("\tifu: %.04lf", static_cast<double>(n_cycles_ifu) / static_cast<double>(n_cycles));
+  Log("\tidu: %.04lf", static_cast<double>(n_cycles_idu) / static_cast<double>(n_cycles));
+  Log("\texu: %.04lf", static_cast<double>(n_cycles_exu) / static_cast<double>(n_cycles));
+  Log("\tlsu: %.04lf", static_cast<double>(n_cycles_lsu) / static_cast<double>(n_cycles));
+  Log("\twbu: %.04lf", static_cast<double>(n_cycles_wbu) / static_cast<double>(n_cycles));
 }
 
 void assert_fail_msg() {
   print_iringbuf();
+  LogShort("Registers:");
+  for (size_t i = 0; i < ARRLEN(REG_NAMES); i++) {
+    LogShort(
+        "\t%s\t" FMT_WORD,
+        REG_NAMES[i],
+        dut.rootp
+            ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_sram_ext__DOT__Memory
+                [i]);
+  }
 #if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   tf->close();
 #endif
@@ -180,10 +210,16 @@ int main(int argc, char *argv[]) {
     difftest->step_ref(dut);
     difftest->check_regs(dut);
 
-    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.instr_cycles);
+    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.ctrs);
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
 
     n_instrs++;
+    n_cycles += dut_dpi_state.ctrs.total_cycles;
+    n_cycles_ifu += dut_dpi_state.ctrs.ifu_cycles;
+    n_cycles_idu += dut_dpi_state.ctrs.idu_cycles;
+    n_cycles_exu += dut_dpi_state.ctrs.exu_cycles;
+    n_cycles_lsu += dut_dpi_state.ctrs.lsu_cycles;
+    n_cycles_wbu += dut_dpi_state.ctrs.wbu_cycles;
   } while (!dut_dpi_state.ebreak);
 
   const word_t reg_a0 = static_cast<word_t>(
@@ -198,8 +234,7 @@ int main(int argc, char *argv[]) {
         reg_a0,
         dut_dpi_state.pc);
   }
-  Log("n_instrs=%" PRIu64 "; n_cycles=%" PRIu64, n_instrs, n_cycles);
-  Log("estimated IPC: %.08lf", static_cast<double>(n_instrs) / static_cast<double>(n_cycles));
+  print_stats();
 
   nvboard_quit();
   sim_exit();

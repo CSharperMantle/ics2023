@@ -1,3 +1,3 @@
 #include "util/iringbuf.hpp"
 
-IRingBuf iringbuf{};
+InstrRingBuf iringbuf{};

@@ -7,7 +7,9 @@ PRJ_NAME = playground
 
 
 TOP_NAME = ysyxSoCFull
-NXDC_FILES = constr/top.nxdc
+NXDC_FILE = constr/top.nxdc
+SDC_FILE = constr/npc.sdc
+
 INC_PATH ?= $(abspath ./include)
 
 MAINARGS ?=
@@ -16,7 +18,8 @@ VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert  \
 				--trace --timescale "1ns/1ns" --no-timing --autoflush  \
-				-Wno-WIDTHEXPAND
+				-Wno-WIDTHEXPAND \
+				--build-jobs 0
 
 CONFIG_LLVM_CONFIG ?= llvm-config-15
 
@@ -25,7 +28,7 @@ default: verilog $(BIN)
 $(shell mkdir -p $(BUILD_DIR))
 
 SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
-$(SRC_AUTO_BIND): $(NXDC_FILES)
+$(SRC_AUTO_BIND): $(NXDC_FILE)
 	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
 
 # LLVM flags
@@ -51,15 +54,15 @@ CSRCS += $(SRC_AUTO_BIND)
 
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS)
-CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -g
+CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -g -std=gnu++14
 
 $(VSRCS): $(SCALA_SRCS)
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
 	mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
+	./script/remove_f.py $(VSRCS)
 
 $(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) $(HEADERS)
-	./script/remove_f.py $(VSRCS)
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \
 		--top-module $(TOP_NAME) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) \
@@ -90,8 +93,12 @@ sim: $(BIN)
 wave:
 	gtkwave --giga dump.vcd
 
+sta: $(VSRCS)
+	make -C $(YOSYS_STA_HOME) sta DESIGN=$(STUID) SDC_FILE=$(abspath $(SDC_FILE)) \
+		RTL_FILES=$(VSRCS) CLK_FREQ_MHZ=100
+
 all: default
 
-.PHONY: default all test verilog help reformat checkformat clean sim wave
+.PHONY: default all test verilog help reformat checkformat clean sim wave sta
 
 -include ../Makefile

@@ -134,13 +134,23 @@ class Core extends Module {
   StageConnect(ifu.io.msgIn, pcUpdate.io.msgOut)
 
   private val dpi = Module(new Dpi)
-  dpi.io.retired := pcUpdate.io.msgOut.valid
-  dpi.io.pc      := pcUpdate.io.msgOut.bits.pc
-  dpi.io.ebreak  := idu.io.break
-  dpi.io.instr   := ifu.io.msgOut.bits.instr
-  dpi.io.memEn   := idu.io.msgOut.bits.memAction =/= MemAction.MemNone.U
-  dpi.io.rwAddr  := exu.io.msgOut.bits.d
-  dpi.io.bad     := pcUpdate.io.msgOut.bits.bad
+  dpi.io.retired     := pcUpdate.io.msgOut.valid
+  dpi.io.pc          := pcUpdate.io.msgOut.bits.pc
+  dpi.io.ebreak      := idu.io.break
+  dpi.io.instr       := ifu.io.msgOut.bits.instr
+  dpi.io.memEn       := idu.io.msgOut.bits.memAction =/= MemAction.MemNone.U
+  dpi.io.rwAddr      := exu.io.msgOut.bits.d
+  dpi.io.bad         := pcUpdate.io.msgOut.bits.bad
+  dpi.io.ifuInValid  := ifu.io.instrStale
+  dpi.io.iduInValid  := idu.io.msgIn.valid
+  dpi.io.exuInValid  := exu.io.msgIn.valid
+  dpi.io.lsuInValid  := lsu.io.msgIn.valid
+  dpi.io.wbuInValid  := wbu.io.msgIn.valid
+  dpi.io.ifuOutValid := ifu.io.msgOut.valid
+  dpi.io.iduOutValid := idu.io.msgOut.valid
+  dpi.io.exuOutValid := exu.io.msgOut.valid
+  dpi.io.lsuOutValid := lsu.io.msgOut.valid
+  dpi.io.wbuOutValid := wbu.io.msgOut.valid
 
   io.slave := DontCare
 }

@@ -15,16 +15,19 @@ class Ifu2IduMsg extends Bundle {
 
 class Ifu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new PcUpdate2IfuMsg))
-    val msgOut = Irrevocable(new Ifu2IduMsg)
-    val rReq   = Irrevocable(new MemReadReq(XLen.W))
-    val rResp  = Flipped(Irrevocable(new MemReadResp(32.W)))
+    val msgIn      = Flipped(Irrevocable(new PcUpdate2IfuMsg))
+    val msgOut     = Irrevocable(new Ifu2IduMsg)
+    val rReq       = Irrevocable(new MemReadReq(XLen.W))
+    val rResp      = Flipped(Irrevocable(new MemReadResp(32.W)))
+    val instrStale = Output(Bool())
   }
   val io = IO(new Port)
 
-  private val canUpdatePc = io.msgIn.valid & ~io.msgIn.bits.bad
+  private val pcStale = io.msgIn.valid & ~io.msgIn.bits.bad
 
-  private val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), canUpdatePc)
+  private val pc = RegEnable(io.msgIn.bits.dnpc, InitPCVal.U(XLen.W), pcStale)
+
+  private val instrStale = RegInit(true.B)
 
   // PC does not align to 4 bytes
   private val pcBad = ~(pc(1, 0) === 0.U)
@@ -39,12 +42,15 @@ class Ifu extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(pcBad, S_Wait4Next, S_ReadReq),
+      S_Idle      -> Mux(instrStale, Mux(pcBad, S_Wait4Next, S_ReadReq), S_Idle),
       S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
       S_Read      -> Mux(io.rResp.valid, S_Wait4Next, S_Read),
-      S_Wait4Next -> Mux(io.msgOut.ready, S_ReadReq, S_Wait4Next)
+      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
     )
   )
+
+  instrStale    := Mux(pcStale, true.B, Mux(y === S_Wait4Next, false.B, instrStale))
+  io.instrStale := instrStale
 
   private val instr = RegEnable(io.rResp.bits.data, io.rResp.valid)
 

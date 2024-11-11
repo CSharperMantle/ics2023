@@ -29,6 +29,9 @@
        __func__,                                                                                   \
        ##__VA_ARGS__)
 
+#define LogShort(format, ...)                                                                      \
+  _Log(ANSI_FMT("[%s]", ANSI_FG_BLUE) " " format "\n", __func__, ##__VA_ARGS__)
+
 #define Warn(format, ...)                                                                          \
   _Log(ANSI_FMT("[%s:%d %s]", ANSI_FG_BRIGHT_YELLOW) " " format "\n",                              \
        __FILE__,                                                                                   \
