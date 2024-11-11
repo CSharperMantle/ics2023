@@ -134,7 +134,7 @@ class CsrFile extends Module {
   private val excpAdj1H = excpAdjDec(io.conn.excpAdj)
 
   csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
-  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(McauseIdx.U))
+  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(MepcIdx.U))
 
   private val mstatus = csrs(MstatusIdx.U)
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
