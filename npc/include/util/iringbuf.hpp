@@ -9,7 +9,7 @@
 #include "util/ringbuf.hpp"
 
 using InstrRingBuf =
-    baudvine::RingBuf<std::tuple<paddr_t, uint32_t, InstrPerfCounters>, CONFIG_IRINGBUF_NR_ELEM>;
+    baudvine::RingBuf<std::tuple<paddr_t, uint32_t, uint16_t>, CONFIG_IRINGBUF_NR_ELEM>;
 
 extern InstrRingBuf iringbuf;
 

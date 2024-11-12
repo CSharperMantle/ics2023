@@ -86,14 +86,8 @@ static void print_iringbuf() {
     auto instr_disasm = disasm(std::get<0>(instr),
                                reinterpret_cast<const uint8_t *>(&std::get<1>(instr)),
                                sizeof(std::get<1>(instr)));
-    LogShort("%" PRIu16 "\t= (%" PRIu16 "+%" PRIu16 "+%" PRIu16 "+%" PRIu16 "+%" PRIu16
-             ")\t" FMT_WORD "\t%s",
-             std::get<2>(instr).total_cycles,
-             std::get<2>(instr).ifu_cycles,
-             std::get<2>(instr).idu_cycles,
-             std::get<2>(instr).exu_cycles,
-             std::get<2>(instr).lsu_cycles,
-             std::get<2>(instr).wbu_cycles,
+    LogShort("%" PRIu16 "\t" FMT_WORD "\t%s",
+             std::get<2>(instr),
              std::get<0>(instr),
              instr_disasm.c_str());
   }
@@ -210,7 +204,7 @@ int main(int argc, char *argv[]) {
     difftest->step_ref(dut);
     difftest->check_regs(dut);
 
-    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.ctrs);
+    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.ctrs.total_cycles);
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
 
     n_instrs++;
