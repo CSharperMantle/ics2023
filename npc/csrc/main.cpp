@@ -18,6 +18,7 @@
 #include "mem/host.hpp"
 #include "util/disasm.hpp"
 #include "util/iringbuf.hpp"
+#include "verilated.h"
 #include "verilation.hpp"
 
 extern void nvboard_bind_all_pins(VDut *);
@@ -35,7 +36,7 @@ VDut dut{};
 static std::unique_ptr<DiffTest> difftest{};
 
 static VerilatedContext *ctx = nullptr;
-static VerilatedVcdC *tf = nullptr;
+static VerilatedFstC *tf = nullptr;
 
 static uint64_t n_cycles = 0;
 static uint64_t n_instrs = 0;
@@ -64,11 +65,11 @@ static void cycle() {
 static void sim_init(int argc, char *argv[]) {
   Verilated::commandArgs(argc, argv);
   ctx = Verilated::defaultContextp();
-  tf = new VerilatedVcdC();
+  tf = new VerilatedFstC();
 #if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
   ctx->traceEverOn(true);
   dut.trace(tf, 0);
-  tf->open("dump.vcd");
+  tf->open("dump.fst");
 #endif
   n_cycles = 0;
 }
@@ -163,6 +164,12 @@ int main(int argc, char *argv[]) {
     Log("difftest: loading ref so \"%s\"", env_ref_so);
     difftest = std::make_unique<DiffTest>(env_ref_so, len_img);
   }
+
+#if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
+  Log("Waveform dumping: " ANSI_FMT("ON", ANSI_FG_GREEN));
+#else
+  Log("Waveform dumping: " ANSI_FMT("OFF", ANSI_FG_RED));
+#endif
 
   init_disasm("riscv32-pc-linux-gnu");
 

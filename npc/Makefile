@@ -17,7 +17,7 @@ MAINARGS ?=
 VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert  \
-				--trace --timescale "1ns/1ns" --no-timing --autoflush  \
+				--trace-fst --timescale "1ns/1ns" --no-timing --autoflush  \
 				-Wno-WIDTHEXPAND \
 				--build-jobs 0
 
@@ -91,7 +91,7 @@ sim: $(BIN)
 	@$(BIN) $(MAINARGS)
 
 wave:
-	gtkwave --giga dump.vcd
+	gtkwave --giga dump.fst
 
 sta: $(VSRCS)
 	make -C $(YOSYS_STA_HOME) sta DESIGN=$(STUID) SDC_FILE=$(abspath $(SDC_FILE)) \

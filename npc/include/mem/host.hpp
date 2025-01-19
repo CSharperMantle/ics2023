@@ -20,6 +20,10 @@ constexpr size_t PSRAM_SIZE = 0x1000000;
 constexpr size_t PSRAM_LEFT = 0x80000000;
 constexpr size_t PSRAM_RIGHT = PSRAM_LEFT + PSRAM_SIZE - 1;
 
+constexpr size_t SDRAM_SIZE = 0x2000000;
+constexpr size_t SDRAM_LEFT = 0x90000000;
+constexpr size_t SDRAM_RIGHT = SDRAM_LEFT + SDRAM_SIZE - 1;
+
 constexpr size_t RESET_VECTOR = FLASH_LEFT + 0;
 
 using paddr_t = word_t;
@@ -28,6 +32,7 @@ using paddr_t = word_t;
 extern uint8_t mrom[MROM_SIZE];
 extern uint8_t flash[FLASH_SIZE];
 extern uint8_t psram[PSRAM_SIZE];
+extern uint8_t sdram[SDRAM_SIZE];
 
 extern const std::array<std::tuple<const char *, word_t, size_t>, 5> REF_MEM_BACKED_AREAS;
 
@@ -55,9 +60,19 @@ constexpr word_t psram_host_to_guest(uint8_t *haddr) {
   return haddr - &psram[0] + PSRAM_LEFT;
 }
 
+constexpr void *sdram_guest_to_host(word_t paddr) {
+  return &sdram[paddr - SDRAM_LEFT];
+}
+
+constexpr word_t sdram_host_to_guest(uint8_t *haddr) {
+  return haddr - &sdram[0] + SDRAM_LEFT;
+}
+
 word_t do_mrom_read(void *addr);
 word_t do_flash_read(void *addr);
 uint32_t do_psram_read(void *addr);
 void do_psram_write(void *addr, uint32_t data);
+uint16_t do_sdram_read(void *addr);
+void do_sdram_write(void *addr, uint16_t data);
 
 #endif /* NPC_HOST_HPP_ */

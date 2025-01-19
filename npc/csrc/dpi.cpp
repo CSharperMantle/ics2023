@@ -109,6 +109,27 @@ void soc_dpi_psram_write(uint32_t addr, uint32_t data, uint8_t nybbles) {
   do_psram_write(psram_guest_to_host(addr_), data_);
 }
 
+void soc_dpi_sdram_write(
+    uint8_t wBank, uint16_t wRow, uint16_t wCol, uint8_t wMask, uint16_t wData) {
+  const paddr_t addr_ = static_cast<paddr_t>(static_cast<uint32_t>(wRow & 0x1FFF) << 12)
+                        | (static_cast<uint32_t>(wBank & 0x03) << 10)
+                        | (static_cast<uint32_t>(wCol & 0x3FF));
+#ifdef CONFIG_MTRACE
+  print_mtrace("sdram", addr_, false, wData, 0x3);
+#endif
+}
+
+void soc_dpi_sdram_read(
+    uint8_t rBank, uint16_t rRow, uint16_t rCol, uint8_t rMask, uint16_t *rData) {
+  const paddr_t addr_ = static_cast<paddr_t>(static_cast<uint32_t>(rRow & 0x1FFF) << 12)
+                        | (static_cast<uint32_t>(rBank & 0x03) << 10)
+                        | (static_cast<uint32_t>(rCol & 0x3FF));
+#ifdef CONFIG_MTRACE
+  print_mtrace("sdram", addr_, true, 0, 0x3);
+#endif
+  *rData = 0;
+}
+
 void mrom_read(int32_t addr, int32_t *data) {
   const paddr_t addr_ = static_cast<paddr_t>(addr) & ~0x3u;
   assert(in_mrom(addr_));
