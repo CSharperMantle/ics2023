@@ -5,6 +5,7 @@ MEMORY {
   mrom  (r x) : ORIGIN = 0x20000000, LENGTH = 4K
   flash (rwx) : ORIGIN = 0x30000000, LENGTH = 16M
   psram (rwx) : ORIGIN = 0x80000000, LENGTH = 4M
+  sdram (rwx) : ORIGIN = 0xa0000000, LENGTH = 32M
 }
 
 SECTIONS {
@@ -44,7 +45,7 @@ SECTIONS {
     . = ALIGN(4);
     PROVIDE(etext = .);
     _etext = .;
-  } > psram AT> flash
+  } > sdram AT> flash
   _text_load = LOADADDR(.text);
   _etext_load = _text_load + SIZEOF(.text);
 
@@ -90,6 +91,7 @@ SECTIONS {
 
   . = ALIGN(8);
   _heap_start = .;
+  _heap_end = _psram_end;
 
   .stack (NOLOAD) : ALIGN(8) {
     _stack_top = .;

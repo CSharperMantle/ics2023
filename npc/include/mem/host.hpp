@@ -61,11 +61,11 @@ constexpr word_t psram_host_to_guest(uint8_t *haddr) {
 }
 
 constexpr void *sdram_guest_to_host(word_t paddr) {
-  return &sdram[paddr * 2];
+  return &sdram[paddr];
 }
 
 constexpr word_t sdram_host_to_guest(uint8_t *haddr) {
-  return (haddr - &sdram[0]) / 2;
+  return haddr - &sdram[0];
 }
 
 word_t do_mrom_read(void *addr);

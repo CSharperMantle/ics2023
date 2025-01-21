@@ -109,16 +109,12 @@ void soc_dpi_psram_write(uint32_t addr, uint32_t data, uint8_t nybbles) {
   do_psram_write(psram_guest_to_host(addr_), data_);
 }
 
-void soc_dpi_sdram_write(
-    uint8_t wBank, uint16_t wRow, uint16_t wCol, uint8_t wMask, uint16_t wData) {
-  const paddr_t addr_ = static_cast<paddr_t>(static_cast<uint32_t>(wRow & 0x1FFF) << 12)
-                        | (static_cast<uint32_t>(wBank & 0x03) << 10)
-                        | (static_cast<uint32_t>(wCol & 0x3FF));
+void soc_dpi_sdram_write(uint32_t wAddr, uint8_t wMask, uint16_t wData) {
 #ifdef CONFIG_MTRACE
-  print_mtrace("sdram", addr_, false, wData, wMask);
+  print_mtrace("sdram", wAddr, false, wData, wMask);
 #endif
-  void *const host_addr = sdram_guest_to_host(addr_);
-  const uint16_t orig = do_sdram_read(sdram_guest_to_host(addr_));
+  void *const host_addr = sdram_guest_to_host(wAddr);
+  const uint16_t orig = do_sdram_read(sdram_guest_to_host(wAddr));
   switch (wMask) {
     case 0b01: do_sdram_write(host_addr, (orig & 0xff00) | (wData & 0x00ff)); break;
     case 0b10: do_sdram_write(host_addr, (orig & 0x00ff) | (wData & 0xff00)); break;
@@ -128,13 +124,10 @@ void soc_dpi_sdram_write(
   }
 }
 
-uint16_t soc_dpi_sdram_read(uint8_t rBank, uint16_t rRow, uint16_t rCol, uint8_t rMask) {
-  const paddr_t addr_ = static_cast<paddr_t>(static_cast<uint32_t>(rRow & 0x1FFF) << 12)
-                        | (static_cast<uint32_t>(rBank & 0x03) << 10)
-                        | (static_cast<uint32_t>(rCol & 0x3FF));
-  const uint16_t data = do_sdram_read(sdram_guest_to_host(addr_));
+uint16_t soc_dpi_sdram_read(uint32_t rAddr, uint8_t rMask) {
+  const uint16_t data = do_sdram_read(sdram_guest_to_host(rAddr));
 #ifdef CONFIG_MTRACE
-  print_mtrace("sdram", addr_, true, data, rMask & 0b11);
+  print_mtrace("sdram", rAddr, true, data, rMask & 0b11);
 #endif
   return data;
 }

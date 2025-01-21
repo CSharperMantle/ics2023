@@ -8,10 +8,10 @@
 #include <klib.h>
 
 extern char _heap_start;
+extern char _heap_end;
 int main(const char *args);
 
-extern char _psram_end;
-Area heap = RANGE(&_heap_start, &_psram_end);
+Area heap = RANGE(&_heap_start, &_heap_end);
 
 #ifndef MAINARGS
 #error no mainargs
