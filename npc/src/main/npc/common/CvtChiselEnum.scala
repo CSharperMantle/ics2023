@@ -5,7 +5,7 @@ import chisel3.util._
 
 abstract trait CvtChiselEnum extends ChiselEnum {
   implicit class CvtValueToType(v: Type) {
-    def U: UInt = v.litValue.U(getWidth.W)
+    def U: UInt = v.asUInt
 
     def BP: BitPat = BitPat(v.U)
   }

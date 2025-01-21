@@ -36,7 +36,7 @@ extern uint8_t sdram[SDRAM_SIZE];
 
 extern const std::array<std::tuple<const char *, word_t, size_t>, 5> REF_MEM_BACKED_AREAS;
 
-constexpr void *mrom_guest_to_host(word_t paddr) {
+static constexpr void *mrom_guest_to_host(word_t paddr) {
   return &mrom[paddr - MROM_LEFT];
 }
 
@@ -61,11 +61,11 @@ constexpr word_t psram_host_to_guest(uint8_t *haddr) {
 }
 
 constexpr void *sdram_guest_to_host(word_t paddr) {
-  return &sdram[paddr - SDRAM_LEFT];
+  return &sdram[paddr * 2];
 }
 
 constexpr word_t sdram_host_to_guest(uint8_t *haddr) {
-  return haddr - &sdram[0] + SDRAM_LEFT;
+  return (haddr - &sdram[0]) / 2;
 }
 
 word_t do_mrom_read(void *addr);

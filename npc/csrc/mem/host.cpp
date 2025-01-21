@@ -40,5 +40,5 @@ uint16_t do_sdram_read(void *addr) {
 }
 
 void do_sdram_write(void *addr, uint16_t data) {
-  *reinterpret_cast<uint16_t *>(addr) = data;
+  *reinterpret_cast<uint32_t *>(addr) = data;
 }
