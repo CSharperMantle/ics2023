@@ -95,7 +95,7 @@ wave:
 
 sta: $(VSRCS)
 	make -C $(YOSYS_STA_HOME) sta DESIGN=$(STUID) SDC_FILE=$(abspath $(SDC_FILE)) \
-		RTL_FILES=$(VSRCS) CLK_FREQ_MHZ=100
+		RTL_FILES=$(VSRCS) CLK_FREQ_MHZ=400
 
 all: default
 

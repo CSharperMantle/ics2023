@@ -25,15 +25,17 @@ class Clint extends Module {
 
   private val regs = RegInit(VecInit(Seq.fill(Regs.all.length - 1)(0.U(64.W))))
 
-  private val regDecTable = TruthTable(
-    Seq(
-      "b00000010_00000000_00000000_00000000".BP -> MsipIdx.BP,
-      "b00000010_00000000_01000000_00000?00".BP -> MtimecmpIdx.BP,
-      "b00000010_00000000_10111111_11111?00".BP -> MtimeIdx.BP
-    ),
-    UnkIdx.BP
+  private val rRegIdx = decoder(
+    io.rReq.bits.addr,
+    TruthTable(
+      Seq(
+        "b00000010_00000000_00000000_00000000".BP -> MsipIdx.BP,
+        "b00000010_00000000_01000000_00000?00".BP -> MtimecmpIdx.BP,
+        "b00000010_00000000_10111111_11111?00".BP -> MtimeIdx.BP
+      ),
+      UnkIdx.BP
+    )
   )
-  private val rRegIdx = decoder(io.rReq.bits.addr, regDecTable)
 
   private val rAddr = RegEnable(io.rReq.bits.addr, 0.U, io.rReq.valid)
 
@@ -57,7 +59,7 @@ class Clint extends Module {
   io.rReq.ready := io.rReq.valid
 
   io.rResp.bits.data  := Mux(rRegIdx === UnkIdx.U, 0.U, regData)
-  io.rResp.bits.rResp := Mux(rRegIdx === UnkIdx.U, RResp.DecErr.U, RResp.Okay.U)
+  io.rResp.bits.rResp := Mux(rRegIdx === UnkIdx.U, RResp.DecErr, RResp.Okay)
   io.rResp.valid      := y === S_WaitReady
 
   regs(MtimeIdx.U) := regs(MtimeIdx.U) + 1.U

@@ -110,19 +110,21 @@ class Lsu extends Module {
    *         ++
    *          +
    */
-  private val alignBadTable = TruthTable(
-    Seq(
-      "b00".BP ## MemWidth.LenB.BP -> 1.N,
-      "b00".BP ## MemWidth.LenH.BP -> 1.N,
-      "b00".BP ## MemWidth.LenW.BP -> 1.N,
-      "b01".BP ## MemWidth.LenB.BP -> 1.N,
-      "b10".BP ## MemWidth.LenB.BP -> 1.N,
-      "b10".BP ## MemWidth.LenH.BP -> 1.N,
-      "b11".BP ## MemWidth.LenB.BP -> 1.N
-    ),
-    1.Y
-  )
-  private val alignBad = decoder(Cat(addr(1, 0), io.msgIn.bits.memWidth), alignBadTable) === 1.Y
+  private val alignBad = decoder(
+    Cat(addr(1, 0), io.msgIn.bits.memWidth),
+    TruthTable(
+      Seq(
+        "b00".BP ## MemWidth.LenB.BP,
+        "b00".BP ## MemWidth.LenH.BP,
+        "b00".BP ## MemWidth.LenW.BP,
+        "b01".BP ## MemWidth.LenB.BP,
+        "b10".BP ## MemWidth.LenB.BP,
+        "b10".BP ## MemWidth.LenH.BP,
+        "b11".BP ## MemWidth.LenB.BP
+      ).map((bp) => bp -> 1.N),
+      1.Y
+    )
+  ) === 1.Y
 
   private val wEn = io.msgIn.valid & memAction1H(2)
   private val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
@@ -143,7 +145,7 @@ class Lsu extends Module {
 
   private val sext = Module(new SExtender)
   sext.io.sextData := rDataShifted
-  sext.io.sextW    := io.msgIn.bits.memWidth
+  sext.io.sextW    := MemWidth(io.msgIn.bits.memWidth)
   sext.io.sextU    := memAction1H(1)
 
   private val wDataShifted = Mux1H(
@@ -185,39 +187,41 @@ class Lsu extends Module {
     val S_Wait4Next = Value
   }
   import State._
-
-  private val firstActionTable = TruthTable(
-    Seq(
-      "b0000".BP -> S_Wait4Next.BP,
-      "b1???".BP -> S_Wait4Next.BP,
-      "b0??1".BP -> S_Wait4Next.BP,
-      "b01?0".BP -> S_ReadReq.BP,
-      "b0010".BP -> S_WriteReq.BP
-    ),
-    S_Idle.BP
+  private val (firstAction, _) = State.safe(
+    decoder(
+      Cat(io.msgIn.bits.bad, rEn, wEn, alignBad),
+      TruthTable(
+        Seq(
+          "b0000".BP -> S_Wait4Next.BP,
+          "b1???".BP -> S_Wait4Next.BP,
+          "b0??1".BP -> S_Wait4Next.BP,
+          "b01?0".BP -> S_ReadReq.BP,
+          "b0010".BP -> S_WriteReq.BP
+        ),
+        S_Idle.BP
+      )
+    )
   )
-  private val firstAction = decoder(Cat(io.msgIn.bits.bad, rEn, wEn, alignBad), firstActionTable)
-
-  private val y = RegInit(S_Idle.U)
-  y := MuxLookup(y, S_Idle.U)(
+  private val y = RegInit(S_Idle)
+  y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle.U      -> Mux(io.msgIn.valid, firstAction, S_Idle.U),
-      S_ReadReq.U   -> Mux(io.rReq.ready, S_Read.U, S_ReadReq.U),
-      S_Read.U      -> Mux(io.rResp.valid, Mux(wEn, S_WriteReq.U, S_Wait4Next.U), S_Read.U),
-      S_WriteReq.U  -> Mux(io.wReq.ready, S_Write.U, S_WriteReq.U),
-      S_Write.U     -> Mux(io.wResp.valid, S_Wait4Next.U, S_Write.U),
-      S_Wait4Next.U -> Mux(io.msgOut.ready, S_Idle.U, S_Wait4Next.U)
+      S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
+      S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
+      S_Read      -> Mux(io.rResp.valid, Mux(wEn, S_WriteReq, S_Wait4Next), S_Read),
+      S_WriteReq  -> Mux(io.wReq.ready, S_Write, S_WriteReq),
+      S_Write     -> Mux(io.wResp.valid, S_Wait4Next, S_Write),
+      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
     )
   )
 
-  private val memRResp = RegEnable(io.rResp.bits.rResp, RResp.Okay.U, io.rResp.valid)
-  private val memWResp = RegEnable(io.wResp.bits.bResp, BResp.Okay.U, io.wResp.valid)
+  private val memRResp = RegEnable(io.rResp.bits.rResp, RResp.Okay, io.rResp.valid)
+  private val memWResp = RegEnable(io.wResp.bits.bResp, BResp.Okay, io.wResp.valid)
 
-  io.rReq.valid  := y === S_ReadReq.U
-  io.rResp.ready := io.rResp.valid & y === S_Wait4Next.U
+  io.rReq.valid  := y === S_ReadReq
+  io.rResp.ready := io.rResp.valid & y === S_Wait4Next
 
-  io.wReq.valid  := y === S_WriteReq.U
-  io.wResp.ready := io.wResp.valid & y === S_Wait4Next.U
+  io.wReq.valid  := y === S_WriteReq
+  io.wResp.ready := io.wResp.valid & y === S_Wait4Next
 
   io.msgOut.bits.pc       := io.msgIn.bits.pc
   io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel
@@ -230,8 +234,8 @@ class Lsu extends Module {
     memAction1H(memActionDec.bitBad) |
     ((rEn | wEn) & alignBad) |
     ((rEn | wEn) & memAlign1H(memAlignDec.bitBad)) |
-    (rEn & ~(memRResp === RResp.Okay.U)) |
-    (wEn & ~(memWResp === BResp.Okay.U))
+    (rEn & ~(memRResp === RResp.Okay)) |
+    (wEn & ~(memWResp === BResp.Okay))
 
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
   io.msgOut.bits.brTaken := io.msgIn.bits.brTaken
@@ -239,6 +243,6 @@ class Lsu extends Module {
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
 
-  io.msgIn.ready  := y === S_Wait4Next.U & io.msgOut.ready
-  io.msgOut.valid := y === S_Wait4Next.U
+  io.msgIn.ready  := y === S_Wait4Next & io.msgOut.ready
+  io.msgOut.valid := y === S_Wait4Next
 }

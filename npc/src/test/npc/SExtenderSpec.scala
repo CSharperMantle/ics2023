@@ -18,19 +18,19 @@ class SExtenderSpec extends AnyFlatSpec {
       dut.clock.step()
       dut.reset.poke(false)
 
-      dut.io.sextW.poke(LenB.U)
+      dut.io.sextW.poke(LenB)
       dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(8))
       dut.io.sextRes.expect(BigInt(-1).ontoZmod2pow(XLen))
       dut.io.sextData.poke(BigInt(1).ontoZmod2pow(8))
       dut.io.sextRes.expect(BigInt(1).ontoZmod2pow(XLen))
 
-      dut.io.sextW.poke(LenH.U)
+      dut.io.sextW.poke(LenH)
       dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(16))
       dut.io.sextRes.expect(BigInt(-1).ontoZmod2pow(XLen))
       dut.io.sextData.poke(BigInt(1).ontoZmod2pow(16))
       dut.io.sextRes.expect(BigInt(1).ontoZmod2pow(XLen))
 
-      dut.io.sextW.poke(LenW.U)
+      dut.io.sextW.poke(LenW)
       dut.io.sextData.poke(BigInt(-1).ontoZmod2pow(32))
       dut.io.sextRes.expect(BigInt(-1).ontoZmod2pow(XLen))
       dut.io.sextData.poke(BigInt(1).ontoZmod2pow(32))

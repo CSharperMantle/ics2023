@@ -90,7 +90,7 @@ class Exu extends Module {
 
   alu.io.s1      := srcA
   alu.io.s2      := srcB
-  alu.io.calcOp  := io.msgIn.bits.aluCalcOp
+  alu.io.calcOp  := AluCalcOp(io.msgIn.bits.aluCalcOp)
   alu.io.calcDir := io.msgIn.bits.aluCalcDir
   alu.io.brCond  := io.msgIn.bits.aluBrCond
 
@@ -99,7 +99,7 @@ class Exu extends Module {
 
   io.csrConn.s1      := srcA
   io.csrConn.csrAddr := io.msgIn.bits.imm(11, 0)
-  io.csrConn.csrOp   := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.csrOp, CsrOp.Unk.U)
+  io.csrConn.csrOp   := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.csrOp, CsrOp.Unk)
   io.csrConn.excpAdj := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
   io.csrConn.pc      := io.msgIn.bits.pc
 

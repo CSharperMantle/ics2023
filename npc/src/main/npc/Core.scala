@@ -57,7 +57,8 @@ class Core extends Module {
         )
       ),
       (req: MemReadReq) => req.addr,
-      (resp: MemReadResp) => resp.rResp
+      (resp: MemReadResp) => resp.rResp,
+      RResp.DecErr
     )
   )
   memRXbar.io.masterReq  <> readArb.io.slaveReq
@@ -80,7 +81,7 @@ class Core extends Module {
 
   io.master.rready    := outRResp.ready
   outRResp.valid      := io.master.rvalid
-  outRResp.bits.rResp := io.master.rresp
+  outRResp.bits.rResp := RResp(io.master.rresp)
   outRResp.bits.data  := io.master.rdata
   // rlast
   // rid
@@ -102,7 +103,8 @@ class Core extends Module {
         )
       ),
       (req: MemWriteReq) => req.wAddr,
-      (resp: MemWriteResp) => resp.bResp
+      (resp: MemWriteResp) => resp.bResp,
+      BResp.DecErr
     )
   )
   memWXbar.io.masterReq  <> lsu.io.wReq
@@ -122,7 +124,7 @@ class Core extends Module {
   io.master.wlast                     := memWXbar.io.slaveReq(0).valid
   io.master.bready                    := memWXbar.io.slaveResp(0).ready
   memWXbar.io.slaveResp(0).valid      := io.master.bvalid
-  memWXbar.io.slaveResp(0).bits.bResp := io.master.bresp
+  memWXbar.io.slaveResp(0).bits.bResp := BResp(io.master.bresp)
   // bid
 
   StageConnect(idu.io.msgIn, ifu.io.msgOut)

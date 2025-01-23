@@ -9,7 +9,7 @@ import npc._
 class SExtender extends Module {
   class Port extends Bundle {
     val sextU    = Input(Bool())
-    val sextW    = Input(UInt(MemWidth.W))
+    val sextW    = Input(MemWidth())
     val sextData = Input(UInt(XLen.W))
     val sextRes  = Output(UInt(XLen.W))
   }
@@ -24,22 +24,13 @@ class SExtender extends Module {
     if (XLen == 32) io.sextData
     else Cat(Fill(XLen - 32, Mux(io.sextU, 0.B, io.sextData(31))), io.sextData(31, 0))
   private val sextResD = io.sextData
-  private val sextWDec = Decoder1H(
+
+  io.sextRes := MuxLookup(io.sextW, 0.U)(
     Seq(
-      LenB.BP -> 0,
-      LenH.BP -> 1,
-      LenW.BP -> 2,
-      LenD.BP -> 3
-    )
-  )
-  private val sextW1H = sextWDec(io.sextW)
-  io.sextRes := Mux1H(
-    Seq(
-      sextW1H(0) -> sextResB,
-      sextW1H(1) -> sextResH,
-      sextW1H(2) -> sextResW,
-      sextW1H(3) -> sextResD,
-      sextW1H(4) -> 0.U
+      LenB -> sextResB,
+      LenH -> sextResH,
+      LenW -> sextResW,
+      LenD -> sextResD
     )
   )
 }

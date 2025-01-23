@@ -7,35 +7,35 @@ import common._
 import npc._
 
 object AxBurst extends CvtChiselEnum {
-  val Fixed    = Value
-  val Incr     = Value
-  val Wrap     = Value
-  val Reserved = Value
+  val Fixed    = Value(0x0.U)
+  val Incr     = Value(0x1.U)
+  val Wrap     = Value(0x2.U)
+  val Reserved = Value(0x3.U)
 }
 
 object AxSize extends CvtChiselEnum {
-  val Bytes1   = Value
-  val Bytes2   = Value
-  val Bytes4   = Value
-  val Bytes8   = Value
-  val Bytes16  = Value
-  val Bytes32  = Value
-  val Bytes64  = Value
-  val Bytes128 = Value
+  val Bytes1   = Value(0x0.U)
+  val Bytes2   = Value(0x1.U)
+  val Bytes4   = Value(0x2.U)
+  val Bytes8   = Value(0x3.U)
+  val Bytes16  = Value(0x4.U)
+  val Bytes32  = Value(0x5.U)
+  val Bytes64  = Value(0x6.U)
+  val Bytes128 = Value(0x7.U)
 }
 
 object BResp extends CvtChiselEnum {
-  val Okay   = Value
-  val ExOkay = Value
-  val SlvErr = Value
-  val DecErr = Value
+  val Okay   = Value(0x0.U)
+  val ExOkay = Value(0x1.U)
+  val SlvErr = Value(0x2.U)
+  val DecErr = Value(0x3.U)
 }
 
 object RResp extends CvtChiselEnum {
-  val Okay   = Value
-  val ExOkay = Value
-  val SlvErr = Value
-  val DecErr = Value
+  val Okay   = Value(0x0.U)
+  val ExOkay = Value(0x1.U)
+  val SlvErr = Value(0x2.U)
+  val DecErr = Value(0x3.U)
 }
 
 class Axi4MasterPort extends Bundle {

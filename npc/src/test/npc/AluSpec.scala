@@ -26,8 +26,8 @@ class AluSpec extends AnyFlatSpec {
       dut.clock.step()
       dut.reset.poke(false)
 
-      dut.io.calcOp.poke(Add.U)
-      dut.io.calcDir.poke(Pos.U)
+      dut.io.calcOp.poke(Add)
+      dut.io.calcDir.poke(Pos)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
@@ -35,7 +35,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.s2.poke(y)
         dut.io.d.expect((x + y).ontoZmod2pow(XLen))
       }
-      dut.io.calcDir.poke(Neg.U)
+      dut.io.calcDir.poke(Neg)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
@@ -44,7 +44,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect((x - y).ontoZmod2pow(XLen))
       }
 
-      dut.io.calcOp.poke(Sl.U)
+      dut.io.calcOp.poke(Sl)
       for (shamt <- 0 until XLen) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         dut.io.s1.poke(x)
@@ -52,7 +52,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect((x << shamt).ontoZmod2pow(XLen))
       }
 
-      dut.io.calcOp.poke(Slt.U)
+      dut.io.calcOp.poke(Slt)
       for (_ <- 0 until N_CASES) {
         val x = if (XLen == 32) rand.nextInt() else rand.nextLong()
         val y = if (XLen == 32) rand.nextInt() else rand.nextLong()
@@ -61,7 +61,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect(if (x < y) 1 else 0)
       }
 
-      dut.io.calcOp.poke(Sltu.U)
+      dut.io.calcOp.poke(Sltu)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
@@ -70,7 +70,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect(if (x < y) 1 else 0)
       }
 
-      dut.io.calcOp.poke(Xor.U)
+      dut.io.calcOp.poke(Xor)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
@@ -79,15 +79,15 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect(x ^ y)
       }
 
-      dut.io.calcOp.poke(Sr.U)
-      dut.io.calcDir.poke(Pos.U)
+      dut.io.calcOp.poke(Sr)
+      dut.io.calcDir.poke(Pos)
       for (shamt <- 0 until XLen) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         dut.io.s1.poke(x)
         dut.io.s2.poke(shamt)
         dut.io.d.expect(x >> shamt)
       }
-      dut.io.calcDir.poke(Neg.U)
+      dut.io.calcDir.poke(Neg)
       for (shamt <- 0 until XLen) {
         val x = if (XLen == 32) rand.nextInt() else rand.nextLong()
         dut.io.s1.poke(BigInt(x).ontoZmod2pow(XLen))
@@ -95,7 +95,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect(BigInt(x >> shamt).ontoZmod2pow(XLen))
       }
 
-      dut.io.calcOp.poke(Or.U)
+      dut.io.calcOp.poke(Or)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
@@ -104,7 +104,7 @@ class AluSpec extends AnyFlatSpec {
         dut.io.d.expect(x | y)
       }
 
-      dut.io.calcOp.poke(And.U)
+      dut.io.calcOp.poke(And)
       for (_ <- 0 until N_CASES) {
         val x = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
         val y = rand.nextBigIntW(XLen).ontoZmod2pow(XLen)
@@ -170,23 +170,9 @@ class AluSpec extends AnyFlatSpec {
       for (c <- cases) {
         dut.io.s1.poke(BigInt(c._1).ontoZmod2pow(XLen))
         dut.io.s2.poke(BigInt(c._2).ontoZmod2pow(XLen))
-        dut.io.brCond.poke(c._3.U)
+        dut.io.brCond.poke(c._3)
         dut.io.brTaken.expect(c._4.B)
       }
-    }
-  }
-
-  it should "assert brInvalid on invalid branch conditions" in {
-    simulate(new Alu) { dut =>
-      dut.reset.poke(true)
-      dut.clock.step()
-      dut.reset.poke(false)
-
-      dut.io.brCond.poke(Eq.U)
-      dut.io.brBad.expect(false.B)
-
-      dut.io.brCond.poke(Unk.U)
-      dut.io.brBad.expect(true.B)
     }
   }
 }

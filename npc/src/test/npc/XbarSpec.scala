@@ -25,7 +25,8 @@ class XbarSpec extends AnyFlatSpec {
           Seq("b100?".BP, "b1111".BP)
         ),
         (req: UInt) => req,
-        (resp: UInt) => resp
+        (resp: UInt) => resp,
+        "b11".U
       )
     ) { dut =>
       dut.reset.poke(true)
@@ -102,7 +103,8 @@ class XbarSpec extends AnyFlatSpec {
           Seq("b100?".BP, "b1111".BP)
         ),
         (req: UInt) => req,
-        (resp: UInt) => resp
+        (resp: UInt) => resp,
+        "b11".U
       )
     ) { dut =>
       dut.reset.poke(true)

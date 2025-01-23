@@ -20,7 +20,7 @@ object ImmFmt extends CvtChiselEnum {
 class ImmDec extends Module {
   class Port extends Bundle {
     val instr  = Input(UInt(32.W))
-    val immFmt = Input(UInt(ImmFmt.W))
+    val immFmt = Input(ImmFmt())
     val imm    = Output(UInt(XLen.W))
   }
   val io = IO(new Port)
@@ -53,30 +53,16 @@ class ImmDec extends Module {
     false.B
   )
 
-  private val dec = Decoder1H(
+  io.imm := MuxLookup(io.immFmt, 0.U)(
     Seq(
-      ImmR.BP    -> 0,
-      ImmI.BP    -> 1,
-      ImmIs.BP   -> 2,
-      ImmIcsr.BP -> 3,
-      ImmS.BP    -> 4,
-      ImmB.BP    -> 5,
-      ImmU.BP    -> 6,
-      ImmJ.BP    -> 7
-    )
-  )
-  private val immFmt1H = dec(io.immFmt)
-  io.imm := Mux1H(
-    Seq(
-      immFmt1H(0) -> immR,
-      immFmt1H(1) -> immI,
-      immFmt1H(2) -> immIs,
-      immFmt1H(3) -> immIcsr,
-      immFmt1H(4) -> immS,
-      immFmt1H(5) -> immB,
-      immFmt1H(6) -> immU,
-      immFmt1H(7) -> immJ,
-      immFmt1H(8) -> 0.U
+      ImmR    -> immR,
+      ImmI    -> immI,
+      ImmIs   -> immIs,
+      ImmIcsr -> immIcsr,
+      ImmS    -> immS,
+      ImmB    -> immB,
+      ImmU    -> immU,
+      ImmJ    -> immJ
     )
   )
 }

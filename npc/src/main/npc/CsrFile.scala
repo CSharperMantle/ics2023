@@ -65,7 +65,7 @@ object CsrOp extends CvtChiselEnum {
 
 class CsrFileConn extends Bundle {
   val csrAddr = Input(UInt(12.W))
-  val csrOp   = Input(UInt(CsrOp.W))
+  val csrOp   = Input(CsrOp())
   val s1      = Input(UInt(XLen.W))
   val excpAdj = Input(UInt(CsrExcpAdj.W))
   val pc      = Input(UInt(XLen.W))
@@ -85,15 +85,6 @@ class CsrFile extends Module {
   import BackedCsrIdx._
 
   private val csrs = RegInit(VecInit(Seq.fill(BackedCsrIdx.all.length)(0.U(XLen.W))))
-
-  private val csrOpDec = Decoder1H(
-    Seq(
-      Rw.BP -> 0,
-      Rs.BP -> 1,
-      Rc.BP -> 2
-    )
-  )
-  private val csrOp1H = csrOpDec(io.conn.csrOp)
 
   private val csrPropTable = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
@@ -163,12 +154,11 @@ class CsrFile extends Module {
   csrs(csrIdx) := Mux(
     csrIsConst,
     csrs(csrIdx),
-    Mux1H(
+    MuxLookup(io.conn.csrOp, csrVal)(
       Seq(
-        csrOp1H(0) -> io.conn.s1,
-        csrOp1H(1) -> (io.conn.s1 | csrVal),
-        csrOp1H(2) -> (~io.conn.s1 & csrVal),
-        csrOp1H(3) -> csrVal
+        Rw -> io.conn.s1,
+        Rs -> (io.conn.s1 | csrVal),
+        Rc -> (~io.conn.s1 & csrVal)
       )
     )
   )

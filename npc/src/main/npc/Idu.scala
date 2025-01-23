@@ -183,9 +183,9 @@ object AluCalcOpField extends DecodeField[InstrPat, UInt] {
   }
 }
 
-object AluCalcDirField extends DecodeField[InstrPat, UInt] {
+object AluCalcDirField extends DecodeField[InstrPat, AluCalcDir.Type] {
   override def name       = "aluCalcDir"
-  override def chiselType = UInt(AluCalcDir.W)
+  override def chiselType = AluCalcDir()
   override def genTable(pat: InstrPat): BitPat = {
     pat.funct7.rawString(1) match {
       case '0' => AluCalcDir.Pos.BP
@@ -195,9 +195,9 @@ object AluCalcDirField extends DecodeField[InstrPat, UInt] {
   }
 }
 
-object AluBrCondField extends DecodeField[InstrPat, UInt] {
+object AluBrCondField extends DecodeField[InstrPat, AluBrCond.Type] {
   override def name       = "aluBrCond"
-  override def chiselType = UInt(AluBrCond.W)
+  override def chiselType = AluBrCond()
   override def genTable(pat: InstrPat): BitPat = {
     pat.funct3.rawString match {
       case "000" => AluBrCond.Eq.BP
@@ -211,9 +211,9 @@ object AluBrCondField extends DecodeField[InstrPat, UInt] {
   }
 }
 
-object CsrOpField extends DecodeField[InstrPat, UInt] {
+object CsrOpField extends DecodeField[InstrPat, CsrOp.Type] {
   override def name       = "csrOp"
-  override def chiselType = UInt(CsrOp.W)
+  override def chiselType = CsrOp()
   override def genTable(pat: InstrPat): BitPat = {
     import CsrOp._
     if (pat.wbSel == WbSel.WbCsr.BP)
@@ -396,7 +396,7 @@ class Idu extends Module {
 
   private val immDec = Module(new ImmDec)
   immDec.io.instr  := io.msgIn.bits.instr
-  immDec.io.immFmt := res(ImmFmtField)
+  immDec.io.immFmt := ImmFmt(res(ImmFmtField))
 
   io.msgOut.bits.rs1Idx     := io.msgIn.bits.instr(19, 15)
   io.msgOut.bits.rs2Idx     := io.msgIn.bits.instr(24, 20)

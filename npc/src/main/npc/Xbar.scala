@@ -13,7 +13,7 @@ class MemReadReq(width: Width) extends Bundle {
 
 class MemReadResp(width: Width) extends Bundle {
   val data  = UInt(width)
-  val rResp = UInt(2.W)
+  val rResp = RResp()
 }
 
 class MemWriteReq(addrWidth: Width, dataWidth: Width) extends Bundle {
@@ -24,7 +24,7 @@ class MemWriteReq(addrWidth: Width, dataWidth: Width) extends Bundle {
 }
 
 class MemWriteResp extends Bundle {
-  val bResp = UInt(2.W)
+  val bResp = BResp()
 }
 
 class GenericArbiter[TReq <: Data, TResp <: Data](
@@ -89,12 +89,13 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
   io.chosen := arb.io.chosen
 }
 
-class Xbar[TReq <: Data, TResp <: Data](
-  private val req:      TReq,
-  private val resp:     TResp,
-  private val addrPats: Seq[Iterable[BitPat]],
-  private val selAddr:  TReq => UInt,
-  private val selResp:  TResp => UInt)
+class Xbar[TReqBundle <: Data, TRespBundle <: Data, TResp <: Data](
+  private val req:          TReqBundle,
+  private val resp:         TRespBundle,
+  private val addrPats:     Seq[Iterable[BitPat]],
+  private val selAddr:      TReqBundle => UInt,
+  private val selResp:      TRespBundle => TResp,
+  private val errorRespVal: TResp)
     extends Module {
   val n = addrPats.length
 
@@ -158,7 +159,7 @@ class Xbar[TReq <: Data, TResp <: Data](
   )
   selResp(io.masterResp.bits) := Mux1H(
     (0 until n).map(i => addrSel1H(i) -> selResp(io.slaveResp(i).bits)) ++ Seq(
-      addrBad -> BResp.DecErr.U
+      addrBad -> errorRespVal
     )
   )
   for ((slave, i) <- io.slaveResp.zipWithIndex) {
