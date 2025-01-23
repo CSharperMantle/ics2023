@@ -1,0 +1,105 @@
+package npc
+
+import chisel3._
+import chisel3.util._
+
+import common._
+import npc._
+
+class CacheLine(val addrWidth: Int, val indexWidth: Int, val offsetWidth: Int) extends Bundle {
+  val tagWidth = addrWidth - indexWidth - offsetWidth
+
+  val valid = Bool()
+  val tag   = UInt(tagWidth.W)
+  val data  = UInt((8 * BigInt(2).pow(offsetWidth)).toInt.W)
+  val rResp = RResp()
+}
+
+class Cache(val numLines: Int) extends Module {
+  require(isPow2(numLines))
+
+  class Port extends Bundle {
+    val req     = Flipped(Irrevocable(new MemReadReq(XLen.W)))
+    val resp    = Irrevocable(new MemReadResp(32.W))
+    val memReq  = Irrevocable(new MemReadReq(XLen.W))
+    val memResp = Flipped(Irrevocable(new MemReadResp(32.W)))
+  }
+
+  val io = IO(new Port)
+
+  private val readReq = RegEnable(io.req.bits, 0.U.asTypeOf(new MemReadReq(XLen.W)), io.req.valid)
+
+  private val lines = SRAM(numLines, new CacheLine(XLen, log2Up(numLines), 2), 1, 1, 0)
+
+  private val lineWire  = Wire(lines.dataType)
+  private val lineValid = Wire(Bool())
+
+  private val tag = Wire(UInt(lines.dataType.tagWidth.W))
+  tag := readReq.addr(XLen - 1, XLen - lines.dataType.tagWidth)
+
+  object State extends CvtChiselEnum {
+    val S_Idle         = Value
+    val S_Query        = Value
+    val S_Compare      = Value
+    val S_HitReply     = Value
+    val S_MissReq      = Value
+    val S_MissWaitResp = Value
+    val S_MissReply    = Value
+  }
+  import State._
+  private val y = RegInit(S_Idle)
+  y := MuxLookup(y, S_Idle)(
+    Seq(
+      S_Idle         -> Mux(io.req.valid, S_Query, S_Idle),
+      S_Query        -> S_Compare,
+      S_Compare      -> Mux(lineValid, S_HitReply, S_MissReq),
+      S_HitReply     -> Mux(io.resp.ready, S_Idle, S_HitReply),
+      S_MissReq      -> Mux(io.memReq.ready, S_MissWaitResp, S_MissReq),
+      S_MissWaitResp -> Mux(io.memResp.valid, S_MissReply, S_MissWaitResp),
+      S_MissReply    -> Mux(io.resp.ready, S_Idle, S_MissReply)
+    )
+  )
+
+  private val replaceLine = Wire(lines.dataType)
+  replaceLine.valid := true.B
+  replaceLine.tag   := tag
+  replaceLine.data  := io.memResp.bits.data
+  replaceLine.rResp := io.memResp.bits.rResp
+
+  lines.readPorts(0).enable := io.req.valid
+  lines.readPorts(0).address := io.req.bits.addr(
+    lines.dataType.indexWidth + lines.dataType.offsetWidth - 1,
+    lines.dataType.offsetWidth
+  )
+
+  private val line = RegInit(0.U.asTypeOf(lines.dataType))
+  line := MuxCase(
+    line,
+    Seq(
+      (y === S_Query)  -> lines.readPorts(0).data,
+      io.memResp.valid -> replaceLine
+    )
+  )
+
+  lineWire  := line
+  lineValid := line.valid & line.tag === tag
+
+  lines.writePorts(0).enable := io.memResp.valid
+  lines.writePorts(0).data   := replaceLine
+  lines.writePorts(0).address := readReq.addr(
+    lines.dataType.indexWidth + lines.dataType.offsetWidth - 1,
+    lines.dataType.offsetWidth
+  )
+
+  io.req.ready := y === S_Query
+
+  io.resp.valid      := y.isOneOf(S_HitReply, S_MissReply)
+  io.resp.bits.data  := line.data
+  io.resp.bits.rResp := line.rResp
+
+  io.memReq.valid     := y === S_MissReq
+  io.memReq.bits.addr := readReq.addr
+  io.memReq.bits.size := readReq.size
+
+  io.memResp.ready := y === S_MissReply
+}

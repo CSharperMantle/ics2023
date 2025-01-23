@@ -19,6 +19,7 @@ class Core extends Module {
   private val csr = Module(new CsrFile)
   private val gpr = Module(new GprFile)
 
+  private val icache   = Module(new Cache(16))
   private val ifu      = Module(new Ifu)
   private val idu      = Module(new Idu)
   private val exu      = Module(new Exu)
@@ -26,11 +27,14 @@ class Core extends Module {
   private val wbu      = Module(new Wbu)
   private val pcUpdate = Module(new PcUpdate)
 
+  icache.io.req  <> ifu.io.rReq
+  icache.io.resp <> ifu.io.rResp
+
   private val readArb = Module(
     new GenericArbiter(new MemReadReq(32.W), new MemReadResp(32.W), 2)
   )
-  readArb.io.masterReq(0)  <> ifu.io.rReq
-  readArb.io.masterResp(0) <> ifu.io.rResp
+  readArb.io.masterReq(0)  <> icache.io.memReq
+  readArb.io.masterResp(0) <> icache.io.memResp
   readArb.io.masterReq(1)  <> lsu.io.rReq
   readArb.io.masterResp(1) <> lsu.io.rResp
 
