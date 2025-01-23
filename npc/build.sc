@@ -32,7 +32,8 @@ object playground extends SbtModule with ScalafmtModule { m =>
       super.sources() ++ Seq(PathRef(millSourcePath / "test"))
     }
     override def ivyDeps = super.ivyDeps() ++ Agg(
-      ivy"org.scalatest::scalatest:3.2.19"
+      ivy"org.scalatest::scalatest:3.2.19",
+      ivy"edu.berkeley.cs::chiseltest:6.0.0"
     )
   }
 
