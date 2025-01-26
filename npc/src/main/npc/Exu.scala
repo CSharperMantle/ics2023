@@ -54,37 +54,19 @@ class Exu extends Module {
 
   private val alu = Module(new Alu)
 
-  private val srcASelDec = Decoder1H(
+  private val srcA = MuxLookup(io.msgIn.bits.srcASel, 0.U)(
     Seq(
-      SrcARs1.BP  -> 0,
-      SrcAPc.BP   -> 1,
-      SrcAR0.BP   -> 2,
-      SrcAZimm.BP -> 3
-    )
-  )
-  private val srcASel1H = srcASelDec(io.msgIn.bits.srcASel)
-  private val srcA = Mux1H(
-    Seq(
-      srcASel1H(0) -> io.gprRead.rs1,
-      srcASel1H(1) -> io.msgIn.bits.pc,
-      srcASel1H(2) -> 0.U,
-      srcASel1H(3) -> Cat(Fill(XLen - 5, false.B), io.msgIn.bits.rs1Idx),
-      srcASel1H(4) -> 0.U
+      SrcARs1  -> io.gprRead.rs1,
+      SrcAPc   -> io.msgIn.bits.pc,
+      SrcAR0   -> 0.U,
+      SrcAZimm -> Cat(Fill(XLen - 5, false.B), io.msgIn.bits.rs1Idx)
     )
   )
 
-  private val srcBSelDec = Decoder1H(
+  private val srcB = MuxLookup(io.msgIn.bits.srcBSel, 0.U)(
     Seq(
-      SrcBRs2.BP -> 0,
-      SrcBImm.BP -> 1
-    )
-  )
-  private val srcBSel1H = srcBSelDec(io.msgIn.bits.srcBSel)
-  private val srcB = Mux1H(
-    Seq(
-      srcBSel1H(0) -> io.gprRead.rs2,
-      srcBSel1H(1) -> io.msgIn.bits.imm,
-      srcBSel1H(2) -> 0.U
+      SrcBRs2 -> io.gprRead.rs2,
+      SrcBImm -> io.msgIn.bits.imm
     )
   )
 
@@ -100,16 +82,14 @@ class Exu extends Module {
   io.csrConn.s1      := srcA
   io.csrConn.csrAddr := io.msgIn.bits.imm(11, 0)
   io.csrConn.csrOp   := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.csrOp, CsrOp.Unk)
-  io.csrConn.excpAdj := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone.U)
+  io.csrConn.excpAdj := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone)
   io.csrConn.pc      := io.msgIn.bits.pc
 
   io.msgOut.bits.memAction := io.msgIn.bits.memAction
   io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
   io.msgOut.bits.d         := alu.io.d
   io.msgOut.bits.rs2       := io.gprRead.rs2
-  io.msgOut.bits.bad := io.msgIn.bits.bad |
-    srcASel1H(srcASelDec.bitBad) |
-    srcBSel1H(srcBSelDec.bitBad)
+  io.msgOut.bits.bad       := io.msgIn.bits.bad
 
   io.msgOut.bits.pc      := io.msgIn.bits.pc
   io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn

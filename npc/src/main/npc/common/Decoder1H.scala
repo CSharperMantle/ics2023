@@ -11,12 +11,11 @@ class Decoder1H(val cases: Seq[(BitPat, Int)]) {
     TruthTable(
       cases.map {
         case (pat, idx) => {
-          val idx1HSuf = if (idx > 0) (1.Y ## idx.N) else 1.Y
-          pat -> (if (cases.length - idx > 0) ((cases.length - idx).N ## idx1HSuf)
-                  else idx1HSuf)
+          val idx1HSuf = if (idx > 0) (1.W.Y ## idx.W.N) else 1.W.Y
+          pat -> (if (cases.length - idx > 0) ((cases.length - idx).W.N ## idx1HSuf) else idx1HSuf)
         }
       },
-      1.Y ## cases.length.N
+      1.W.Y ## cases.length.W.N
     )
   }
 
@@ -36,14 +35,14 @@ class MultiDecoder1H(val cases: Seq[(Iterable[BitPat], Int)]) {
     TruthTable(
       cases.flatMap {
         case (patIter, idx) => {
-          val idx1HSuf = if (idx > 0) (1.Y ## idx.N) else 1.Y
-          val idx1H =
-            (if (cases.length - idx > 0) ((cases.length - idx).N ## idx1HSuf)
-             else idx1HSuf)
-          patIter.map((pat) => pat -> idx1H)
+          val idx1HSuf = if (idx > 0) (1.W.Y ## idx.W.N) else 1.W.Y
+          patIter.map((pat) =>
+            pat -> (if (cases.length - idx > 0) ((cases.length - idx).W.N ## idx1HSuf)
+                    else idx1HSuf)
+          )
         }
       },
-      1.Y ## cases.length.N
+      1.W.Y ## cases.length.W.N
     )
   }
 

@@ -42,22 +42,12 @@ class Wbu extends Module {
   private val dataMem  = io.msgIn.bits.memRData
   private val dataCsr  = io.msgIn.bits.csrVal
 
-  private val wbSelDec = Decoder1H(
+  private val wbData = MuxLookup(io.msgIn.bits.wbSel, 0.U)(
     Seq(
-      WbSel.WbAlu.BP  -> 0,
-      WbSel.WbSnpc.BP -> 1,
-      WbSel.WbMem.BP  -> 2,
-      WbSel.WbCsr.BP  -> 3
-    )
-  )
-  private val wbSel1H = wbSelDec(io.msgIn.bits.wbSel)
-  private val wbData = Mux1H(
-    Seq(
-      wbSel1H(0) -> dataAlu,
-      wbSel1H(1) -> dataSnpc,
-      wbSel1H(2) -> dataMem,
-      wbSel1H(3) -> dataCsr,
-      wbSel1H(4) -> 0.U
+      WbSel.WbAlu  -> dataAlu,
+      WbSel.WbSnpc -> dataSnpc,
+      WbSel.WbMem  -> dataMem,
+      WbSel.WbCsr  -> dataCsr
     )
   )
 
@@ -72,7 +62,7 @@ class Wbu extends Module {
   io.msgOut.bits.d       := io.msgIn.bits.d
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
-  io.msgOut.bits.bad     := io.msgIn.bits.bad | (io.msgIn.bits.wbEn & wbSel1H(wbSelDec.bitBad))
+  io.msgOut.bits.bad     := io.msgIn.bits.bad
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

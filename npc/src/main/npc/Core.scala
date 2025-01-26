@@ -146,7 +146,7 @@ class Core extends Module {
   dpi.io.pc          := pcUpdate.io.msgOut.bits.pc
   dpi.io.ebreak      := idu.io.break
   dpi.io.instr       := ifu.io.msgOut.bits.instr
-  dpi.io.memEn       := idu.io.msgOut.bits.memAction =/= MemAction.MemNone.U
+  dpi.io.memEn       := idu.io.msgOut.bits.memAction =/= MemAction.MemNone
   dpi.io.rwAddr      := exu.io.msgOut.bits.d
   dpi.io.bad         := pcUpdate.io.msgOut.bits.bad
   dpi.io.ifuInValid  := ifu.io.instrStale

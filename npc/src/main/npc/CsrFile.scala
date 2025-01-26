@@ -26,9 +26,9 @@ case class CsrPropPattern(
   override def bitPat = addr
 }
 
-object CsrPropIdxField extends DecodeField[CsrPropPattern, UInt] {
+object CsrPropIdxField extends DecodeField[CsrPropPattern, BackedCsrIdx.Type] {
   override def name       = "idx"
-  override def chiselType = UInt(BackedCsrIdx.W)
+  override def chiselType = BackedCsrIdx()
   override def genTable(op: CsrPropPattern): BitPat = op.idx
 }
 
@@ -67,7 +67,7 @@ class CsrFileConn extends Bundle {
   val csrAddr = Input(UInt(12.W))
   val csrOp   = Input(CsrOp())
   val s1      = Input(UInt(XLen.W))
-  val excpAdj = Input(UInt(CsrExcpAdj.W))
+  val excpAdj = Input(CsrExcpAdj())
   val pc      = Input(UInt(XLen.W))
   val csrVal  = Output(UInt(XLen.W))
   val mepc    = Output(UInt(XLen.W))
@@ -112,20 +112,15 @@ class CsrFile extends Module {
   private val csrIdx     = csrPropBundle(CsrPropIdxField)
   private val csrIsConst = csrPropBundle(CsrPropIsConstField)
 
-  private val csrVal = Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(csrIdx))
+  private val csrVal = Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(csrIdx.U))
   io.conn.csrVal := csrVal
 
-  private val excpAdjDec = Decoder1H(
-    Seq(
-      ExcpAdjNone.BP  -> 0,
-      ExcpAdjEcall.BP -> 1,
-      ExcpAdjMret.BP  -> 2
-    )
+  csrs(McauseIdx.U) := Mux(
+    io.conn.excpAdj === ExcpAdjEcall,
+    ExcpCode.MEnvCall.U(XLen.W),
+    csrs(McauseIdx.U)
   )
-  private val excpAdj1H = excpAdjDec(io.conn.excpAdj)
-
-  csrs(McauseIdx.U) := Mux(excpAdj1H(1), ExcpCode.MEnvCall.U(XLen.W), csrs(McauseIdx.U))
-  csrs(MepcIdx.U)   := Mux(excpAdj1H(1), io.conn.pc, csrs(MepcIdx.U))
+  csrs(MepcIdx.U) := Mux(io.conn.excpAdj === ExcpAdjEcall, io.conn.pc, csrs(MepcIdx.U))
 
   private val mstatus = csrs(MstatusIdx.U)
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
@@ -136,12 +131,11 @@ class CsrFile extends Module {
   csrs(MstatusIdx.U) := Mux(
     reset.asBool,
     InitMstatusVal.U,
-    Mux1H(
+    MuxLookup(io.conn.excpAdj, csrs(MstatusIdx.U))(
       Seq(
-        excpAdj1H(0) -> csrs(MstatusIdx.U),
-        excpAdj1H(1) -> mstatusAdjEcall,
-        excpAdj1H(2) -> mstatusAdjMret,
-        excpAdj1H(3) -> csrs(MstatusIdx.U)
+        ExcpAdjNone  -> csrs(MstatusIdx.U),
+        ExcpAdjEcall -> mstatusAdjEcall,
+        ExcpAdjMret  -> mstatusAdjMret
       )
     )
   )
@@ -151,9 +145,9 @@ class CsrFile extends Module {
 
   // Other writes
 
-  csrs(csrIdx) := Mux(
+  csrs(csrIdx.U) := Mux(
     csrIsConst,
-    csrs(csrIdx),
+    csrs(csrIdx.U),
     MuxLookup(io.conn.csrOp, csrVal)(
       Seq(
         Rw -> io.conn.s1,

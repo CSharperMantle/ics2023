@@ -54,50 +54,20 @@ class Lsu extends Module {
   private val addr  = io.msgIn.bits.d
   private val wData = io.msgIn.bits.rs2
 
-  private val memActionDec = Decoder1H(
+  private val memMask = MuxLookup(io.msgIn.bits.memWidth, 0.U)(
     Seq(
-      MemAction.MemRd.BP   -> 0,
-      MemAction.MemRdu.BP  -> 1,
-      MemAction.MemWt.BP   -> 2,
-      MemAction.MemNone.BP -> 3
+      MemWidth.LenB -> "b00000001".U(8.W),
+      MemWidth.LenH -> "b00000011".U(8.W),
+      MemWidth.LenW -> "b00001111".U(8.W)
     )
   )
-  private val memAction1H = memActionDec(io.msgIn.bits.memAction)
-
-  private val memWidthDec = Decoder1H(
+  private val memSize = MuxLookup(io.msgIn.bits.memWidth, AxSize.Bytes1.U)(
     Seq(
-      MemWidth.LenB.BP -> 0,
-      MemWidth.LenH.BP -> 1,
-      MemWidth.LenW.BP -> 2
+      MemWidth.LenB -> AxSize.Bytes1.U,
+      MemWidth.LenH -> AxSize.Bytes2.U,
+      MemWidth.LenW -> AxSize.Bytes4.U
     )
   )
-  private val memWidth1H = memWidthDec(io.msgIn.bits.memWidth)
-  private val memMask = Mux1H(
-    Seq(
-      memWidth1H(0) -> "b00000001".U(8.W),
-      memWidth1H(1) -> "b00000011".U(8.W),
-      memWidth1H(2) -> "b00001111".U(8.W),
-      memWidth1H(3) -> 0.U(8.W)
-    )
-  )
-  private val memSize = Mux1H(
-    Seq(
-      memWidth1H(0) -> AxSize.Bytes1.U,
-      memWidth1H(1) -> AxSize.Bytes2.U,
-      memWidth1H(2) -> AxSize.Bytes4.U,
-      memWidth1H(3) -> AxSize.Bytes1.U
-    )
-  )
-
-  private val memAlignDec = Decoder1H(
-    Seq(
-      "b00".BP -> 0,
-      "b01".BP -> 1,
-      "b10".BP -> 2,
-      "b11".BP -> 3
-    )
-  )
-  private val memAlign1H = memAlignDec(addr(1, 0))
 
   /*
    * Properly aligned access:
@@ -111,7 +81,7 @@ class Lsu extends Module {
    *          +
    */
   private val alignBad = decoder(
-    Cat(addr(1, 0), io.msgIn.bits.memWidth),
+    Cat(addr(1, 0), io.msgIn.bits.memWidth.U),
     TruthTable(
       Seq(
         "b00".BP ## MemWidth.LenB.BP,
@@ -121,53 +91,51 @@ class Lsu extends Module {
         "b10".BP ## MemWidth.LenB.BP,
         "b10".BP ## MemWidth.LenH.BP,
         "b11".BP ## MemWidth.LenB.BP
-      ).map((bp) => bp -> 1.N),
-      1.Y
+      ).map((bp) => bp -> 1.W.N),
+      1.W.Y
     )
-  ) === 1.Y
+  ) === 1.W.Y
 
-  private val wEn = io.msgIn.valid & memAction1H(2)
-  private val rEn = io.msgIn.valid & (memAction1H(0) | memAction1H(1))
+  private val wEn = io.msgIn.valid & io.msgIn.bits.memAction === MemAction.MemWt
+  private val rEn =
+    io.msgIn.valid & io.msgIn.bits.memAction.isOneOf(MemAction.MemRd, MemAction.MemRdu)
 
   io.rReq.bits.addr := addr
   io.rReq.bits.size := memSize
   private val rData = RegEnable(io.rResp.bits.data, io.rResp.valid)
 
-  private val rDataShifted = Mux1H(
+  private val rDataShifted = MuxLookup(addr(1, 0), 0.U)(
     Seq(
-      memAlign1H(0) -> rData,
-      memAlign1H(1) -> Cat(Fill(8, 0.B), rData(XLen - 1, 8)),
-      memAlign1H(2) -> Cat(Fill(16, 0.B), rData(XLen - 1, 16)),
-      memAlign1H(3) -> Cat(Fill(24, 0.B), rData(XLen - 1, 24)),
-      memAlign1H(4) -> 0.U
+      "b00".U -> rData,
+      "b01".U -> Cat(Fill(8, 0.B), rData(XLen - 1, 8)),
+      "b10".U -> Cat(Fill(16, 0.B), rData(XLen - 1, 16)),
+      "b11".U -> Cat(Fill(24, 0.B), rData(XLen - 1, 24))
     )
   )
 
   private val sext = Module(new SExtender)
   sext.io.sextData := rDataShifted
-  sext.io.sextW    := MemWidth(io.msgIn.bits.memWidth)
-  sext.io.sextU    := memAction1H(1)
+  sext.io.sextW    := io.msgIn.bits.memWidth
+  sext.io.sextU    := io.msgIn.bits.memAction === MemAction.MemRdu
 
-  private val wDataShifted = Mux1H(
+  private val wDataShifted = MuxLookup(addr(1, 0), 0.U)(
     Seq(
-      memAlign1H(0) -> wData,
-      memAlign1H(1) -> Cat(wData(XLen - 9, 0), Fill(8, 0.B)),
-      memAlign1H(2) -> Cat(wData(XLen - 17, 0), Fill(16, 0.B)),
-      memAlign1H(3) -> Cat(wData(XLen - 25, 0), Fill(24, 0.B)),
-      memAlign1H(4) -> 0.U
+      "b00".U -> wData,
+      "b01".U -> Cat(wData(XLen - 9, 0), Fill(8, 0.B)),
+      "b10".U -> Cat(wData(XLen - 17, 0), Fill(16, 0.B)),
+      "b11".U -> Cat(wData(XLen - 25, 0), Fill(24, 0.B))
     )
   )
   io.wReq.bits.wData := wDataShifted
   io.wReq.bits.wAddr := addr
   io.wReq.bits.wSize := memSize
 
-  private val wMaskShifted = Mux1H(
+  private val wMaskShifted = MuxLookup(addr(1, 0), 0.U)(
     Seq(
-      memAlign1H(0) -> memMask,
-      memAlign1H(1) -> Cat(memMask(6, 0), Fill(1, 0.B)),
-      memAlign1H(2) -> Cat(memMask(5, 0), Fill(2, 0.B)),
-      memAlign1H(3) -> Cat(memMask(4, 0), Fill(3, 0.B)),
-      memAlign1H(4) -> 0.U
+      "b00".U -> memMask,
+      "b01".U -> Cat(memMask(6, 0), Fill(1, 0.B)),
+      "b10".U -> Cat(memMask(5, 0), Fill(2, 0.B)),
+      "b11".U -> Cat(memMask(4, 0), Fill(3, 0.B))
     )
   )
   io.wReq.bits.wMask := MuxCase(
@@ -231,9 +199,7 @@ class Lsu extends Module {
   io.msgOut.bits.rdIdx    := io.msgIn.bits.rdIdx
   io.msgOut.bits.wbEn     := io.msgIn.bits.wbEn
   io.msgOut.bits.bad := io.msgIn.bits.bad |
-    memAction1H(memActionDec.bitBad) |
     ((rEn | wEn) & alignBad) |
-    ((rEn | wEn) & memAlign1H(memAlignDec.bitBad)) |
     (rEn & ~(memRResp === RResp.Okay)) |
     (wEn & ~(memWResp === BResp.Okay))
 

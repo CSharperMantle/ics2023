@@ -18,7 +18,7 @@ object playground extends SbtModule with ScalafmtModule { m =>
     "-Xcheckinit"
   )
   override def sources = T.sources {
-    super.sources() ++ Seq(PathRef(millSourcePath / "main"))
+    super.sources() ++ Seq(PathRef(this.millSourcePath / "main"))
   }
   override def ivyDeps = Agg(
     ivy"org.chipsalliance::chisel:7.0.0-M2"
@@ -27,9 +27,9 @@ object playground extends SbtModule with ScalafmtModule { m =>
     ivy"org.chipsalliance:::chisel-plugin:7.0.0-M2"
   )
 
-  object test extends SbtModuleTests with TestModule.ScalaTest with ScalafmtModule {
+  object test extends SbtTests with TestModule.ScalaTest with ScalafmtModule {
     override def sources = T.sources {
-      super.sources() ++ Seq(PathRef(millSourcePath / "test"))
+      super.sources() ++ Seq(PathRef(this.millSourcePath / "test"))
     }
     override def ivyDeps = super.ivyDeps() ++ Agg(
       ivy"org.scalatest::scalatest:3.2.19",

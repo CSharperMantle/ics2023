@@ -6,10 +6,10 @@ import chisel3.util._
 import scala.util.Random
 
 object npc {
-  implicit class CvtIntToType(w: Int) {
-    def Y: BitPat = BitPat.Y(w)
-    def N: BitPat = BitPat.N(w)
-    def X: BitPat = BitPat.dontCare(w)
+  implicit class CvtWidthToType(w: Width) {
+    def Y: BitPat = BitPat.Y(w.get)
+    def N: BitPat = BitPat.N(w.get)
+    def X: BitPat = BitPat.dontCare(w.get)
   }
 
   implicit class CvtStringToType(s: String) {
