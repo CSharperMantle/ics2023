@@ -111,7 +111,7 @@ class Exu extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.msgIn.valid, S_RdReg, S_Idle),
+      S_Idle      -> Mux(io.msgIn.valid, Mux(io.msgIn.bits.bad, S_Wait4Next, S_RdReg), S_Idle),
       S_RdReg     -> Mux(io.gprRead.ready, S_Wait4Next, S_RdReg),
       S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
     )

@@ -54,19 +54,8 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
     (0 until n).map(i => i.asUInt -> io.masterResp(i).ready)
   )
 
-  private object State extends CvtChiselEnum {
-    val S_Idle  = Value
-    val S_Trans = Value
-  }
-  import State._
-  private val y = RegInit(S_Idle)
-  y := MuxLookup(y, S_Idle)(
-    Seq(
-      S_Idle  -> Mux(arb.io.out.valid, S_Trans, S_Idle),
-      S_Trans -> Mux(io.slaveResp.ready, S_Idle, S_Trans)
-    )
-  )
-  private val inTrans = y === S_Trans
+  private val inTrans = RegInit(false.B)
+  inTrans := Mux(arb.io.out.valid, true.B, Mux(io.slaveResp.ready, false.B, inTrans))
 
   // Wire requests and responses
   io.slaveReq.valid := MuxLookup(arb.io.chosen, 0.B)(
@@ -107,30 +96,17 @@ class Xbar[TReqBundle <: Data, TRespBundle <: Data, TResp <: Data](
   }
   val io = IO(new XbarIO)
 
-  private val addr = RegInit(0.U)
+  private val inTrans = RegInit(false.B)
+  inTrans := Mux(io.masterReq.valid, true.B, Mux(io.masterResp.ready, false.B, inTrans))
 
-  addr := Mux(io.masterReq.valid, selAddr(io.masterReq.bits), Mux(io.masterResp.ready, 0.U, addr))
+  private val addr = RegEnable(selAddr(io.masterReq.bits), 0.U, io.masterReq.valid)
 
   private val addrSelDec = MultiDecoder1H(addrPats.zipWithIndex)
-  private val addrSel1H  = addrSelDec(addr)
+  private val addrSel1H  = addrSelDec(Mux(io.masterReq.valid, selAddr(io.masterReq.bits), addr))
   private val addrBad    = addrSel1H(addrSelDec.bitBad)
 
-  private object State extends CvtChiselEnum {
-    val S_Idle  = Value
-    val S_Trans = Value
-  }
-  import State._
-  private val y = RegInit(S_Idle)
-  y := MuxLookup(y, S_Idle)(
-    Seq(
-      S_Idle  -> Mux(io.masterReq.valid, S_Trans, S_Idle),
-      S_Trans -> Mux(io.masterResp.ready, S_Idle, S_Trans)
-    )
-  )
-  private val inTrans = y === S_Trans
-
   for ((slave, i) <- io.slaveReq.zipWithIndex) {
-    slave.valid := Mux(addrSel1H(i), io.masterReq.valid, 0.B)
+    slave.valid := Mux(inTrans & addrSel1H(i), io.masterReq.valid, false.B)
     slave.bits  := io.masterReq.bits
   }
   io.masterReq.ready := Mux(
@@ -140,7 +116,7 @@ class Xbar[TReqBundle <: Data, TRespBundle <: Data, TResp <: Data](
         addrBad -> io.masterReq.valid
       )
     ),
-    0.B
+    false.B
   )
 
   io.masterResp.valid := Mux(
@@ -150,7 +126,7 @@ class Xbar[TReqBundle <: Data, TRespBundle <: Data, TResp <: Data](
         addrBad -> 1.B
       )
     ),
-    0.B
+    false.B
   )
   io.masterResp.bits := Mux1H(
     (0 until n).map(i => addrSel1H(i) -> io.slaveResp(i).bits) ++ Seq(

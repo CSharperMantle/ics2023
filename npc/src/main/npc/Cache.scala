@@ -27,15 +27,12 @@ class Cache(val numLines: Int) extends Module {
 
   val io = IO(new Port)
 
-  private val readReq = RegEnable(io.req.bits, 0.U.asTypeOf(new MemReadReq(XLen.W)), io.req.valid)
-
-  private val lines = SRAM(numLines, new CacheLine(XLen, log2Up(numLines), 2), 1, 1, 0)
+  private val lines = SRAM(numLines, new CacheLine(XLen, log2Up(numLines), 2), 0, 0, 1)
 
   private val lineWire  = Wire(lines.dataType)
   private val lineValid = Wire(Bool())
 
-  private val tag = Wire(UInt(lines.dataType.tagWidth.W))
-  tag := readReq.addr(XLen - 1, XLen - lines.dataType.tagWidth)
+  private val tag = io.req.bits.addr(XLen - 1, XLen - lines.dataType.tagWidth)
 
   object State extends CvtChiselEnum {
     val S_Idle         = Value
@@ -66,17 +63,11 @@ class Cache(val numLines: Int) extends Module {
   replaceLine.data  := io.memResp.bits.data
   replaceLine.rResp := io.memResp.bits.rResp
 
-  lines.readPorts(0).enable := io.req.valid
-  lines.readPorts(0).address := io.req.bits.addr(
-    lines.dataType.indexWidth + lines.dataType.offsetWidth - 1,
-    lines.dataType.offsetWidth
-  )
-
   private val line = RegInit(0.U.asTypeOf(lines.dataType))
   line := MuxCase(
     line,
     Seq(
-      (y === S_Query)  -> lines.readPorts(0).data,
+      (y === S_Query)  -> lines.readwritePorts(0).readData,
       io.memResp.valid -> replaceLine
     )
   )
@@ -84,9 +75,10 @@ class Cache(val numLines: Int) extends Module {
   lineWire  := line
   lineValid := line.valid & line.tag === tag
 
-  lines.writePorts(0).enable := io.memResp.valid
-  lines.writePorts(0).data   := replaceLine
-  lines.writePorts(0).address := readReq.addr(
+  lines.readwritePorts(0).enable    := io.req.valid | io.memResp.valid
+  lines.readwritePorts(0).isWrite   := io.memResp.valid
+  lines.readwritePorts(0).writeData := replaceLine
+  lines.readwritePorts(0).address := io.req.bits.addr(
     lines.dataType.indexWidth + lines.dataType.offsetWidth - 1,
     lines.dataType.offsetWidth
   )
@@ -98,8 +90,8 @@ class Cache(val numLines: Int) extends Module {
   io.resp.bits.rResp := line.rResp
 
   io.memReq.valid     := y === S_MissReq
-  io.memReq.bits.addr := readReq.addr
-  io.memReq.bits.size := readReq.size
+  io.memReq.bits.addr := io.req.bits.addr
+  io.memReq.bits.size := io.req.bits.size
 
   io.memResp.ready := y === S_MissReply
 }
