@@ -86,6 +86,9 @@ checkformat:
 clean:
 	-rm -rf $(BUILD_DIR)
 
+clean-all: clean
+	-rm -rf out/
+
 sim: $(BIN)
 	$(call git_commit, "sim RTL")
 	@$(BIN) $(MAINARGS)
@@ -99,6 +102,6 @@ sta: $(VSRCS)
 
 all: default
 
-.PHONY: default all test verilog help reformat checkformat clean sim wave sta
+.PHONY: default all test verilog help reformat checkformat clean clean-all sim wave sta
 
 -include ../Makefile

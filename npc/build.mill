@@ -9,7 +9,7 @@ import mill.scalalib._
 import mill.bsp._
 
 object playground extends SbtModule with ScalafmtModule { m =>
-  override def millSourcePath = os.pwd / "src"
+  override def millSourcePath = super.millSourcePath / os.up / "src"
   override def scalaVersion   = "2.13.14"
   override def scalacOptions = Seq(
     "-language:reflectiveCalls",
