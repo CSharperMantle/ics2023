@@ -51,7 +51,7 @@ extern void assert_fail_msg();
   do {                                                                                             \
     if (!(cond)) {                                                                                 \
       std::fflush(stdout);                                                                         \
-      std::fprintf(stderr, ANSI_FMT(format, ANSI_FG_RED) "\n", ##__VA_ARGS__);                     \
+      Error(ANSI_FMT(format, ANSI_FG_RED), ##__VA_ARGS__);                                         \
       assert_fail_msg();                                                                           \
       assert(cond);                                                                                \
     }                                                                                              \

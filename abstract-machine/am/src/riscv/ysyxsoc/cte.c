@@ -93,4 +93,5 @@ void iset(bool enable) {
   asm volatile("csrr %0, mstatus" : "=r"(mstatus.packed));
   mstatus.mie = enable;
   asm volatile("csrw mstatus, %0" : : "r"(mstatus.packed));
+  assert(ienabled() == enable);
 }

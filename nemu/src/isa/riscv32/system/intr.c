@@ -19,7 +19,17 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   /* Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
    */
+  const word_t vector = csr(CSR_IDX_MTVEC);
   CsrMstatus_t mstatus = {.packed = csr(CSR_IDX_MSTATUS)};
+#ifdef CONFIG_ETRACE
+  const CsrMcause_t mcause = {.packed = NO};
+  Log("%s " FMT_WORD "; mepc=" FMT_WORD "; mtvec=" FMT_WORD "; mstatus=" FMT_WORD,
+      mcause.intr ? "INTR" : "EXCP",
+      mcause.code,
+      epc,
+      vector,
+      mstatus.packed);
+#endif
   mstatus.mpie = mstatus.mie;
   mstatus.mie = 0;
   mstatus.mpp = cpu.priv;
@@ -27,15 +37,6 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   cpu.priv = PRIV_MODE_M;
   csr(CSR_IDX_MCAUSE) = NO;
   csr(CSR_IDX_MEPC) = epc;
-  const word_t vector = csr(CSR_IDX_MTVEC);
-#ifdef CONFIG_ETRACE
-  const CsrMcause_t mcause = {.packed = NO};
-  if (mcause.intr) {
-    Log("INTR " FMT_WORD "; mepc=" FMT_WORD, mcause.code, epc);
-  } else {
-    Log("EXCP " FMT_WORD "; mepc=" FMT_WORD, mcause.code, epc);
-  }
-#endif
   return vector;
 }
 

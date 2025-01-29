@@ -115,6 +115,9 @@ static void mret_adj_mstatus(void) {
   reg.mie = reg.mpie;
   reg.mpie = 1;
   cpu.priv = reg.mpp;
+#ifdef CONFIG_ETRACE
+  Log("MRET mstatus=" FMT_WORD "->" FMT_WORD, CSR(CSR_IDX_MSTATUS), reg.packed);
+#endif
   CSR(CSR_IDX_MSTATUS) = reg.packed;
 }
 
@@ -246,7 +249,7 @@ static int decode_exec(Decode *s) {
   // MEMORY ORDERING
   // Sync
   // fence
-  // fence.i
+  INSTPAT("0000000 00000 00000 001 00000 00011 11", fencei ,    I, ;);
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System

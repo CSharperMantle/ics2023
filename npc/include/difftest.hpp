@@ -9,8 +9,8 @@
 #include "verilation.hpp"
 
 struct DiffTest {
-  enum CopyDir { ToDut = 0, ToRef };
-  enum CsrIdx {
+  enum class CopyDir : bool { ToDut = 0, ToRef };
+  enum class CsrIdx : size_t {
     Satp = 0x180,
     Mstatus = 0x300,
     Mie = 0x304,
@@ -36,6 +36,7 @@ struct DiffTest {
 private:
   struct CpuState {
     word_t gpr[16];
+    word_t csr[4096];
     paddr_t pc;
     int priv;
     bool intr;
