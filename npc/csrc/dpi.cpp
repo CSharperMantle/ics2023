@@ -39,30 +39,34 @@ void soc_dpi_ebreak(void) {
   dut_dpi_state.ebreak = true;
 }
 
-void soc_dpi_report_state(bool retired,
-                          word_t pc,
+void soc_dpi_report_state(word_t pc,
+                          uint32_t instr,
+                          uint32_t icache_hit_count,
+                          uint32_t icache_miss_count,
                           uint16_t instr_cycles,
                           uint16_t ifu_cycles,
                           uint16_t idu_cycles,
                           uint16_t exu_cycles,
                           uint16_t lsu_cycles,
                           uint16_t wbu_cycles,
-                          uint32_t instr,
                           bool memEn,
                           word_t rwAddr,
-                          bool bad) {
-  dut_dpi_state.retired = retired;
+                          bool bad,
+                          bool retired) {
   dut_dpi_state.pc = pc;
-  dut_dpi_state.ctrs.total_cycles = instr_cycles;
-  dut_dpi_state.ctrs.ifu_cycles = ifu_cycles;
-  dut_dpi_state.ctrs.idu_cycles = idu_cycles;
-  dut_dpi_state.ctrs.exu_cycles = exu_cycles;
-  dut_dpi_state.ctrs.lsu_cycles = lsu_cycles;
-  dut_dpi_state.ctrs.wbu_cycles = wbu_cycles;
   dut_dpi_state.instr = instr;
+  dut_dpi_state.g_ctrs.icache_hit = icache_hit_count;
+  dut_dpi_state.g_ctrs.icache_miss = icache_miss_count;
+  dut_dpi_state.i_ctrs.total_cycles = instr_cycles;
+  dut_dpi_state.i_ctrs.ifu_cycles = ifu_cycles;
+  dut_dpi_state.i_ctrs.idu_cycles = idu_cycles;
+  dut_dpi_state.i_ctrs.exu_cycles = exu_cycles;
+  dut_dpi_state.i_ctrs.lsu_cycles = lsu_cycles;
+  dut_dpi_state.i_ctrs.wbu_cycles = wbu_cycles;
   dut_dpi_state.mem_en = memEn;
   dut_dpi_state.rw_addr = rwAddr;
   dut_dpi_state.bad = bad;
+  dut_dpi_state.retired = retired;
 }
 
 void soc_dpi_psram_read(int32_t addr, int32_t *data) {

@@ -35,23 +35,27 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  input                 exuOutValid,
        |  input                 lsuOutValid,
        |  input                 wbuOutValid,
+       |  input                 icacheHit,
+       |  input                 icacheMiss,
        |  input                 clock,
        |  input                 reset
        |);
        |`ifdef VERILATOR
        |  import "DPI-C" function void soc_dpi_ebreak();
-       |  import "DPI-C" function void soc_dpi_report_state(input           retired,
-       |                                                    input $xLenType pc,
+       |  import "DPI-C" function void soc_dpi_report_state(input $xLenType pc,
+       |                                                    input int       instr,
+       |                                                    input int       icache_hit_count,
+       |                                                    input int       icache_miss_count,
        |                                                    input shortint  instr_cycles,
        |                                                    input shortint  ifu_cycles,
        |                                                    input shortint  idu_cycles,
        |                                                    input shortint  exu_cycles,
        |                                                    input shortint  lsu_cycles,
        |                                                    input shortint  wbu_cycles,
-       |                                                    input int       instr,
        |                                                    input           memEn,
        |                                                    input $xLenType rwAddr,
-       |                                                    input           bad);
+       |                                                    input           bad,
+       |                                                    input           retired);
        |
        |  reg [15:0] instr_cycles;
        |  reg [15:0] ifu_cycles;
@@ -59,6 +63,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  reg [15:0] exu_cycles;
        |  reg [15:0] lsu_cycles;
        |  reg [15:0] wbu_cycles;
+       |  reg [31:0] icache_hit_count;
+       |  reg [31:0] icache_miss_count;
        |  always @(posedge clock) begin
        |    if (reset) begin
        |      instr_cycles <= 16'h0;
@@ -67,13 +73,17 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |      exu_cycles <= 16'h0;
        |      lsu_cycles <= 16'h0;
        |      wbu_cycles <= 16'h0;
+       |      icache_hit_count <= 32'h0;
+       |      icache_miss_count <= 32'h0;
        |    end else begin
-       |      instr_cycles <= retired ? 16'h0 : (instr_cycles + 16'h1);
-       |      ifu_cycles <= retired ? 16'h0 : (ifuOutValid ? ifu_cycles : (ifuInValid ? (ifu_cycles + 16'h1) : 16'h0));
-       |      idu_cycles <= retired ? 16'h0 : (iduOutValid ? idu_cycles : (iduInValid ? (idu_cycles + 16'h1) : 16'h0));
-       |      exu_cycles <= retired ? 16'h0 : (exuOutValid ? exu_cycles : (exuInValid ? (exu_cycles + 16'h1) : 16'h0));
-       |      lsu_cycles <= retired ? 16'h0 : (lsuOutValid ? lsu_cycles : (lsuInValid ? (lsu_cycles + 16'h1) : 16'h0));
-       |      wbu_cycles <= retired ? 16'h0 : (wbuOutValid ? wbu_cycles : (wbuInValid ? (wbu_cycles + 16'h1) : 16'h0));
+       |      instr_cycles <= retired ? 16'h0 : (instr_cycles + 1);
+       |      ifu_cycles <= retired ? 16'h0 : (ifuOutValid ? ifu_cycles : (ifuInValid ? (ifu_cycles + 1) : 0));
+       |      idu_cycles <= retired ? 16'h0 : (iduOutValid ? idu_cycles : (iduInValid ? (idu_cycles + 1) : 0));
+       |      exu_cycles <= retired ? 16'h0 : (exuOutValid ? exu_cycles : (exuInValid ? (exu_cycles + 1) : 0));
+       |      lsu_cycles <= retired ? 16'h0 : (lsuOutValid ? lsu_cycles : (lsuInValid ? (lsu_cycles + 1) : 0));
+       |      wbu_cycles <= retired ? 16'h0 : (wbuOutValid ? wbu_cycles : (wbuInValid ? (wbu_cycles + 1) : 0));
+       |      icache_hit_count <= icacheHit ? (icache_hit_count + 1) : icache_hit_count;
+       |      icache_miss_count <= icacheMiss ? (icache_miss_count + 1) : icache_miss_count;
        |    end
        |  end
        |
@@ -83,18 +93,20 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |        soc_dpi_ebreak();
        |      end
        |    end
-       |    soc_dpi_report_state(retired,
-       |                         pc,
+       |    soc_dpi_report_state(pc,
+       |                         instr,
+       |                         icache_hit_count,
+       |                         icache_miss_count,
        |                         instr_cycles,
        |                         ifu_cycles,
        |                         idu_cycles,
        |                         exu_cycles,
        |                         lsu_cycles,
        |                         wbu_cycles,
-       |                         instr,
        |                         memEn,
        |                         rwAddr,
-       |                         bad);
+       |                         bad,
+       |                         retired);
        |  end
        |`endif
        |endmodule
@@ -120,6 +132,8 @@ class DpiIO extends Bundle {
   val exuOutValid = Input(Bool())
   val lsuOutValid = Input(Bool())
   val wbuOutValid = Input(Bool())
+  val icacheHit   = Input(Bool())
+  val icacheMiss  = Input(Bool())
 }
 
 class Dpi extends Module {
@@ -143,6 +157,8 @@ class Dpi extends Module {
   backend.io.exuOutValid := io.exuOutValid
   backend.io.lsuOutValid := io.lsuOutValid
   backend.io.wbuOutValid := io.wbuOutValid
+  backend.io.icacheHit   := io.icacheHit
+  backend.io.icacheMiss  := io.icacheMiss
   backend.io.clock       := clock.asBool
   backend.io.reset       := reset.asBool
 }

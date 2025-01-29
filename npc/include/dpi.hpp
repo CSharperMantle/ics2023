@@ -14,12 +14,18 @@ struct InstrPerfCounters {
   uint16_t wbu_cycles;
 };
 
+struct GlobalPerfCounters {
+  uint32_t icache_hit;
+  uint32_t icache_miss;
+};
+
 struct DutDpiState {
   bool ebreak;
   bool bad;
   bool retired;
   bool mem_en;
-  InstrPerfCounters ctrs;
+  InstrPerfCounters i_ctrs;
+  GlobalPerfCounters g_ctrs;
   word_t pc;
   uint32_t instr;
   word_t rw_addr;

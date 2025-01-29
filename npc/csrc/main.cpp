@@ -97,13 +97,21 @@ static void print_iringbuf() {
 
 static void print_stats() {
   Log("# Instrs: %" PRIu64 "; # Cycles: %" PRIu64, n_instrs, n_cycles);
-  Log("estimated IPC: %.08lf", static_cast<double>(n_instrs) / static_cast<double>(n_cycles));
+  Log("Estimated IPC: %.08lf", static_cast<double>(n_instrs) / static_cast<double>(n_cycles));
   Log("Cycles composition:");
-  Log("\tifu: %.04lf", static_cast<double>(n_cycles_ifu) / static_cast<double>(n_cycles));
-  Log("\tidu: %.04lf", static_cast<double>(n_cycles_idu) / static_cast<double>(n_cycles));
-  Log("\texu: %.04lf", static_cast<double>(n_cycles_exu) / static_cast<double>(n_cycles));
-  Log("\tlsu: %.04lf", static_cast<double>(n_cycles_lsu) / static_cast<double>(n_cycles));
-  Log("\twbu: %.04lf", static_cast<double>(n_cycles_wbu) / static_cast<double>(n_cycles));
+  Log("  ifu: %.04lf", static_cast<double>(n_cycles_ifu) / static_cast<double>(n_cycles));
+  Log("  idu: %.04lf", static_cast<double>(n_cycles_idu) / static_cast<double>(n_cycles));
+  Log("  exu: %.04lf", static_cast<double>(n_cycles_exu) / static_cast<double>(n_cycles));
+  Log("  lsu: %.04lf", static_cast<double>(n_cycles_lsu) / static_cast<double>(n_cycles));
+  Log("  wbu: %.04lf", static_cast<double>(n_cycles_wbu) / static_cast<double>(n_cycles));
+  Log("Cache performance:");
+  Log("  icache:");
+  Log("    # Hits: %" PRIu32, dut_dpi_state.g_ctrs.icache_hit);
+  Log("    # Misses: %" PRIu32, dut_dpi_state.g_ctrs.icache_miss);
+  Log("    Hit rate (p): %.04lf",
+      static_cast<double>(dut_dpi_state.g_ctrs.icache_hit)
+          / static_cast<double>(dut_dpi_state.g_ctrs.icache_hit
+                                + dut_dpi_state.g_ctrs.icache_miss));
 }
 
 void assert_fail_msg() {
@@ -211,16 +219,16 @@ int main(int argc, char *argv[]) {
     difftest->step_ref(dut);
     difftest->check_regs(dut);
 
-    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.ctrs.total_cycles);
+    iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.i_ctrs.total_cycles);
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
 
     n_instrs++;
-    n_cycles += dut_dpi_state.ctrs.total_cycles;
-    n_cycles_ifu += dut_dpi_state.ctrs.ifu_cycles;
-    n_cycles_idu += dut_dpi_state.ctrs.idu_cycles;
-    n_cycles_exu += dut_dpi_state.ctrs.exu_cycles;
-    n_cycles_lsu += dut_dpi_state.ctrs.lsu_cycles;
-    n_cycles_wbu += dut_dpi_state.ctrs.wbu_cycles;
+    n_cycles += dut_dpi_state.i_ctrs.total_cycles;
+    n_cycles_ifu += dut_dpi_state.i_ctrs.ifu_cycles;
+    n_cycles_idu += dut_dpi_state.i_ctrs.idu_cycles;
+    n_cycles_exu += dut_dpi_state.i_ctrs.exu_cycles;
+    n_cycles_lsu += dut_dpi_state.i_ctrs.lsu_cycles;
+    n_cycles_wbu += dut_dpi_state.i_ctrs.wbu_cycles;
   } while (!dut_dpi_state.ebreak);
 
   const word_t reg_a0 = static_cast<word_t>(

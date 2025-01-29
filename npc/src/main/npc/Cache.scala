@@ -24,6 +24,8 @@ class Cache(val numLines: Int) extends Module {
     val memReq  = Irrevocable(new MemReadReq(XLen.W))
     val memResp = Flipped(Irrevocable(new MemReadResp(32.W)))
     val flush   = Input(Bool())
+    val hit     = Output(Bool())
+    val miss    = Output(Bool())
   }
 
   val io = IO(new Port)
@@ -112,4 +114,7 @@ class Cache(val numLines: Int) extends Module {
   io.memReq.bits.size := io.req.bits.size
 
   io.memResp.ready := y === S_MissReply
+
+  io.hit  := y === S_Compare & lineValid
+  io.miss := y === S_Compare & ~lineValid
 }

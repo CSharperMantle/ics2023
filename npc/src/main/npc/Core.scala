@@ -160,6 +160,8 @@ class Core extends Module {
   dpi.io.exuOutValid := exu.io.msgOut.valid
   dpi.io.lsuOutValid := lsu.io.msgOut.valid
   dpi.io.wbuOutValid := wbu.io.msgOut.valid
+  dpi.io.icacheHit   := icache.io.hit
+  dpi.io.icacheMiss  := icache.io.miss
 
   io.slave := DontCare
 }
