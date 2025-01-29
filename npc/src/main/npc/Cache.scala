@@ -23,11 +23,16 @@ class Cache(val numLines: Int) extends Module {
     val resp    = Irrevocable(new MemReadResp(32.W))
     val memReq  = Irrevocable(new MemReadReq(XLen.W))
     val memResp = Flipped(Irrevocable(new MemReadResp(32.W)))
+    val flush   = Input(Bool())
   }
 
   val io = IO(new Port)
 
   private val lines = SRAM(numLines, new CacheLine(XLen, log2Up(numLines), 2), 0, 0, 1)
+
+  private val lineAddr = Wire(UInt(lines.dataType.indexWidth.W))
+
+  private val lineStale = RegInit(VecInit(Seq.fill(numLines)(false.B)))
 
   private val lineWire  = Wire(lines.dataType)
   private val lineValid = Wire(Bool())
@@ -57,6 +62,11 @@ class Cache(val numLines: Int) extends Module {
     )
   )
 
+  lineAddr := io.req.bits.addr(
+    lines.dataType.indexWidth + lines.dataType.offsetWidth - 1,
+    lines.dataType.offsetWidth
+  )
+
   private val replaceLine = Wire(lines.dataType)
   replaceLine.valid := true.B
   replaceLine.tag   := tag
@@ -73,15 +83,23 @@ class Cache(val numLines: Int) extends Module {
   )
 
   lineWire  := line
-  lineValid := line.valid & line.tag === tag
+  lineValid := ~(io.flush | lineStale(lineAddr)) & line.valid & line.tag === tag
 
   lines.readwritePorts(0).enable    := io.req.valid | io.memResp.valid
   lines.readwritePorts(0).isWrite   := io.memResp.valid
   lines.readwritePorts(0).writeData := replaceLine
-  lines.readwritePorts(0).address := io.req.bits.addr(
-    lines.dataType.indexWidth + lines.dataType.offsetWidth - 1,
-    lines.dataType.offsetWidth
-  )
+  lines.readwritePorts(0).address   := lineAddr
+
+  for ((e, i) <- lineStale.zipWithIndex) {
+    e := MuxCase(
+      e,
+      Seq(
+        io.flush            -> true.B,
+        (lineAddr =/= i.U)  -> e,
+        (y === S_MissReply) -> false.B
+      )
+    )
+  }
 
   io.req.ready := y === S_Query
 

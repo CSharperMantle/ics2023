@@ -26,6 +26,7 @@ _start:
   mv t1, zero
   mv t2, zero
   la ra, _do_bl_ss
+  fence.i
   jalr ra
 
 .section .bl.s, "ax"
@@ -68,6 +69,7 @@ _do_bl_ss:
   mv t2, zero
   la sp, _stack_pointer
   la ra, _trm_init
+  fence.i
   jalr ra
 
 .globl _bl_ss_load_align4

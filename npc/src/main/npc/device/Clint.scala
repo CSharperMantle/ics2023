@@ -23,7 +23,7 @@ class Clint extends Module {
   }
   import Regs._
 
-  private val regs = RegInit(VecInit(Seq.fill(Regs.all.length - 1)(0.U(64.W))))
+  private val regs = RegInit(VecInit(Seq.fill(Regs.all.length)(0.U(64.W))))
 
   // Higher bits are muxed by crossbars
   private val rRegIdx = decoder(

@@ -27,8 +27,9 @@ class Core extends Module {
   private val wbu      = Module(new Wbu)
   private val pcUpdate = Module(new PcUpdate)
 
-  icache.io.req  <> ifu.io.rReq
-  icache.io.resp <> ifu.io.rResp
+  icache.io.req   <> ifu.io.rReq
+  icache.io.resp  <> ifu.io.rResp
+  icache.io.flush := idu.io.cacheFlush
 
   private val readArb = Module(
     new GenericArbiter(new MemReadReq(32.W), new MemReadResp(32.W), 2)
