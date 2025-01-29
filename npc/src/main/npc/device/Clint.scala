@@ -16,22 +16,23 @@ class Clint extends Module {
   val io = IO(new Port)
 
   private object Regs extends CvtChiselEnum {
-    val MsipIdx     = Value
-    val MtimecmpIdx = Value
-    val MtimeIdx    = Value
-    val UnkIdx      = Value
+    // val MsipIdx     = Value
+    // val MtimecmpIdx = Value
+    val MtimeIdx = Value
+    val UnkIdx   = Value
   }
   import Regs._
 
   private val regs = RegInit(VecInit(Seq.fill(Regs.all.length - 1)(0.U(64.W))))
 
+  // Higher bits are muxed by crossbars
   private val rRegIdx = decoder(
-    io.rReq.bits.addr,
+    io.rReq.bits.addr(15, 0),
     TruthTable(
       Seq(
-        "b00000010_00000000_00000000_00000000".BP -> MsipIdx.BP,
-        "b00000010_00000000_01000000_00000?00".BP -> MtimecmpIdx.BP,
-        "b00000010_00000000_10111111_11111?00".BP -> MtimeIdx.BP
+        // "b00000000_00000000".BP -> MsipIdx.BP,
+        // "b01000000_00000?00".BP -> MtimecmpIdx.BP,
+        "b10111111_11111?00".BP -> MtimeIdx.BP
       ),
       UnkIdx.BP
     )
@@ -43,15 +44,13 @@ class Clint extends Module {
 
   private object State extends CvtChiselEnum {
     val S_Idle      = Value
-    val S_Read      = Value
     val S_WaitReady = Value
   }
   import State._
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.rReq.valid, S_Read, S_Idle),
-      S_Read      -> S_WaitReady,
+      S_Idle      -> Mux(io.rReq.valid, S_WaitReady, S_Idle),
       S_WaitReady -> Mux(io.rResp.ready, S_Idle, S_WaitReady)
     )
   )
