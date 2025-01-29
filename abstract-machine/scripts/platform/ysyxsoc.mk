@@ -26,3 +26,9 @@ image: $(IMAGE).elf
 
 run: image
 	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim MAINARGS=$(IMAGE).bin
+
+gdb: image
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) gdb MAINARGS=$(IMAGE).bin
+
+pwndbg: image
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) pwndbg MAINARGS=$(IMAGE).bin

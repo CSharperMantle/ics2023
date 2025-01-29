@@ -93,6 +93,14 @@ sim: $(BIN)
 	$(call git_commit, "sim RTL")
 	@$(BIN) $(MAINARGS)
 
+gdb: $(BIN)
+	$(call git_commit, "gdb RTL")
+	gdb -s $(BIN) --args $(BIN) $(MAINARGS)
+
+pwndbg: $(BIN)
+	$(call git_commit, "pwndbg RTL")
+	pwndbg -s $(BIN) --args $(BIN) $(MAINARGS)
+
 wave:
 	gtkwave --giga dump.fst
 
