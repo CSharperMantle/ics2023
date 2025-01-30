@@ -132,15 +132,15 @@ class Core extends Module {
   memWXbar.io.slaveResp(0).bits.bResp := BResp(io.master.bresp)
   // bid
 
-  StageConnect(idu.io.msgIn, ifu.io.msgOut)
-  StageConnect(exu.io.msgIn, idu.io.msgOut)
-  gpr.io.read <> exu.io.gprRead
-  csr.io.conn <> exu.io.csrConn
-  StageConnect(lsu.io.msgIn, exu.io.msgOut)
-  StageConnect(wbu.io.msgIn, lsu.io.msgOut)
+  StageConnect(ifu.io.msgOut, idu.io.msgIn, idu.io.msgOut)
+  StageConnect(idu.io.msgOut, exu.io.msgIn, exu.io.msgOut)
+  StageConnect(exu.io.msgOut, lsu.io.msgIn, lsu.io.msgOut)
+  StageConnect(lsu.io.msgOut, wbu.io.msgIn, wbu.io.msgOut)
+  StageConnect(wbu.io.msgOut, pcUpdate.io.msgIn, pcUpdate.io.msgOut)
+  StageConnect(pcUpdate.io.msgOut, ifu.io.msgIn, ifu.io.msgOut)
+  gpr.io.read  <> exu.io.gprRead
+  csr.io.conn  <> exu.io.csrConn
   gpr.io.write <> wbu.io.gprWrite
-  StageConnect(pcUpdate.io.msgIn, wbu.io.msgOut)
-  StageConnect(ifu.io.msgIn, pcUpdate.io.msgOut)
 
   private val dpi = Module(new Dpi)
   dpi.io.retired     := pcUpdate.io.msgOut.valid
