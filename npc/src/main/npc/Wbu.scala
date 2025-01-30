@@ -13,7 +13,7 @@ object WbSel extends CvtChiselEnum {
   val WbCsr  = Value
 }
 
-class Wbu2PcUpdateMsg extends Bundle {
+class Wbu2PcuMsg extends Bundle {
   val pc      = Output(UInt(XLen.W))
   val pcSel   = Output(PcSelField.chiselType)
   val brTaken = Output(Bool())
@@ -27,7 +27,7 @@ class Wbu2PcUpdateMsg extends Bundle {
 class Wbu extends Module {
   class Port extends Bundle {
     val msgIn  = Flipped(Irrevocable(new Lsu2WbuMsg))
-    val msgOut = Irrevocable(new Wbu2PcUpdateMsg)
+    val msgOut = Irrevocable(new Wbu2PcuMsg)
 
     val gprWrite = Flipped(new GprFileWriteConn)
   }

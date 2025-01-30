@@ -15,7 +15,7 @@ class Ifu2IduMsg extends Bundle {
 
 class Ifu extends Module {
   class Port extends Bundle {
-    val msgIn      = Flipped(Irrevocable(new PcUpdate2IfuMsg))
+    val msgIn      = Flipped(Irrevocable(new Pcu2IfuMsg))
     val msgOut     = Irrevocable(new Ifu2IduMsg)
     val rReq       = Irrevocable(new MemReadReq(XLen.W))
     val rResp      = Flipped(Irrevocable(new MemReadResp(32.W)))

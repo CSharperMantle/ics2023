@@ -19,13 +19,13 @@ class Core extends Module {
   private val csr = Module(new CsrFile)
   private val gpr = Module(new GprFile)
 
-  private val icache   = Module(new Cache(16))
-  private val ifu      = Module(new Ifu)
-  private val idu      = Module(new Idu)
-  private val exu      = Module(new Exu)
-  private val lsu      = Module(new Lsu)
-  private val wbu      = Module(new Wbu)
-  private val pcUpdate = Module(new PcUpdate)
+  private val icache = Module(new Cache(16))
+  private val ifu    = Module(new Ifu)
+  private val idu    = Module(new Idu)
+  private val exu    = Module(new Exu)
+  private val lsu    = Module(new Lsu)
+  private val wbu    = Module(new Wbu)
+  private val pcu    = Module(new Pcu)
 
   icache.io.req   <> ifu.io.rReq
   icache.io.resp  <> ifu.io.rResp
@@ -132,24 +132,25 @@ class Core extends Module {
   memWXbar.io.slaveResp(0).bits.bResp := BResp(io.master.bresp)
   // bid
 
+  StageConnect(wbu.io.msgOut, pcu.io.msgIn, pcu.io.msgOut)
+  StageConnect(pcu.io.msgOut, ifu.io.msgIn, ifu.io.msgOut)
   StageConnect(ifu.io.msgOut, idu.io.msgIn, idu.io.msgOut)
   StageConnect(idu.io.msgOut, exu.io.msgIn, exu.io.msgOut)
   StageConnect(exu.io.msgOut, lsu.io.msgIn, lsu.io.msgOut)
   StageConnect(lsu.io.msgOut, wbu.io.msgIn, wbu.io.msgOut)
-  StageConnect(wbu.io.msgOut, pcUpdate.io.msgIn, pcUpdate.io.msgOut)
-  StageConnect(pcUpdate.io.msgOut, ifu.io.msgIn, ifu.io.msgOut)
+
   gpr.io.read  <> exu.io.gprRead
   csr.io.conn  <> exu.io.csrConn
   gpr.io.write <> wbu.io.gprWrite
 
   private val dpi = Module(new Dpi)
-  dpi.io.retired     := pcUpdate.io.msgOut.valid
-  dpi.io.pc          := pcUpdate.io.msgOut.bits.pc
+  dpi.io.retired     := pcu.io.msgOut.valid
+  dpi.io.pc          := pcu.io.msgOut.bits.pc
   dpi.io.ebreak      := idu.io.break
   dpi.io.instr       := ifu.io.msgOut.bits.instr
   dpi.io.memEn       := idu.io.msgOut.bits.memAction =/= MemAction.MemNone
   dpi.io.rwAddr      := exu.io.msgOut.bits.d
-  dpi.io.bad         := pcUpdate.io.msgOut.bits.bad
+  dpi.io.bad         := pcu.io.msgOut.bits.bad
   dpi.io.ifuInValid  := ifu.io.instrStale
   dpi.io.iduInValid  := idu.io.msgIn.valid
   dpi.io.exuInValid  := exu.io.msgIn.valid

@@ -14,16 +14,16 @@ object PcSel extends CvtChiselEnum {
   val PcMtvec = Value
 }
 
-class PcUpdate2IfuMsg extends Bundle {
+class Pcu2IfuMsg extends Bundle {
   val pc   = Output(UInt(XLen.W))
   val dnpc = Output(UInt(XLen.W))
   val bad  = Output(Bool())
 }
 
-class PcUpdate extends Module {
+class Pcu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new Wbu2PcUpdateMsg))
-    val msgOut = Irrevocable(new PcUpdate2IfuMsg)
+    val msgIn  = Flipped(Irrevocable(new Wbu2PcuMsg))
+    val msgOut = Irrevocable(new Pcu2IfuMsg)
   }
   val io = IO(new Port)
 
