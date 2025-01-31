@@ -27,6 +27,27 @@ class MemWriteResp extends Bundle {
   val bResp = BResp()
 }
 
+class RRArbiter(n: Int) extends Module {
+  class Port extends Bundle {
+    val request = Input(Vec(n, Bool()))
+    val done    = Input(Vec(n, Bool()))
+    val choice  = Output(UInt(log2Up(n).W))
+  }
+  val io = IO(new Port)
+
+  private val current = RegInit(0.U(log2Up(n).W))
+
+  current := MuxCase(
+    current,
+    Seq(
+      (~io.request(current))                   -> Mux(current === (n.U - 1.U), 0.U, current + 1.U),
+      (io.request(current) & io.done(current)) -> Mux(current === (n.U - 1.U), 0.U, current + 1.U)
+    )
+  )
+
+  io.choice := current
+}
+
 class GenericArbiter[TReq <: Data, TResp <: Data](
   private val req:  TReq,
   private val resp: TResp,
@@ -37,7 +58,7 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
     val slaveReq   = Irrevocable(req)
     val masterResp = Vec(n, Irrevocable(resp))
     val slaveResp  = Flipped(Irrevocable(resp))
-    val chosen     = Output(UInt(log2Ceil(n).W))
+    val choice     = Output(UInt(log2Up(n).W))
   }
   val io = IO(new Port)
 
@@ -46,36 +67,38 @@ class GenericArbiter[TReq <: Data, TResp <: Data](
     trans := Mux(io.masterReq(i).valid, 1.B, Mux(io.masterResp(i).ready, 0.B, trans))
   }
 
-  private val arb = Module(new RRArbiter(new Bundle {}, n))
+  private val arb = Module(new RRArbiter(n))
   for (i <- (0 until n)) {
-    arb.io.in(i).valid := transactions(i)
+    arb.io.request(i) := transactions(i)
+    arb.io.done(i)    := io.masterResp(i).ready
   }
-  arb.io.out.ready := MuxLookup(arb.io.chosen, 0.B)(
-    (0 until n).map(i => i.asUInt -> io.masterResp(i).ready)
-  )
 
   private val inTrans = RegInit(false.B)
-  inTrans := Mux(arb.io.out.valid, true.B, Mux(io.slaveResp.ready, false.B, inTrans))
+  inTrans := Mux(
+    io.masterReq(arb.io.choice).valid,
+    true.B,
+    Mux(io.slaveResp.ready, false.B, inTrans)
+  )
 
   // Wire requests and responses
-  io.slaveReq.valid := MuxLookup(arb.io.chosen, 0.B)(
+  io.slaveReq.valid := MuxLookup(arb.io.choice, 0.B)(
     (0 until n).map(i => i.asUInt -> (inTrans & io.masterReq(i).valid))
   )
-  io.slaveReq.bits := MuxLookup(arb.io.chosen, io.masterReq(0).bits)(
+  io.slaveReq.bits := MuxLookup(arb.io.choice, io.masterReq(0).bits)(
     (0 until n).map(i => i.asUInt -> io.masterReq(i).bits)
   )
   for ((req, i) <- io.masterReq.zipWithIndex) {
-    req.ready := (arb.io.chosen === i.asUInt) & io.slaveReq.ready
+    req.ready := (arb.io.choice === i.asUInt) & io.slaveReq.ready
   }
   for ((resp, i) <- io.masterResp.zipWithIndex) {
-    resp.valid := (arb.io.chosen === i.asUInt) & io.slaveResp.valid
+    resp.valid := (arb.io.choice === i.asUInt) & io.slaveResp.valid
     resp.bits  := io.slaveResp.bits
   }
-  io.slaveResp.ready := MuxLookup(arb.io.chosen, 0.B)(
+  io.slaveResp.ready := MuxLookup(arb.io.choice, 0.B)(
     (0 until n).map(i => i.asUInt -> io.masterResp(i).ready)
   )
 
-  io.chosen := arb.io.chosen
+  io.choice := arb.io.choice
 }
 
 class Xbar[TReqBundle <: Data, TRespBundle <: Data, TResp <: Data](
