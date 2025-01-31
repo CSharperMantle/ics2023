@@ -22,28 +22,35 @@ object MemAction extends CvtChiselEnum {
 }
 
 class Lsu2WbuMsg extends Bundle {
-  val pc       = Output(UInt(XLen.W))
-  val wbSel    = Output(WbSelField.chiselType)
-  val d        = Output(UInt(XLen.W))
+  // GEN
+  // Used by Wbu
   val memRData = Output(UInt(XLen.W))
-  val csrVal   = Output(UInt(XLen.W))
-  val rdIdx    = Output(UInt(5.W))
-  val wbEn     = Output(WbEnField.chiselType)
   val bad      = Output(Bool())
-  // Pass-through for Wbu
+  // Unused by Wbu
+  // (none)
+  // PASS-THRU
+  val instr   = Output(UInt(XLen.W))
+  val d       = Output(UInt(XLen.W))
+  val pc      = Output(UInt(XLen.W))
+  val snpc    = Output(UInt(XLen.W))
+  val wbEn    = Output(WbEnField.chiselType)
+  val wbSel   = Output(WbSelField.chiselType)
   val pcSel   = Output(PcSelField.chiselType)
   val brTaken = Output(Bool())
+  val rdIdx   = Output(UInt(5.W))
+  val csrVal  = Output(UInt(XLen.W))
   val imm     = Output(UInt(XLen.W))
   val mepc    = Output(UInt(XLen.W))
   val mtvec   = Output(UInt(XLen.W))
+  val break   = Output(Bool())
 }
 
 class Lsu extends Module {
   require(XLen == 32, "Lsu for RV64 is not implemented")
 
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new Exu2LsuMsg))
-    val msgOut = Irrevocable(new Lsu2WbuMsg)
+    val msgIn  = Flipped(Decoupled(new Exu2LsuMsg))
+    val msgOut = Decoupled(new Lsu2WbuMsg)
     val rReq   = Irrevocable(new MemReadReq(XLen.W))
     val rResp  = Flipped(Irrevocable(new MemReadResp(XLen.W)))
     val wReq   = Irrevocable(new MemWriteReq(XLen.W, 32.W))
@@ -147,12 +154,12 @@ class Lsu extends Module {
   )
 
   private object State extends CvtChiselEnum {
-    val S_Idle      = Value
-    val S_ReadReq   = Value
-    val S_Read      = Value
-    val S_WriteReq  = Value
-    val S_Write     = Value
-    val S_Wait4Next = Value
+    val S_Idle     = Value
+    val S_ReadReq  = Value
+    val S_Read     = Value
+    val S_WriteReq = Value
+    val S_Write    = Value
+    val S_Done     = Value
   }
   import State._
   private val (firstAction, _) = State.safe(
@@ -160,9 +167,9 @@ class Lsu extends Module {
       Cat(io.msgIn.bits.bad, rEn, wEn, alignBad),
       TruthTable(
         Seq(
-          "b0000".BP -> S_Wait4Next.BP,
-          "b1???".BP -> S_Wait4Next.BP,
-          "b0??1".BP -> S_Wait4Next.BP,
+          "b0000".BP -> S_Done.BP,
+          "b1???".BP -> S_Done.BP,
+          "b0??1".BP -> S_Done.BP,
           "b01?0".BP -> S_ReadReq.BP,
           "b0010".BP -> S_WriteReq.BP
         ),
@@ -173,12 +180,12 @@ class Lsu extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_ReadReq   -> Mux(io.rReq.ready, S_Read, S_ReadReq),
-      S_Read      -> Mux(io.rResp.valid, Mux(wEn, S_WriteReq, S_Wait4Next), S_Read),
-      S_WriteReq  -> Mux(io.wReq.ready, S_Write, S_WriteReq),
-      S_Write     -> Mux(io.wResp.valid, S_Wait4Next, S_Write),
-      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
+      S_Idle     -> Mux(io.msgIn.valid, firstAction, S_Idle),
+      S_ReadReq  -> Mux(io.rReq.ready, S_Read, S_ReadReq),
+      S_Read     -> Mux(io.rResp.valid, Mux(wEn, S_WriteReq, S_Done), S_Read),
+      S_WriteReq -> Mux(io.wReq.ready, S_Write, S_WriteReq),
+      S_Write    -> Mux(io.wResp.valid, S_Done, S_Write),
+      S_Done     -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
@@ -186,29 +193,34 @@ class Lsu extends Module {
   private val memWResp = RegEnable(io.wResp.bits.bResp, BResp.Okay, io.wResp.valid)
 
   io.rReq.valid  := y === S_ReadReq
-  io.rResp.ready := io.rResp.valid & y === S_Wait4Next
+  io.rResp.ready := io.rResp.valid & y === S_Done
 
   io.wReq.valid  := y === S_WriteReq
-  io.wResp.ready := io.wResp.valid & y === S_Wait4Next
+  io.wResp.ready := io.wResp.valid & y === S_Done
 
-  io.msgOut.bits.pc       := io.msgIn.bits.pc
-  io.msgOut.bits.wbSel    := io.msgIn.bits.wbSel
-  io.msgOut.bits.d        := io.msgIn.bits.d
   io.msgOut.bits.memRData := sext.io.sextRes
-  io.msgOut.bits.csrVal   := io.msgIn.bits.csrVal
-  io.msgOut.bits.rdIdx    := io.msgIn.bits.rdIdx
-  io.msgOut.bits.wbEn     := io.msgIn.bits.wbEn
-  io.msgOut.bits.bad := io.msgIn.bits.bad |
-    ((rEn | wEn) & alignBad) |
-    (rEn & ~(memRResp === RResp.Okay)) |
-    (wEn & ~(memWResp === BResp.Okay))
+  io.msgOut.bits.bad := (
+    io.msgIn.bits.bad
+      | ((rEn | wEn) & alignBad)
+      | (rEn & memRResp =/= RResp.Okay)
+      | (wEn & memWResp =/= BResp.Okay)
+  )
 
+  io.msgOut.bits.instr   := io.msgIn.bits.instr
+  io.msgOut.bits.d       := io.msgIn.bits.d
+  io.msgOut.bits.pc      := io.msgIn.bits.pc
+  io.msgOut.bits.snpc    := io.msgIn.bits.snpc
+  io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn
+  io.msgOut.bits.wbSel   := io.msgIn.bits.wbSel
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
   io.msgOut.bits.brTaken := io.msgIn.bits.brTaken
+  io.msgOut.bits.rdIdx   := io.msgIn.bits.rdIdx
+  io.msgOut.bits.csrVal  := io.msgIn.bits.csrVal
   io.msgOut.bits.imm     := io.msgIn.bits.imm
   io.msgOut.bits.mepc    := io.msgIn.bits.mepc
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
+  io.msgOut.bits.break   := io.msgIn.bits.break
 
-  io.msgIn.ready  := y === S_Wait4Next & io.msgOut.ready
-  io.msgOut.valid := y === S_Wait4Next
+  io.msgIn.ready  := y === S_Idle
+  io.msgOut.valid := y === S_Done
 }

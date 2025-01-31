@@ -273,6 +273,8 @@ object CacheFlushField extends BoolDecodeField[InstrPat] {
 }
 
 class Idu2ExuMsg extends Bundle {
+  // GEN
+  // Used by Exu
   val rs1Idx     = Output(UInt(5.W))
   val rs2Idx     = Output(UInt(5.W))
   val aluCalcOp  = Output(AluCalcOpField.chiselType)
@@ -284,23 +286,26 @@ class Idu2ExuMsg extends Bundle {
   val srcBSel    = Output(SrcBSelField.chiselType)
   val excpAdj    = Output(ExcpAdjField.chiselType)
   val bad        = Output(Bool())
-  // Pass-through for Exu
-  val pc        = Output(UInt(XLen.W))
+  // Unused by Exu
   val memAction = Output(MemActionField.chiselType)
   val memWidth  = Output(MemWidthField.chiselType)
   val wbEn      = Output(WbEnField.chiselType)
   val wbSel     = Output(WbSelField.chiselType)
   val rdIdx     = Output(UInt(5.W))
   val pcSel     = Output(PcSelField.chiselType)
+  val break     = Output(Bool())
+  // PASS-THRU
+  val instr = Output(UInt(XLen.W))
+  val pc    = Output(UInt(XLen.W))
+  val snpc  = Output(UInt(XLen.W))
 }
 
 class Idu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new Ifu2IduMsg))
-    val msgOut = Irrevocable(new Idu2ExuMsg)
+    val msgIn  = Flipped(Decoupled(new Ifu2IduMsg))
+    val msgOut = Decoupled(new Idu2ExuMsg)
 
     val cacheFlush = Output(Bool())
-    val break      = Output(Bool())
   }
   val io = IO(new Port)
 
@@ -402,15 +407,18 @@ class Idu extends Module {
   io.msgOut.bits.excpAdj    := res(ExcpAdjField)
   io.msgOut.bits.bad        := io.msgIn.bits.bad | io.msgIn.bits.instr(1, 0) =/= "b11".U
 
-  io.msgOut.bits.pc        := io.msgIn.bits.pc
   io.msgOut.bits.memAction := res(MemActionField)
   io.msgOut.bits.memWidth  := res(MemWidthField)
   io.msgOut.bits.wbEn      := res(WbEnField)
   io.msgOut.bits.wbSel     := res(WbSelField)
   io.msgOut.bits.rdIdx     := io.msgIn.bits.instr(11, 7)
   io.msgOut.bits.pcSel     := res(PcSelField)
+  io.msgOut.bits.break     := res(BreakField)
 
-  io.break      := res(BreakField)
+  io.msgOut.bits.instr := io.msgIn.bits.instr
+  io.msgOut.bits.pc    := io.msgIn.bits.pc
+  io.msgOut.bits.snpc  := io.msgIn.bits.snpc
+
   io.cacheFlush := res(CacheFlushField)
 
   io.msgIn.ready  := io.msgOut.ready

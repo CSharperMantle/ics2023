@@ -19,28 +19,34 @@ object ExSrcBSel extends CvtChiselEnum {
 }
 
 class Exu2LsuMsg extends Bundle {
-  val memAction = Output(MemActionField.chiselType)
-  val memWidth  = Output(MemWidthField.chiselType)
-  val d         = Output(UInt(XLen.W))
-  val rs2       = Output(UInt(XLen.W))
-  val bad       = Output(Bool())
-  // Pass-through for Lsu
-  val pc      = Output(UInt(XLen.W))
-  val wbEn    = Output(WbEnField.chiselType)
-  val wbSel   = Output(WbSelField.chiselType)
-  val csrVal  = Output(UInt(XLen.W))
-  val rdIdx   = Output(UInt(5.W))
-  val pcSel   = Output(PcSelField.chiselType)
+  // GEN
+  // Used by Lsu
+  val d   = Output(UInt(XLen.W))
+  val rs2 = Output(UInt(XLen.W))
+  val bad = Output(Bool())
+  // Unused by Lsu
   val brTaken = Output(Bool())
-  val imm     = Output(UInt(XLen.W))
+  val csrVal  = Output(UInt(XLen.W))
   val mepc    = Output(UInt(XLen.W))
   val mtvec   = Output(UInt(XLen.W))
+  // PASS-THRU
+  val instr     = Output(UInt(XLen.W))
+  val memAction = Output(MemActionField.chiselType)
+  val memWidth  = Output(MemWidthField.chiselType)
+  val pc        = Output(UInt(XLen.W))
+  val snpc      = Output(UInt(XLen.W))
+  val wbEn      = Output(WbEnField.chiselType)
+  val wbSel     = Output(WbSelField.chiselType)
+  val rdIdx     = Output(UInt(5.W))
+  val pcSel     = Output(PcSelField.chiselType)
+  val imm       = Output(UInt(XLen.W))
+  val break     = Output(Bool())
 }
 
 class Exu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new Idu2ExuMsg))
-    val msgOut = Irrevocable(new Exu2LsuMsg)
+    val msgIn  = Flipped(Decoupled(new Idu2ExuMsg))
+    val msgOut = Decoupled(new Exu2LsuMsg)
 
     val gprRead = Flipped(new GprFileReadConn)
     val csrConn = Flipped(new CsrFileConn)
@@ -85,43 +91,47 @@ class Exu extends Module {
   io.csrConn.excpAdj := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone)
   io.csrConn.pc      := io.msgIn.bits.pc
 
-  io.msgOut.bits.memAction := io.msgIn.bits.memAction
-  io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
-  io.msgOut.bits.d         := alu.io.d
-  io.msgOut.bits.rs2       := io.gprRead.rs2
-  io.msgOut.bits.bad       := io.msgIn.bits.bad
+  io.msgOut.bits.d   := alu.io.d
+  io.msgOut.bits.rs2 := io.gprRead.rs2
+  io.msgOut.bits.bad := io.msgIn.bits.bad
 
-  io.msgOut.bits.pc      := io.msgIn.bits.pc
-  io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn
-  io.msgOut.bits.wbSel   := io.msgIn.bits.wbSel
-  io.msgOut.bits.csrVal  := io.csrConn.csrVal
-  io.msgOut.bits.rdIdx   := io.msgIn.bits.rdIdx
-  io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
   io.msgOut.bits.brTaken := alu.io.brTaken
-  io.msgOut.bits.imm     := io.msgIn.bits.imm
+  io.msgOut.bits.csrVal  := io.csrConn.csrVal
   io.msgOut.bits.mepc    := io.csrConn.mepc
   io.msgOut.bits.mtvec   := io.csrConn.mtvec
 
+  io.msgOut.bits.instr     := io.msgIn.bits.instr
+  io.msgOut.bits.memAction := io.msgIn.bits.memAction
+  io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
+  io.msgOut.bits.pc        := io.msgIn.bits.pc
+  io.msgOut.bits.snpc      := io.msgIn.bits.snpc
+  io.msgOut.bits.wbEn      := io.msgIn.bits.wbEn
+  io.msgOut.bits.wbSel     := io.msgIn.bits.wbSel
+  io.msgOut.bits.rdIdx     := io.msgIn.bits.rdIdx
+  io.msgOut.bits.pcSel     := io.msgIn.bits.pcSel
+  io.msgOut.bits.imm       := io.msgIn.bits.imm
+  io.msgOut.bits.break     := io.msgIn.bits.break
+
   private object State extends CvtChiselEnum {
-    val S_Idle      = Value
-    val S_RdReg     = Value
-    val S_WrCsr     = Value
-    val S_Wait4Next = Value
+    val S_Idle  = Value
+    val S_RdReg = Value
+    val S_Csr   = Value
+    val S_Done  = Value
   }
   import State._
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.msgIn.valid, Mux(io.msgIn.bits.bad, S_Wait4Next, S_RdReg), S_Idle),
-      S_RdReg     -> Mux(io.gprRead.ready, S_WrCsr, S_RdReg),
-      S_WrCsr     -> Mux(io.csrConn.ready, S_Wait4Next, S_WrCsr),
-      S_Wait4Next -> Mux(io.msgOut.ready, S_Idle, S_Wait4Next)
+      S_Idle  -> Mux(io.msgIn.valid, Mux(io.msgIn.bits.bad, S_Done, S_RdReg), S_Idle),
+      S_RdReg -> Mux(io.gprRead.ready, S_Csr, S_RdReg),
+      S_Csr   -> Mux(io.csrConn.ready, S_Done, S_Csr),
+      S_Done  -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
   io.gprRead.valid := y === S_RdReg
-  io.csrConn.valid := y === S_WrCsr
+  io.csrConn.valid := y === S_Csr
 
-  io.msgIn.ready  := y === S_Wait4Next & io.msgOut.ready
-  io.msgOut.valid := y === S_Wait4Next
+  io.msgIn.ready  := y === S_Idle
+  io.msgOut.valid := y === S_Done
 }

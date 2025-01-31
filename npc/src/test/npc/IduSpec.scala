@@ -38,7 +38,7 @@ class IduSpec extends AnyFlatSpec {
       dut.io.msgOut.ready.poke(true)
       dut.clock.step()
       dut.io.msgOut.valid.expect(true.B)
-      dut.io.break.expect(false.B)
+      dut.io.msgOut.bits.break.expect(false.B)
       dut.io.msgIn.ready.expect(true.B)
     }
   }

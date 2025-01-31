@@ -19,13 +19,14 @@ class Core extends Module {
   private val csr = Module(new CsrFile)
   private val gpr = Module(new GprFile)
 
-  private val icache = Module(new Cache(16))
-  private val ifu    = Module(new Ifu)
-  private val idu    = Module(new Idu)
-  private val exu    = Module(new Exu)
-  private val lsu    = Module(new Lsu)
-  private val wbu    = Module(new Wbu)
-  private val pcu    = Module(new Pcu)
+  private val icache     = Module(new Cache(16))
+  private val ifu        = Module(new Ifu)
+  private val idu        = Module(new Idu)
+  private val exu        = Module(new Exu)
+  private val lsu        = Module(new Lsu)
+  private val wbu        = Module(new Wbu)
+  private val pcu        = Module(new Pcu)
+  private val hazardCtrl = Module(new HazardCtrl)
 
   icache.io.req   <> ifu.io.rReq
   icache.io.resp  <> ifu.io.rResp
@@ -132,26 +133,51 @@ class Core extends Module {
   memWXbar.io.slaveResp(0).bits.bResp := BResp(io.master.bresp)
   // bid
 
-  StageConnect(wbu.io.msgOut, pcu.io.msgIn, pcu.io.msgOut)
-  StageConnect(pcu.io.msgOut, ifu.io.msgIn, ifu.io.msgOut)
-  StageConnect(ifu.io.msgOut, idu.io.msgIn, idu.io.msgOut)
-  StageConnect(idu.io.msgOut, exu.io.msgIn, exu.io.msgOut)
-  StageConnect(exu.io.msgOut, lsu.io.msgIn, lsu.io.msgOut)
-  StageConnect(lsu.io.msgOut, wbu.io.msgIn, wbu.io.msgOut)
+  pcu.io.pc      := ifu.io.msgOut.bits.pc
+  pcu.io.snpc    := ifu.io.msgOut.bits.snpc
+  pcu.io.pcSel   := exu.io.msgOut.bits.pcSel
+  pcu.io.brTaken := exu.io.msgOut.bits.brTaken
+  pcu.io.imm     := exu.io.msgOut.bits.imm
+  pcu.io.d       := exu.io.msgOut.bits.brTaken
+  pcu.io.mepc    := exu.io.msgOut.bits.mepc
+  pcu.io.mtvec   := exu.io.msgOut.bits.mtvec
+
+  hazardCtrl.io.iduOutMsgValid := idu.io.msgOut.valid
+  hazardCtrl.io.iduOutMsg      := idu.io.msgOut.bits
+  hazardCtrl.io.exuInMsgValid  := exu.io.msgIn.valid
+  hazardCtrl.io.exuInMsgReady  := exu.io.msgIn.ready
+  hazardCtrl.io.exuInMsg       := exu.io.msgIn.bits
+  hazardCtrl.io.exuOutMsgValid := exu.io.msgOut.valid
+  hazardCtrl.io.exuOutMsg      := exu.io.msgOut.bits
+  hazardCtrl.io.lsuInMsgValid  := lsu.io.msgIn.valid
+  hazardCtrl.io.lsuInMsgReady  := lsu.io.msgIn.ready
+  hazardCtrl.io.lsuInMsg       := lsu.io.msgIn.bits
+  hazardCtrl.io.lsuOutMsgValid := lsu.io.msgOut.valid
+  hazardCtrl.io.lsuOutMsg      := lsu.io.msgOut.bits
+  hazardCtrl.io.wbuInMsgValid  := wbu.io.msgIn.valid
+  hazardCtrl.io.wbuInMsgReady  := wbu.io.msgIn.ready
+  hazardCtrl.io.wbuInMsg       := wbu.io.msgIn.bits
+
+  ifu.io.stall := hazardCtrl.io.ifuCtrl.stall
+  ifu.io.msgIn := pcu.io.msgOut
+  StageConnect(ifu.io.msgOut, idu.io.msgIn, hazardCtrl.io.iduCtrl)
+  StageConnect(idu.io.msgOut, exu.io.msgIn, hazardCtrl.io.exuCtrl)
+  StageConnect(exu.io.msgOut, lsu.io.msgIn, hazardCtrl.io.lsuCtrl)
+  StageConnect(lsu.io.msgOut, wbu.io.msgIn, hazardCtrl.io.wbuCtrl)
 
   gpr.io.read  <> exu.io.gprRead
   csr.io.conn  <> exu.io.csrConn
   gpr.io.write <> wbu.io.gprWrite
 
   private val dpi = Module(new Dpi)
-  dpi.io.retired     := pcu.io.msgOut.valid
-  dpi.io.pc          := pcu.io.msgOut.bits.pc
-  dpi.io.ebreak      := idu.io.break
-  dpi.io.instr       := ifu.io.msgOut.bits.instr
+  dpi.io.retired     := wbu.io.retired
+  dpi.io.pc          := wbu.io.pc
+  dpi.io.ebreak      := wbu.io.break
+  dpi.io.instr       := wbu.io.instr
   dpi.io.memEn       := idu.io.msgOut.bits.memAction =/= MemAction.MemNone
   dpi.io.rwAddr      := exu.io.msgOut.bits.d
-  dpi.io.bad         := pcu.io.msgOut.bits.bad
-  dpi.io.ifuInValid  := ifu.io.instrStale
+  dpi.io.bad         := wbu.io.bad
+  dpi.io.ifuInValid  := true.B
   dpi.io.iduInValid  := idu.io.msgIn.valid
   dpi.io.exuInValid  := exu.io.msgIn.valid
   dpi.io.lsuInValid  := lsu.io.msgIn.valid
@@ -160,7 +186,7 @@ class Core extends Module {
   dpi.io.iduOutValid := idu.io.msgOut.valid
   dpi.io.exuOutValid := exu.io.msgOut.valid
   dpi.io.lsuOutValid := lsu.io.msgOut.valid
-  dpi.io.wbuOutValid := wbu.io.msgOut.valid
+  dpi.io.wbuOutValid := wbu.io.retired
   dpi.io.icacheHit   := icache.io.hit
   dpi.io.icacheMiss  := icache.io.miss
 

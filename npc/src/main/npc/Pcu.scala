@@ -15,34 +15,32 @@ object PcSel extends CvtChiselEnum {
 }
 
 class Pcu2IfuMsg extends Bundle {
-  val pc   = Output(UInt(XLen.W))
-  val dnpc = Output(UInt(XLen.W))
-  val bad  = Output(Bool())
+  val pcf = Output(UInt(XLen.W))
 }
 
 class Pcu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new Wbu2PcuMsg))
-    val msgOut = Irrevocable(new Pcu2IfuMsg)
+    val pc      = Input(UInt(XLen.W))
+    val snpc    = Input(UInt(XLen.W))
+    val pcSel   = Input(PcSelField.chiselType)
+    val brTaken = Input(Bool())
+    val imm     = Input(UInt(XLen.W))
+    val d       = Input(UInt(XLen.W))
+    val mepc    = Input(UInt(XLen.W))
+    val mtvec   = Input(UInt(XLen.W))
+    val msgOut  = new Pcu2IfuMsg
   }
   val io = IO(new Port)
 
-  private val snpc     = io.msgIn.bits.pc + 4.U
-  private val brTarget = Mux(io.msgIn.bits.brTaken, io.msgIn.bits.pc + io.msgIn.bits.imm, snpc)
-  private val dnpc: UInt = MuxLookup(io.msgIn.bits.pcSel, 0.U)(
+  private val dnpc: UInt = MuxLookup(io.pcSel, 0.U)(
     Seq(
-      PcSel.PcSnpc  -> snpc,
-      PcSel.PcAlu   -> io.msgIn.bits.d,
-      PcSel.PcBr    -> brTarget,
-      PcSel.PcMepc  -> io.msgIn.bits.mepc,
-      PcSel.PcMtvec -> io.msgIn.bits.mtvec
+      PcSel.PcSnpc  -> io.snpc,
+      PcSel.PcAlu   -> io.d,
+      PcSel.PcBr    -> Mux(io.brTaken, io.pc + io.imm, io.snpc),
+      PcSel.PcMepc  -> io.mepc,
+      PcSel.PcMtvec -> io.mtvec
     )
   )
 
-  io.msgOut.bits.pc   := io.msgIn.bits.pc
-  io.msgOut.bits.dnpc := dnpc
-  io.msgOut.bits.bad  := io.msgIn.bits.bad
-
-  io.msgIn.ready  := io.msgOut.ready
-  io.msgOut.valid := io.msgIn.valid
+  io.msgOut.pcf := dnpc
 }

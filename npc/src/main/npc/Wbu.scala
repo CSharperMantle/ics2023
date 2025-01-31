@@ -13,32 +13,22 @@ object WbSel extends CvtChiselEnum {
   val WbCsr  = Value
 }
 
-class Wbu2PcuMsg extends Bundle {
-  val pc      = Output(UInt(XLen.W))
-  val pcSel   = Output(PcSelField.chiselType)
-  val brTaken = Output(Bool())
-  val imm     = Output(UInt(XLen.W))
-  val d       = Output(UInt(XLen.W))
-  val mepc    = Output(UInt(XLen.W))
-  val mtvec   = Output(UInt(XLen.W))
-  val bad     = Output(Bool())
-}
-
 class Wbu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Irrevocable(new Lsu2WbuMsg))
-    val msgOut = Irrevocable(new Wbu2PcuMsg)
-
+    val msgIn    = Flipped(Decoupled(new Lsu2WbuMsg))
     val gprWrite = Flipped(new GprFileWriteConn)
+    val pc       = Output(UInt(XLen.W))
+    val instr    = Output(UInt(XLen.W))
+    val retired  = Output(Bool())
+    val break    = Output(Bool())
+    val bad      = Output(Bool())
   }
   val io = IO(new Port)
 
   import WbSel._
 
-  private val bad = io.msgIn.bits.bad & ~io.msgIn.bits.bad
-
   private val dataAlu  = io.msgIn.bits.d
-  private val dataSnpc = io.msgIn.bits.pc + 4.U
+  private val dataSnpc = io.msgIn.bits.snpc
   private val dataMem  = io.msgIn.bits.memRData
   private val dataCsr  = io.msgIn.bits.csrVal
 
@@ -51,19 +41,15 @@ class Wbu extends Module {
     )
   )
 
-  io.gprWrite.wEn    := io.msgIn.valid & ~bad & io.msgIn.bits.wbEn
+  io.gprWrite.wEn    := io.msgIn.valid & ~io.msgIn.bits.bad & io.msgIn.bits.wbEn
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
 
-  io.msgOut.bits.pc      := io.msgIn.bits.pc
-  io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
-  io.msgOut.bits.brTaken := io.msgIn.bits.brTaken
-  io.msgOut.bits.imm     := io.msgIn.bits.imm
-  io.msgOut.bits.d       := io.msgIn.bits.d
-  io.msgOut.bits.mepc    := io.msgIn.bits.mepc
-  io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
-  io.msgOut.bits.bad     := io.msgIn.bits.bad
+  io.msgIn.ready := true.B
 
-  io.msgIn.ready  := io.msgOut.ready
-  io.msgOut.valid := io.msgIn.valid
+  io.break   := io.msgIn.bits.break
+  io.instr   := io.msgIn.bits.instr
+  io.pc      := io.msgIn.bits.pc
+  io.retired := io.msgIn.valid
+  io.bad     := io.msgIn.valid & io.msgIn.bits.bad
 }

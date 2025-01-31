@@ -34,12 +34,12 @@ object npc {
     val OutOfOrder  = Value
   }
 
-  val Arch = ArchType.MultiCycle
+  val Arch = ArchType.Pipelined
 
   val XLen = 32
   require(XLen == 32, "RV64 not implemented")
 
-  val InitPCVal      = BigInt("30000000", 16)
+  val InitPCVal      = BigInt("30000000", 16) - 4
   val InitMstatusVal = BigInt("1800", 16)
 
   object PrivMode {
