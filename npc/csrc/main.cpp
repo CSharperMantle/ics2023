@@ -130,6 +130,14 @@ void assert_fail_msg() {
 #endif
 }
 
+#ifdef CONFIG_ITRACE
+static void print_itrace() {
+  Log("itrace: " FMT_WORD "\t%s",
+      dut_dpi_state.pc,
+      disasm(dut_dpi_state.pc, reinterpret_cast<const uint8_t *>(&dut_dpi_state.instr), 4).c_str());
+}
+#endif
+
 template <typename T1,
           typename T2,
           typename T3,
@@ -222,6 +230,10 @@ int main(int argc, char *argv[]) {
     iringbuf.emplace_back(dut_dpi_state.pc, dut_dpi_state.instr, dut_dpi_state.i_ctrs.total_cycles);
     Assert(!dut_dpi_state.bad, "%s", "instruction retired as invalid");
 
+#ifdef CONFIG_ITRACE
+    print_itrace();
+#endif
+
     n_instrs++;
     n_cycles += dut_dpi_state.i_ctrs.total_cycles;
     n_cycles_ifu += dut_dpi_state.i_ctrs.ifu_cycles;
@@ -229,6 +241,12 @@ int main(int argc, char *argv[]) {
     n_cycles_exu += dut_dpi_state.i_ctrs.exu_cycles;
     n_cycles_lsu += dut_dpi_state.i_ctrs.lsu_cycles;
     n_cycles_wbu += dut_dpi_state.i_ctrs.wbu_cycles;
+
+    static size_t cnt = 0;
+    if (dut_dpi_state.pc == 0xa0000620) {
+      cnt++;
+    }
+    Assert(cnt < 512, "");
   } while (!dut_dpi_state.ebreak);
 
   const word_t reg_a0 = static_cast<word_t>(

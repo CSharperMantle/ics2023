@@ -103,9 +103,8 @@ class Lsu extends Module {
     )
   ) === 1.W.Y
 
-  private val wEn = io.msgIn.valid & io.msgIn.bits.memAction === MemAction.MemWt
-  private val rEn =
-    io.msgIn.valid & io.msgIn.bits.memAction.isOneOf(MemAction.MemRd, MemAction.MemRdu)
+  private val wEn = io.msgIn.bits.memAction === MemAction.MemWt
+  private val rEn = io.msgIn.bits.memAction.isOneOf(MemAction.MemRd, MemAction.MemRdu)
 
   io.rReq.bits.addr := addr
   io.rReq.bits.size := memSize
@@ -221,6 +220,6 @@ class Lsu extends Module {
   io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
   io.msgOut.bits.break   := io.msgIn.bits.break
 
-  io.msgIn.ready  := y === S_Idle
+  io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid
   io.msgOut.valid := y === S_Done
 }

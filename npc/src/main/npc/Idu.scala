@@ -106,22 +106,22 @@ object AluOpSel extends Enumeration {
 }
 
 case class InstrPat(
-  val funct7:     BitPat,
-  val rs2:        BitPat,
-  val rs1:        BitPat,
-  val funct3:     BitPat,
-  val rd:         BitPat,
-  val opcode:     BitPat,
-  val immFmt:     BitPat,
-  val pcSel:      BitPat,
-  val srcASel:    BitPat,
-  val srcBSel:    BitPat,
-  val aluOpSel:   AluOpSel.Value,
-  val memAction:  BitPat,
-  val wbSel:      BitPat,
-  val wbEn:       BitPat,
-  val excpAdj:    BitPat,
-  val cacheFlush: BitPat)
+  val funct7:      BitPat,
+  val rs2:         BitPat,
+  val rs1:         BitPat,
+  val funct3:      BitPat,
+  val rd:          BitPat,
+  val opcode:      BitPat,
+  val immFmt:      BitPat,
+  val pcSel:       BitPat,
+  val srcASel:     BitPat,
+  val srcBSel:     BitPat,
+  val aluOpSel:    AluOpSel.Value,
+  val memAction:   BitPat,
+  val wbSel:       BitPat,
+  val wbEn:        BitPat,
+  val excpAdj:     BitPat,
+  val icacheFlush: BitPat)
     extends DecodePattern {
   require(funct7.getWidth == 7)
   require(rs2.getWidth == 5)
@@ -267,9 +267,9 @@ object ExcpAdjField extends DecodeField[InstrPat, CsrExcpAdj.Type] {
   override def genTable(pat: InstrPat): BitPat = pat.excpAdj
 }
 
-object CacheFlushField extends BoolDecodeField[InstrPat] {
-  override def name = "cacheFlush"
-  override def genTable(pat: InstrPat): BitPat = pat.cacheFlush
+object ICacheFlushField extends BoolDecodeField[InstrPat] {
+  override def name = "icacheFlush"
+  override def genTable(pat: InstrPat): BitPat = pat.icacheFlush
 }
 
 class Idu2ExuMsg extends Bundle {
@@ -287,25 +287,25 @@ class Idu2ExuMsg extends Bundle {
   val excpAdj    = Output(ExcpAdjField.chiselType)
   val bad        = Output(Bool())
   // Unused by Exu
-  val memAction = Output(MemActionField.chiselType)
-  val memWidth  = Output(MemWidthField.chiselType)
-  val wbEn      = Output(WbEnField.chiselType)
-  val wbSel     = Output(WbSelField.chiselType)
-  val rdIdx     = Output(UInt(5.W))
-  val pcSel     = Output(PcSelField.chiselType)
-  val break     = Output(Bool())
+  val memAction   = Output(MemActionField.chiselType)
+  val memWidth    = Output(MemWidthField.chiselType)
+  val wbEn        = Output(WbEnField.chiselType)
+  val wbSel       = Output(WbSelField.chiselType)
+  val rdIdx       = Output(UInt(5.W))
+  val pcSel       = Output(PcSelField.chiselType)
+  val break       = Output(Bool())
+  val icacheFlush = Output(Bool())
   // PASS-THRU
   val instr = Output(UInt(XLen.W))
   val pc    = Output(UInt(XLen.W))
   val snpc  = Output(UInt(XLen.W))
+  val pdnpc = Output(UInt(XLen.W))
 }
 
 class Idu extends Module {
   class Port extends Bundle {
     val msgIn  = Flipped(Decoupled(new Ifu2IduMsg))
     val msgOut = Decoupled(new Idu2ExuMsg)
-
-    val cacheFlush = Output(Bool())
   }
   val io = IO(new Port)
 
@@ -321,7 +321,7 @@ class Idu extends Module {
 
   private val patterns = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
-    //      |funct7        |rs2         |rs1   |funct3    |rd    |op     |Fmt        |PcSel      |SrcASel     |SrcBSel    |AluOpSel    |MemAct     |WbSel     |WbEn  |ExcpAdj         |CacheFlush
+    //      |funct7        |rs2         |rs1   |funct3    |rd    |op     |Fmt        |PcSel      |SrcASel     |SrcBSel    |AluOpSel    |MemAct     |WbSel     |WbEn  |ExcpAdj         |ICacheFlush
     InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b000".BP, 5.W.X, add,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
     InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, addi,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
     InstrPat("b0100000".BP, 5.W.X,       5.W.X, "b000".BP, 5.W.X, sub,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
@@ -386,7 +386,7 @@ class Idu extends Module {
     WbSelField,
     WbEnField,
     ExcpAdjField,
-    CacheFlushField
+    ICacheFlushField
   )
   private val table = new DecodeTable(patterns, fields)
   private val res   = table.decode(io.msgIn.bits.instr)
@@ -407,19 +407,19 @@ class Idu extends Module {
   io.msgOut.bits.excpAdj    := res(ExcpAdjField)
   io.msgOut.bits.bad        := io.msgIn.bits.bad | io.msgIn.bits.instr(1, 0) =/= "b11".U
 
-  io.msgOut.bits.memAction := res(MemActionField)
-  io.msgOut.bits.memWidth  := res(MemWidthField)
-  io.msgOut.bits.wbEn      := res(WbEnField)
-  io.msgOut.bits.wbSel     := res(WbSelField)
-  io.msgOut.bits.rdIdx     := io.msgIn.bits.instr(11, 7)
-  io.msgOut.bits.pcSel     := res(PcSelField)
-  io.msgOut.bits.break     := res(BreakField)
+  io.msgOut.bits.memAction   := res(MemActionField)
+  io.msgOut.bits.memWidth    := res(MemWidthField)
+  io.msgOut.bits.wbEn        := res(WbEnField)
+  io.msgOut.bits.wbSel       := res(WbSelField)
+  io.msgOut.bits.rdIdx       := io.msgIn.bits.instr(11, 7)
+  io.msgOut.bits.pcSel       := res(PcSelField)
+  io.msgOut.bits.break       := res(BreakField)
+  io.msgOut.bits.icacheFlush := res(ICacheFlushField)
 
   io.msgOut.bits.instr := io.msgIn.bits.instr
   io.msgOut.bits.pc    := io.msgIn.bits.pc
   io.msgOut.bits.snpc  := io.msgIn.bits.snpc
-
-  io.cacheFlush := res(CacheFlushField)
+  io.msgOut.bits.pdnpc := io.msgIn.bits.pdnpc
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

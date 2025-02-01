@@ -30,7 +30,7 @@ class Core extends Module {
 
   icache.io.req   <> ifu.io.rReq
   icache.io.resp  <> ifu.io.rResp
-  icache.io.flush := idu.io.cacheFlush
+  icache.io.flush := idu.io.msgOut.valid & idu.io.msgOut.bits.icacheFlush
 
   private val readArb = Module(
     new GenericArbiter(new MemReadReq(32.W), new MemReadResp(32.W), 2)
@@ -133,15 +133,6 @@ class Core extends Module {
   memWXbar.io.slaveResp(0).bits.bResp := BResp(io.master.bresp)
   // bid
 
-  pcu.io.pc      := ifu.io.msgOut.bits.pc
-  pcu.io.snpc    := ifu.io.msgOut.bits.snpc
-  pcu.io.pcSel   := exu.io.msgOut.bits.pcSel
-  pcu.io.brTaken := exu.io.msgOut.bits.brTaken
-  pcu.io.imm     := exu.io.msgOut.bits.imm
-  pcu.io.d       := exu.io.msgOut.bits.brTaken
-  pcu.io.mepc    := exu.io.msgOut.bits.mepc
-  pcu.io.mtvec   := exu.io.msgOut.bits.mtvec
-
   hazardCtrl.io.iduOutMsgValid := idu.io.msgOut.valid
   hazardCtrl.io.iduOutMsg      := idu.io.msgOut.bits
   hazardCtrl.io.exuInMsgValid  := exu.io.msgIn.valid
@@ -149,6 +140,7 @@ class Core extends Module {
   hazardCtrl.io.exuInMsg       := exu.io.msgIn.bits
   hazardCtrl.io.exuOutMsgValid := exu.io.msgOut.valid
   hazardCtrl.io.exuOutMsg      := exu.io.msgOut.bits
+  hazardCtrl.io.dnpc           := pcu.io.dnpc
   hazardCtrl.io.lsuInMsgValid  := lsu.io.msgIn.valid
   hazardCtrl.io.lsuInMsgReady  := lsu.io.msgIn.ready
   hazardCtrl.io.lsuInMsg       := lsu.io.msgIn.bits
@@ -158,12 +150,22 @@ class Core extends Module {
   hazardCtrl.io.wbuInMsgReady  := wbu.io.msgIn.ready
   hazardCtrl.io.wbuInMsg       := wbu.io.msgIn.bits
 
-  ifu.io.stall := hazardCtrl.io.ifuCtrl.stall
-  ifu.io.msgIn := pcu.io.msgOut
-  StageConnect(ifu.io.msgOut, idu.io.msgIn, hazardCtrl.io.iduCtrl)
-  StageConnect(idu.io.msgOut, exu.io.msgIn, hazardCtrl.io.exuCtrl)
-  StageConnect(exu.io.msgOut, lsu.io.msgIn, hazardCtrl.io.lsuCtrl)
-  StageConnect(lsu.io.msgOut, wbu.io.msgIn, hazardCtrl.io.wbuCtrl)
+  ifu.io.ctrl := hazardCtrl.io.ifuCtrl
+  ifu.io.dnpc := pcu.io.dnpc
+  StageConnect(ifu.io.msgOut, idu.io.msgIn, idu.io.msgOut, hazardCtrl.io.iduCtrl)
+  StageConnect(idu.io.msgOut, exu.io.msgIn, exu.io.msgOut, hazardCtrl.io.exuCtrl)
+  StageConnect(exu.io.msgOut, lsu.io.msgIn, lsu.io.msgOut, hazardCtrl.io.lsuCtrl)
+  StageConnect(lsu.io.msgOut, wbu.io.msgIn, wbu.io.msgOut, hazardCtrl.io.wbuCtrl)
+  wbu.io.msgOut.ready := true.B
+
+  pcu.io.pc      := exu.io.msgOut.bits.pc
+  pcu.io.snpc    := exu.io.msgOut.bits.snpc
+  pcu.io.pcSel   := exu.io.msgOut.bits.pcSel
+  pcu.io.brTaken := exu.io.msgOut.bits.brTaken
+  pcu.io.imm     := exu.io.msgOut.bits.imm
+  pcu.io.d       := exu.io.msgOut.bits.d
+  pcu.io.mepc    := exu.io.msgOut.bits.mepc
+  pcu.io.mtvec   := exu.io.msgOut.bits.mtvec
 
   gpr.io.read  <> exu.io.gprRead
   csr.io.conn  <> exu.io.csrConn
@@ -177,7 +179,7 @@ class Core extends Module {
   dpi.io.memEn       := idu.io.msgOut.bits.memAction =/= MemAction.MemNone
   dpi.io.rwAddr      := exu.io.msgOut.bits.d
   dpi.io.bad         := wbu.io.bad
-  dpi.io.ifuInValid  := true.B
+  dpi.io.ifuInValid  := ifu.io.idle
   dpi.io.iduInValid  := idu.io.msgIn.valid
   dpi.io.exuInValid  := exu.io.msgIn.valid
   dpi.io.lsuInValid  := lsu.io.msgIn.valid

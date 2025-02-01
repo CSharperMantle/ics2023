@@ -27,7 +27,6 @@ class Cache(val numLines: Int) extends Module {
     val hit     = Output(Bool())
     val miss    = Output(Bool())
   }
-
   val io = IO(new Port)
 
   private val lines = SRAM(numLines, new CacheLine(XLen, log2Up(numLines), 2), 0, 0, 1)

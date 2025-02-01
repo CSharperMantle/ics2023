@@ -14,10 +14,6 @@ object PcSel extends CvtChiselEnum {
   val PcMtvec = Value
 }
 
-class Pcu2IfuMsg extends Bundle {
-  val pcf = Output(UInt(XLen.W))
-}
-
 class Pcu extends Module {
   class Port extends Bundle {
     val pc      = Input(UInt(XLen.W))
@@ -28,7 +24,7 @@ class Pcu extends Module {
     val d       = Input(UInt(XLen.W))
     val mepc    = Input(UInt(XLen.W))
     val mtvec   = Input(UInt(XLen.W))
-    val msgOut  = new Pcu2IfuMsg
+    val dnpc    = Output(UInt(XLen.W))
   }
   val io = IO(new Port)
 
@@ -42,5 +38,5 @@ class Pcu extends Module {
     )
   )
 
-  io.msgOut.pcf := dnpc
+  io.dnpc := dnpc
 }

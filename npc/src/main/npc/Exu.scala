@@ -35,6 +35,7 @@ class Exu2LsuMsg extends Bundle {
   val memWidth  = Output(MemWidthField.chiselType)
   val pc        = Output(UInt(XLen.W))
   val snpc      = Output(UInt(XLen.W))
+  val pdnpc     = Output(UInt(XLen.W))
   val wbEn      = Output(WbEnField.chiselType)
   val wbSel     = Output(WbSelField.chiselType)
   val rdIdx     = Output(UInt(5.W))
@@ -56,7 +57,7 @@ class Exu extends Module {
   import ExSrcASel._
   import ExSrcBSel._
 
-  private val bad = io.msgIn.valid & io.msgIn.bits.bad
+  private val bad = io.msgIn.bits.bad
 
   private val alu = Module(new Alu)
 
@@ -87,8 +88,8 @@ class Exu extends Module {
 
   io.csrConn.s1      := srcA
   io.csrConn.csrAddr := io.msgIn.bits.imm(11, 0)
-  io.csrConn.csrOp   := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.csrOp, CsrOp.Unk)
-  io.csrConn.excpAdj := Mux(io.msgIn.valid & ~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone)
+  io.csrConn.csrOp   := Mux(~bad, io.msgIn.bits.csrOp, CsrOp.Unk)
+  io.csrConn.excpAdj := Mux(~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone)
   io.csrConn.pc      := io.msgIn.bits.pc
 
   io.msgOut.bits.d   := alu.io.d
@@ -105,6 +106,7 @@ class Exu extends Module {
   io.msgOut.bits.memWidth  := io.msgIn.bits.memWidth
   io.msgOut.bits.pc        := io.msgIn.bits.pc
   io.msgOut.bits.snpc      := io.msgIn.bits.snpc
+  io.msgOut.bits.pdnpc     := io.msgIn.bits.pdnpc
   io.msgOut.bits.wbEn      := io.msgIn.bits.wbEn
   io.msgOut.bits.wbSel     := io.msgIn.bits.wbSel
   io.msgOut.bits.rdIdx     := io.msgIn.bits.rdIdx
@@ -132,6 +134,6 @@ class Exu extends Module {
   io.gprRead.valid := y === S_RdReg
   io.csrConn.valid := y === S_Csr
 
-  io.msgIn.ready  := y === S_Idle
+  io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid
   io.msgOut.valid := y === S_Done
 }

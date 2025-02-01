@@ -16,6 +16,7 @@ object WbSel extends CvtChiselEnum {
 class Wbu extends Module {
   class Port extends Bundle {
     val msgIn    = Flipped(Decoupled(new Lsu2WbuMsg))
+    val msgOut   = Decoupled(new Bundle {})
     val gprWrite = Flipped(new GprFileWriteConn)
     val pc       = Output(UInt(XLen.W))
     val instr    = Output(UInt(XLen.W))
@@ -45,7 +46,8 @@ class Wbu extends Module {
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
 
-  io.msgIn.ready := true.B
+  io.msgIn.ready  := io.msgOut.ready
+  io.msgOut.valid := io.msgIn.valid
 
   io.break   := io.msgIn.bits.break
   io.instr   := io.msgIn.bits.instr

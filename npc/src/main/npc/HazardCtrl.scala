@@ -9,8 +9,8 @@ import npc._
 
 class HazardCtrl extends Module {
   class PipelineCtrl extends common.PipelineCtrl {
-    val stall = Bool()
-    val flush = Bool()
+    override val stall = Bool()
+    override val flush = Bool()
   }
 
   class Port extends Bundle {
@@ -21,6 +21,7 @@ class HazardCtrl extends Module {
     val exuInMsg       = Flipped(new Idu2ExuMsg)
     val exuOutMsgValid = Input(Bool())
     val exuOutMsg      = Flipped(new Exu2LsuMsg)
+    val dnpc           = Input(UInt(XLen.W))
     val lsuInMsgValid  = Input(Bool())
     val lsuInMsgReady  = Input(Bool())
     val lsuInMsg       = Flipped(new Exu2LsuMsg)
@@ -40,9 +41,9 @@ class HazardCtrl extends Module {
   private def conflict(rs: UInt, rd: UInt) = rs === rd & rd =/= 0.U
 
   private def rwConflict(rs: UInt) = (
-    (~io.exuInMsgReady & conflict(rs, io.exuInMsg.rdIdx) & io.exuInMsg.wbEn)
-      | (~io.lsuInMsgReady & conflict(rs, io.lsuInMsg.rdIdx) & io.lsuInMsg.wbEn)
-      | (~io.wbuInMsgReady & conflict(rs, io.wbuInMsg.rdIdx) & io.wbuInMsg.wbEn)
+    (io.exuInMsgValid & conflict(rs, io.exuInMsg.rdIdx) & io.exuInMsg.wbEn)
+      | (io.lsuInMsgValid & conflict(rs, io.lsuInMsg.rdIdx) & io.lsuInMsg.wbEn)
+      | (io.wbuInMsgValid & conflict(rs, io.wbuInMsg.rdIdx) & io.wbuInMsg.wbEn)
   )
 
   private val hasRwHazard = (
@@ -50,10 +51,14 @@ class HazardCtrl extends Module {
       & (rwConflict(io.iduOutMsg.rs1Idx) | rwConflict(io.iduOutMsg.rs2Idx))
   )
 
-  io.ifuCtrl.flush := false.B
+  private val mispredicted = io.exuOutMsgValid & io.dnpc =/= io.exuOutMsg.pdnpc
+
+  private val flushIcache = io.iduOutMsgValid & io.iduOutMsg.icacheFlush
+
+  io.ifuCtrl.flush := mispredicted | flushIcache
   io.ifuCtrl.stall := false.B
 
-  io.iduCtrl.flush := false.B
+  io.iduCtrl.flush := mispredicted
   io.iduCtrl.stall := false.B
 
   io.exuCtrl.flush := false.B
