@@ -191,6 +191,8 @@ class Core extends Module {
   dpi.io.wbuOutValid := wbu.io.retired
   dpi.io.icacheHit   := icache.io.hit
   dpi.io.icacheMiss  := icache.io.miss
+  dpi.io.predHit     := (exu.io.msgOut.fire & pcu.io.pcSel =/= PcSel.PcSnpc & exu.io.msgOut.bits.pdnpc === pcu.io.dnpc)
+  dpi.io.predMiss    := (exu.io.msgOut.fire & pcu.io.pcSel =/= PcSel.PcSnpc & exu.io.msgOut.bits.pdnpc =/= pcu.io.dnpc)
 
   io.slave := DontCare
 }

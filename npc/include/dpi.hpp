@@ -17,6 +17,8 @@ struct InstrPerfCounters {
 struct GlobalPerfCounters {
   uint32_t icache_hit;
   uint32_t icache_miss;
+  uint32_t pred_hit;
+  uint32_t pred_miss;
 };
 
 struct DutDpiState {

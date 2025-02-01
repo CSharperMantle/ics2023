@@ -104,7 +104,7 @@ static void print_stats() {
   Log("  exu: %.04lf", static_cast<double>(n_cycles_exu) / static_cast<double>(n_cycles));
   Log("  lsu: %.04lf", static_cast<double>(n_cycles_lsu) / static_cast<double>(n_cycles));
   Log("  wbu: %.04lf", static_cast<double>(n_cycles_wbu) / static_cast<double>(n_cycles));
-  Log("Cache performance:");
+  Log("Performance:");
   Log("  icache:");
   Log("    # Hits: %" PRIu32, dut_dpi_state.g_ctrs.icache_hit);
   Log("    # Misses: %" PRIu32, dut_dpi_state.g_ctrs.icache_miss);
@@ -112,6 +112,12 @@ static void print_stats() {
       static_cast<double>(dut_dpi_state.g_ctrs.icache_hit)
           / static_cast<double>(dut_dpi_state.g_ctrs.icache_hit
                                 + dut_dpi_state.g_ctrs.icache_miss));
+  Log("  Branch prediction:");
+  Log("    # Hits: %" PRIu32, dut_dpi_state.g_ctrs.pred_hit);
+  Log("    # Misses: %" PRIu32, dut_dpi_state.g_ctrs.pred_miss);
+  Log("    Accuracy: %.04lf",
+      static_cast<double>(dut_dpi_state.g_ctrs.pred_hit)
+          / static_cast<double>(dut_dpi_state.g_ctrs.pred_hit + dut_dpi_state.g_ctrs.pred_miss));
 }
 
 void assert_fail_msg() {

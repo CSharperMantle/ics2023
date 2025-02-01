@@ -37,6 +37,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  input                 wbuOutValid,
        |  input                 icacheHit,
        |  input                 icacheMiss,
+       |  input                 predHit,
+       |  input                 predMiss,
        |  input                 clock,
        |  input                 reset
        |);
@@ -46,6 +48,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |                                                    input int       instr,
        |                                                    input int       icache_hit_count,
        |                                                    input int       icache_miss_count,
+       |                                                    input int       pred_hit_count,
+       |                                                    input int       pred_miss_count,
        |                                                    input shortint  instr_cycles,
        |                                                    input shortint  ifu_cycles,
        |                                                    input shortint  idu_cycles,
@@ -65,6 +69,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |  reg [15:0] wbu_cycles;
        |  reg [31:0] icache_hit_count;
        |  reg [31:0] icache_miss_count;
+       |  reg [31:0] pred_hit_count;
+       |  reg [31:0] pred_miss_count;
        |  always @(posedge clock) begin
        |    if (reset) begin
        |      instr_cycles <= 16'h0;
@@ -75,6 +81,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |      wbu_cycles <= 16'h0;
        |      icache_hit_count <= 32'h0;
        |      icache_miss_count <= 32'h0;
+       |      pred_hit_count <= 32'h0;
+       |      pred_miss_count <= 32'h0;
        |    end else begin
        |      instr_cycles <= retired ? 16'h0 : (instr_cycles + 1);
        |      ifu_cycles <= retired ? 16'h0 : (ifuOutValid ? ifu_cycles : (ifuInValid ? (ifu_cycles + 1) : 0));
@@ -84,6 +92,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |      wbu_cycles <= retired ? 16'h0 : (wbuOutValid ? wbu_cycles : (wbuInValid ? (wbu_cycles + 1) : 0));
        |      icache_hit_count <= icacheHit ? (icache_hit_count + 1) : icache_hit_count;
        |      icache_miss_count <= icacheMiss ? (icache_miss_count + 1) : icache_miss_count;
+       |      pred_hit_count <= predHit ? (pred_hit_count + 1) : pred_hit_count;
+       |      pred_miss_count <= predMiss ? (pred_miss_count + 1) : pred_miss_count;
        |    end
        |  end
        |
@@ -97,6 +107,8 @@ class DpiBlackBox extends BlackBox with HasBlackBoxInline {
        |                         instr,
        |                         icache_hit_count,
        |                         icache_miss_count,
+       |                         pred_hit_count,
+       |                         pred_miss_count,
        |                         instr_cycles,
        |                         ifu_cycles,
        |                         idu_cycles,
@@ -134,6 +146,8 @@ class DpiIO extends Bundle {
   val wbuOutValid = Input(Bool())
   val icacheHit   = Input(Bool())
   val icacheMiss  = Input(Bool())
+  val predHit     = Input(Bool())
+  val predMiss    = Input(Bool())
 }
 
 class Dpi extends Module {
@@ -159,6 +173,8 @@ class Dpi extends Module {
   backend.io.wbuOutValid := io.wbuOutValid
   backend.io.icacheHit   := io.icacheHit
   backend.io.icacheMiss  := io.icacheMiss
+  backend.io.predHit     := io.predHit
+  backend.io.predMiss    := io.predMiss
   backend.io.clock       := clock.asBool
   backend.io.reset       := reset.asBool
 }

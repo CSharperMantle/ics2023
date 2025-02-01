@@ -57,16 +57,12 @@ class HazardCtrl extends Module {
 
   io.ifuCtrl.flush := mispredicted | flushIcache
   io.ifuCtrl.stall := false.B
-
   io.iduCtrl.flush := mispredicted
   io.iduCtrl.stall := false.B
-
   io.exuCtrl.flush := false.B
   io.exuCtrl.stall := hasRwHazard
-
   io.lsuCtrl.flush := false.B
   io.lsuCtrl.stall := false.B
-
   io.wbuCtrl.flush := false.B
   io.wbuCtrl.stall := false.B
 }

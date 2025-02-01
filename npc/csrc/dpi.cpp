@@ -43,6 +43,8 @@ void soc_dpi_report_state(word_t pc,
                           uint32_t instr,
                           uint32_t icache_hit_count,
                           uint32_t icache_miss_count,
+                          uint32_t pred_hit_count,
+                          uint32_t pred_miss_count,
                           uint16_t instr_cycles,
                           uint16_t ifu_cycles,
                           uint16_t idu_cycles,
@@ -57,6 +59,8 @@ void soc_dpi_report_state(word_t pc,
   dut_dpi_state.instr = instr;
   dut_dpi_state.g_ctrs.icache_hit = icache_hit_count;
   dut_dpi_state.g_ctrs.icache_miss = icache_miss_count;
+  dut_dpi_state.g_ctrs.pred_hit = pred_hit_count;
+  dut_dpi_state.g_ctrs.pred_miss = pred_miss_count;
   dut_dpi_state.i_ctrs.total_cycles = instr_cycles;
   dut_dpi_state.i_ctrs.ifu_cycles = ifu_cycles;
   dut_dpi_state.i_ctrs.idu_cycles = idu_cycles;
