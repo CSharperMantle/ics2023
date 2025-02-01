@@ -1,10 +1,6 @@
-# ICS2023 Programming Assignment
+# ICS2023 PA & YSYX Workbench
 
-This project is the programming assignment of the class ICS(Introduction to Computer System)
-in Department of Computer Science and Technology, Nanjing University.
-
-For the guide of this programming assignment,
-refer to <https://nju-projectn.github.io/ics-pa-gitbook/ics2023/> and <https://ysyx.oscc.cc/docs/>.
+This repository is an implementation of [ICS2023 PAs](<https://nju-projectn.github.io/ics-pa-gitbook/ics2023/>) and [一生一芯](https://ysyx.oscc.cc/docs/) assignments by Rong "Mantle" Bao (<webmaster@csmantle.top>).
 
 ## Progress
 
