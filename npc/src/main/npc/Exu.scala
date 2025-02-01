@@ -58,12 +58,14 @@ class Exu extends Module {
   import ExSrcBSel._
 
   private val bad = io.msgIn.bits.bad
+  private val rs1 = Mux(io.msgIn.bits.fwdEn.rs1, io.msgIn.bits.fwdRegVal, io.gprRead.rs1)
+  private val rs2 = Mux(io.msgIn.bits.fwdEn.rs2, io.msgIn.bits.fwdRegVal, io.gprRead.rs2)
 
   private val alu = Module(new Alu)
 
   private val srcA = MuxLookup(io.msgIn.bits.srcASel, 0.U)(
     Seq(
-      SrcARs1  -> io.gprRead.rs1,
+      SrcARs1  -> rs1,
       SrcAPc   -> io.msgIn.bits.pc,
       SrcAR0   -> 0.U,
       SrcAZimm -> Cat(Fill(XLen - 5, false.B), io.msgIn.bits.rs1Idx)
@@ -93,7 +95,7 @@ class Exu extends Module {
   io.csrConn.pc      := io.msgIn.bits.pc
 
   io.msgOut.bits.d   := alu.io.d
-  io.msgOut.bits.rs2 := io.gprRead.rs2
+  io.msgOut.bits.rs2 := rs2
   io.msgOut.bits.bad := io.msgIn.bits.bad
 
   io.msgOut.bits.brTaken := alu.io.brTaken

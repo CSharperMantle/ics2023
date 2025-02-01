@@ -150,13 +150,16 @@ class Core extends Module {
   hazardCtrl.io.wbuInMsgReady  := wbu.io.msgIn.ready
   hazardCtrl.io.wbuInMsg       := wbu.io.msgIn.bits
 
-  ifu.io.ctrl := hazardCtrl.io.ifuCtrl
   ifu.io.dnpc := pcu.io.dnpc
+  ifu.io.ctrl := hazardCtrl.io.ifuCtrl
   StageConnect(ifu.io.msgOut, idu.io.msgIn, idu.io.msgOut, hazardCtrl.io.iduCtrl)
   StageConnect(idu.io.msgOut, exu.io.msgIn, exu.io.msgOut, hazardCtrl.io.exuCtrl)
   StageConnect(exu.io.msgOut, lsu.io.msgIn, lsu.io.msgOut, hazardCtrl.io.lsuCtrl)
   StageConnect(lsu.io.msgOut, wbu.io.msgIn, wbu.io.msgOut, hazardCtrl.io.wbuCtrl)
   wbu.io.msgOut.ready := true.B
+
+  idu.io.fwdEn     := hazardCtrl.io.fwdEn
+  idu.io.fwdRegVal := hazardCtrl.io.fwdRegVal
 
   pcu.io.pc      := exu.io.msgOut.bits.pc
   pcu.io.snpc    := exu.io.msgOut.bits.snpc

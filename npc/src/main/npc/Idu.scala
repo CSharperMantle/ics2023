@@ -300,12 +300,17 @@ class Idu2ExuMsg extends Bundle {
   val pc    = Output(UInt(XLen.W))
   val snpc  = Output(UInt(XLen.W))
   val pdnpc = Output(UInt(XLen.W))
+  // FORWARDING
+  val fwdEn     = Output(new FwdEn)
+  val fwdRegVal = Output(UInt(XLen.W))
 }
 
 class Idu extends Module {
   class Port extends Bundle {
-    val msgIn  = Flipped(Decoupled(new Ifu2IduMsg))
-    val msgOut = Decoupled(new Idu2ExuMsg)
+    val msgIn     = Flipped(Decoupled(new Ifu2IduMsg))
+    val msgOut    = Decoupled(new Idu2ExuMsg)
+    val fwdEn     = Input(new FwdEn)
+    val fwdRegVal = Input(UInt(XLen.W))
   }
   val io = IO(new Port)
 
@@ -420,6 +425,9 @@ class Idu extends Module {
   io.msgOut.bits.pc    := io.msgIn.bits.pc
   io.msgOut.bits.snpc  := io.msgIn.bits.snpc
   io.msgOut.bits.pdnpc := io.msgIn.bits.pdnpc
+
+  io.msgOut.bits.fwdEn     := io.fwdEn
+  io.msgOut.bits.fwdRegVal := io.fwdRegVal
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid
