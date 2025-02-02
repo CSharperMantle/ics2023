@@ -2,6 +2,7 @@ package npc
 
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.decode._
 
 import common._
 import npc._
@@ -125,36 +126,37 @@ class Exu extends Module {
   io.msgOut.bits.break     := io.msgIn.bits.break
 
   private object State extends CvtChiselEnum {
-    val S_Idle  = Value
-    val S_RdReg = Value
-    val S_Csr   = Value
-    val S_Done  = Value
+    val S_Idle = Value
+    val S_Gpr  = Value
+    val S_Csr  = Value
+    val S_Done = Value
   }
   import State._
+  private val (firstAction, _) = State.safe(
+    decoder(
+      Cat(bad, gprNop, csrNop),
+      TruthTable(
+        Seq(
+          "b1??".BP -> S_Done.BP,
+          "b011".BP -> S_Done.BP,
+          "b00?".BP -> S_Gpr.BP,
+          "b010".BP -> S_Csr.BP
+        ),
+        S_Idle.BP
+      )
+    )
+  )
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle -> Mux(
-        io.msgIn.valid,
-        MuxCase(
-          S_Done,
-          Seq(
-            bad                 -> S_Done,
-            (csrNop & gprNop)   -> S_Done,
-            (~gprNop & csrNop)  -> S_RdReg,
-            (gprNop & ~csrNop)  -> S_Csr,
-            (~gprNop & ~csrNop) -> S_RdReg
-          )
-        ),
-        S_Idle
-      ),
-      S_RdReg -> Mux(io.gprRead.ready, Mux(csrNop, S_Done, S_Csr), S_RdReg),
-      S_Csr   -> Mux(io.csrConn.ready, S_Done, S_Csr),
-      S_Done  -> Mux(io.msgOut.ready, S_Idle, S_Done)
+      S_Idle -> Mux(io.msgIn.valid, firstAction, S_Idle),
+      S_Gpr  -> Mux(io.gprRead.ready, Mux(csrNop, S_Done, S_Csr), S_Gpr),
+      S_Csr  -> Mux(io.csrConn.ready, S_Done, S_Csr),
+      S_Done -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
-  io.gprRead.valid := y === S_RdReg
+  io.gprRead.valid := y === S_Gpr
   io.csrConn.valid := y === S_Csr
 
   io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid

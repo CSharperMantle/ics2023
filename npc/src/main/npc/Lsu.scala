@@ -163,14 +163,13 @@ class Lsu extends Module {
   import State._
   private val (firstAction, _) = State.safe(
     decoder(
-      Cat(io.msgIn.bits.bad, rEn, wEn, alignBad),
+      Cat(io.msgIn.bits.bad | alignBad, rEn, wEn),
       TruthTable(
         Seq(
-          "b0000".BP -> S_Done.BP,
-          "b1???".BP -> S_Done.BP,
-          "b0??1".BP -> S_Done.BP,
-          "b01?0".BP -> S_ReadReq.BP,
-          "b0010".BP -> S_WriteReq.BP
+          "b000".BP -> S_Done.BP,
+          "b1??".BP -> S_Done.BP,
+          "b01?".BP -> S_ReadReq.BP,
+          "b001".BP -> S_WriteReq.BP
         ),
         S_Idle.BP
       )
