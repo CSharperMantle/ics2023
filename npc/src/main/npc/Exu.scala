@@ -60,6 +60,14 @@ class Exu extends Module {
   private val bad = io.msgIn.bits.bad
   private val rs1 = Mux(io.msgIn.bits.fwdEn.rs1, io.msgIn.bits.fwdRegVal, io.gprRead.rs1)
   private val rs2 = Mux(io.msgIn.bits.fwdEn.rs2, io.msgIn.bits.fwdRegVal, io.gprRead.rs2)
+  private val csrNop = (
+    io.msgIn.bits.csrOp === CsrOp.Unk
+      & io.msgIn.bits.excpAdj === CsrExcpAdj.ExcpAdjNone
+  )
+  private val gprNop = (
+    io.msgIn.bits.srcASel =/= ExSrcASel.SrcARs1
+      & io.msgIn.bits.srcBSel =/= ExSrcBSel.SrcBRs2
+  )
 
   private val alu = Module(new Alu)
 
@@ -90,13 +98,13 @@ class Exu extends Module {
 
   io.csrConn.s1      := srcA
   io.csrConn.csrAddr := io.msgIn.bits.imm(11, 0)
-  io.csrConn.csrOp   := Mux(~bad, io.msgIn.bits.csrOp, CsrOp.Unk)
-  io.csrConn.excpAdj := Mux(~bad, io.msgIn.bits.excpAdj, CsrExcpAdj.ExcpAdjNone)
+  io.csrConn.csrOp   := io.msgIn.bits.csrOp
+  io.csrConn.excpAdj := io.msgIn.bits.excpAdj
   io.csrConn.pc      := io.msgIn.bits.pc
 
   io.msgOut.bits.d   := alu.io.d
   io.msgOut.bits.rs2 := rs2
-  io.msgOut.bits.bad := io.msgIn.bits.bad
+  io.msgOut.bits.bad := bad
 
   io.msgOut.bits.brTaken := alu.io.brTaken
   io.msgOut.bits.csrVal  := io.csrConn.csrVal
@@ -126,8 +134,21 @@ class Exu extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle  -> Mux(io.msgIn.valid, Mux(io.msgIn.bits.bad, S_Done, S_RdReg), S_Idle),
-      S_RdReg -> Mux(io.gprRead.ready, S_Csr, S_RdReg),
+      S_Idle -> Mux(
+        io.msgIn.valid,
+        MuxCase(
+          S_Done,
+          Seq(
+            bad                 -> S_Done,
+            (csrNop & gprNop)   -> S_Done,
+            (~gprNop & csrNop)  -> S_RdReg,
+            (gprNop & ~csrNop)  -> S_Csr,
+            (~gprNop & ~csrNop) -> S_RdReg
+          )
+        ),
+        S_Idle
+      ),
+      S_RdReg -> Mux(io.gprRead.ready, Mux(csrNop, S_Done, S_Csr), S_RdReg),
       S_Csr   -> Mux(io.csrConn.ready, S_Done, S_Csr),
       S_Done  -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
