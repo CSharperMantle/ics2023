@@ -56,33 +56,30 @@ object CsrExcpAdj extends CvtChiselEnum {
   val ExcpAdjMret  = Value
 }
 
-object CsrOp extends CvtChiselEnum {
-  val Rw  = Value
-  val Rs  = Value
-  val Rc  = Value
-  val Unk = Value
-}
-
-class CsrFileConn extends Bundle {
+class CsrFileReadConn extends Bundle {
   val valid   = Input(Bool())
   val csrAddr = Input(UInt(12.W))
-  val csrOp   = Input(CsrOp())
-  val s1      = Input(UInt(XLen.W))
-  val excpAdj = Input(CsrExcpAdj())
-  val pc      = Input(UInt(XLen.W))
   val csrVal  = Output(UInt(XLen.W))
   val mepc    = Output(UInt(XLen.W))
   val mtvec   = Output(UInt(XLen.W))
-  val ready   = Output(Bool())
+}
+
+class CsrFileWriteConn extends Bundle {
+  val valid   = Input(Bool())
+  val csrAddr = Input(UInt(12.W))
+  val csrWbEn = Input(Bool())
+  val csrVal  = Input(UInt(XLen.W))
+  val excpAdj = Input(CsrExcpAdj())
+  val pc      = Input(UInt(XLen.W))
 }
 
 class CsrFile extends Module {
   class Port extends Bundle {
-    val conn = new CsrFileConn
+    val read  = new CsrFileReadConn
+    val write = new CsrFileWriteConn
   }
   val io = IO(new Port)
 
-  import CsrOp._
   import CsrExcpAdj._
   import BackedCsrIdx._
 
@@ -109,17 +106,18 @@ class CsrFile extends Module {
     CsrPropConstValField
   )
   private val csrPropDecoder = new DecodeTable(csrPropTable, csrPropFields)
-  private val csrPropBundle  = csrPropDecoder.decode(io.conn.csrAddr)
 
-  private val csrIdx     = csrPropBundle(CsrPropIdxField)
-  private val csrIsConst = csrPropBundle(CsrPropIsConstField)
+  private val readPropBundle  = csrPropDecoder.decode(io.read.csrAddr)
+  private val writePropBundle = csrPropDecoder.decode(io.write.csrAddr)
 
-  private val csrVal = Wire(UInt(XLen.W))
-  csrVal := Mux(csrIsConst, csrPropBundle(CsrPropConstValField), csrs(csrIdx.U))
+  private val readIdx = readPropBundle(CsrPropIdxField)
 
-  io.conn.csrVal := csrVal
-  io.conn.mepc   := csrs(MepcIdx.U)
-  io.conn.mtvec  := csrs(MtvecIdx.U)
+  private val readVal =
+    Mux(readPropBundle(CsrPropIsConstField), readPropBundle(CsrPropConstValField), csrs(readIdx.U))
+
+  io.read.csrVal := readVal
+  io.read.mepc   := csrs(MepcIdx.U)
+  io.read.mtvec  := csrs(MtvecIdx.U)
 
   private val mstatus = csrs(MstatusIdx.U)
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
@@ -128,74 +126,40 @@ class CsrFile extends Module {
   private val mstatusAdjMret  = Cat(mstatus(31, 13), PrivMode.M.U(2.W), mstatus(10, 8), 1.U(1.W),   mstatus(6, 4), mstatus(7), mstatus(2, 0))
   // scalafmt: { align.tokens.add = [] }
 
-  private object State extends CvtChiselEnum {
-    val S_Idle    = Value
-    val S_ExcpAdj = Value
-    val S_Write   = Value
-    val S_Done    = Value
-  }
-  import State._
-  private val y = RegInit(S_Idle)
-  y := MuxLookup(y, S_Idle)(
-    Seq(
-      S_Idle -> Mux(
-        ~io.conn.valid,
-        S_Idle,
-        MuxCase(
-          S_Done,
-          Seq(
-            (io.conn.excpAdj =/= ExcpAdjNone) -> S_ExcpAdj,
-            (io.conn.csrOp =/= Unk)           -> S_Write
-          )
-        )
-      ),
-      S_ExcpAdj -> S_Done,
-      S_Write   -> S_Done,
-      S_Done    -> S_Idle
-    )
-  )
-
-  private val writable = y === S_Write & ~csrIsConst
+  private val writeIdx = writePropBundle(CsrPropIdxField)
+  private val writable = io.write.valid & ~writePropBundle(CsrPropIsConstField)
 
   for ((csr, idx, hwIdx) <- csrs.zip(BackedCsrIdx.all).map(v => (v._1, v._2.litValue, v._2))) {
     val normalWriteVal = Wire(UInt(XLen.W))
-    normalWriteVal := MuxLookup(io.conn.csrOp, csr)(
-      Seq(
-        Rw -> io.conn.s1,
-        Rs -> (io.conn.s1 | csr),
-        Rc -> (~io.conn.s1 & csr)
-      )
-    )
+    normalWriteVal := Mux(writable & io.write.csrWbEn, io.write.csrVal, csr)
     if (idx == MstatusIdx.litValue) {
       csr := MuxCase(
         normalWriteVal,
         Seq(
-          reset.asBool                                         -> InitMstatusVal.U,
-          (y === S_ExcpAdj & io.conn.excpAdj === ExcpAdjEcall) -> mstatusAdjEcall,
-          (y === S_ExcpAdj & io.conn.excpAdj === ExcpAdjMret)  -> mstatusAdjMret,
-          (~writable | csrIdx =/= hwIdx)                       -> csr
+          reset.asBool                        -> InitMstatusVal.U,
+          (io.write.excpAdj === ExcpAdjEcall) -> mstatusAdjEcall,
+          (io.write.excpAdj === ExcpAdjMret)  -> mstatusAdjMret,
+          (~writable | writeIdx =/= hwIdx)    -> csr
         )
       )
     } else if (idx == McauseIdx.litValue) {
       csr := MuxCase(
         normalWriteVal,
         Seq(
-          (y === S_ExcpAdj & io.conn.excpAdj === ExcpAdjEcall) -> ExcpCode.MEnvCall.U(XLen.W),
-          (~writable | csrIdx =/= hwIdx)                       -> csr
+          (io.write.excpAdj === ExcpAdjEcall) -> ExcpCode.MEnvCall.U(XLen.W),
+          (~writable | writeIdx =/= hwIdx)    -> csr
         )
       )
     } else if (idx == MepcIdx.litValue) {
       csr := MuxCase(
         normalWriteVal,
         Seq(
-          (y === S_ExcpAdj & io.conn.excpAdj === ExcpAdjEcall) -> io.conn.pc,
-          (~writable | csrIdx =/= hwIdx)                       -> csr
+          (io.write.excpAdj === ExcpAdjEcall) -> io.write.pc,
+          (~writable | writeIdx =/= hwIdx)    -> csr
         )
       )
     } else {
-      csr := Mux(~writable | csrIdx =/= hwIdx, csr, normalWriteVal)
+      csr := Mux(~writable | writeIdx =/= hwIdx, csr, normalWriteVal)
     }
   }
-
-  io.conn.ready := y === S_Done
 }

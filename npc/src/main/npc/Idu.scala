@@ -102,6 +102,8 @@ object InstrOpcodeBP {
 object AluOpSel extends Enumeration {
   val AluOpFunct3 = Value
   val AluOpAdd    = Value
+  val AluOpAnd    = Value
+  val AluOpOr     = Value
   val AluOpX      = Value
 }
 
@@ -177,6 +179,8 @@ object AluCalcOpField extends DecodeField[InstrPat, UInt] {
           case _     => AluCalcOp.Add.BP // this could make ??? defaults to add.
         }
       case AluOpSel.AluOpAdd => AluCalcOp.Add.BP
+      case AluOpSel.AluOpAnd => AluCalcOp.And.BP
+      case AluOpSel.AluOpOr  => AluCalcOp.Or.BP
       case AluOpSel.AluOpX   => AluCalcOp.X
     }
   }
@@ -210,19 +214,15 @@ object AluBrCondField extends DecodeField[InstrPat, AluBrCond.Type] {
   }
 }
 
-object CsrOpField extends DecodeField[InstrPat, CsrOp.Type] {
-  override def name       = "csrOp"
-  override def chiselType = CsrOp()
+object CsrWbEnField extends BoolDecodeField[InstrPat] {
+  override def name = "csrWbEn"
   override def genTable(pat: InstrPat): BitPat = {
-    import CsrOp._
     if (pat.wbSel == WbSel.WbCsr.BP)
       pat.funct3.rawString match {
-        case "001" | "101" => Rw.BP
-        case "010" | "110" => Rs.BP
-        case "011" | "111" => Rc.BP
-        case _             => Unk.BP
+        case "001" | "101" | "010" | "110" | "011" | "111" => "b1".BP
+        case _                                             => "b0".BP
       }
-    else Unk.BP
+    else "b0".BP
   }
 }
 
@@ -280,10 +280,11 @@ class Idu2ExuMsg extends Bundle {
   val aluCalcOp  = Output(AluCalcOpField.chiselType)
   val aluCalcDir = Output(AluCalcDirField.chiselType)
   val aluBrCond  = Output(AluBrCondField.chiselType)
-  val csrOp      = Output(CsrOpField.chiselType)
+  val csrWbEn    = Output(CsrWbEnField.chiselType)
   val imm        = Output(UInt(XLen.W))
   val srcASel    = Output(SrcASelField.chiselType)
   val srcBSel    = Output(SrcBSelField.chiselType)
+  val csrAddr    = Output(UInt(12.W))
   val excpAdj    = Output(ExcpAdjField.chiselType)
   val bad        = Output(Bool())
   // Unused by Exu
@@ -302,7 +303,8 @@ class Idu2ExuMsg extends Bundle {
   val pdnpc = Output(UInt(XLen.W))
   // FORWARDING
   val fwdEn     = Output(new FwdEn)
-  val fwdRegVal = Output(UInt(XLen.W))
+  val fwdGprVal = Output(UInt(XLen.W))
+  val fwdCsrVal = Output(UInt(XLen.W))
 }
 
 class Idu extends Module {
@@ -310,7 +312,8 @@ class Idu extends Module {
     val msgIn     = Flipped(Decoupled(new Ifu2IduMsg))
     val msgOut    = Decoupled(new Idu2ExuMsg)
     val fwdEn     = Input(new FwdEn)
-    val fwdRegVal = Input(UInt(XLen.W))
+    val fwdGprVal = Input(UInt(XLen.W))
+    val fwdCsrVal = Input(UInt(XLen.W))
   }
   val io = IO(new Port)
 
@@ -326,54 +329,54 @@ class Idu extends Module {
 
   private val patterns = Seq(
     // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
-    //      |funct7        |rs2         |rs1   |funct3    |rd    |op     |Fmt        |PcSel      |SrcASel     |SrcBSel    |AluOpSel    |MemAct     |WbSel     |WbEn  |ExcpAdj         |ICacheFlush
-    InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b000".BP, 5.W.X, add,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, addi,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b0100000".BP, 5.W.X,       5.W.X, "b000".BP, 5.W.X, sub,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.X,     5.W.X, lui,    ImmU.BP,    PcSnpc.BP,  SrcAR0.BP,   SrcBImm.BP, AluOpAdd,    MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.X,     5.W.X, auipc,  ImmU.BP,    PcSnpc.BP,  SrcAPc.BP,   SrcBImm.BP, AluOpAdd,    MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.X,       5.W.X, "b100".BP, 5.W.X, xor,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b100".BP, 5.W.X, xori,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.X,       5.W.X, "b110".BP, 5.W.X, or,     ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b110".BP, 5.W.X, ori,    ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.X,       5.W.X, "b111".BP, 5.W.X, and,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b111".BP, 5.W.X, andi,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b001".BP, 5.W.X, sll,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b000000?".BP, 5.W.X,       5.W.X, "b001".BP, 5.W.X, slli,   ImmIs.BP,   PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, srl,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b000000?".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, srli,   ImmIs.BP,   PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b0100000".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, sra,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b010000?".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, srai,   ImmIs.BP,   PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.X,       5.W.X, "b010".BP, 5.W.X, slt,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, slti,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.X,       5.W.X, "b011".BP, 5.W.X, sltu,   ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBRs2.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b011".BP, 5.W.X, sltiu,  ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, lb,     ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemRd.BP,   WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, lh,     ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemRd.BP,   WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, lw,     ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemRd.BP,   WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b100".BP, 5.W.X, lbu,    ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemRdu.BP,  WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b101".BP, 5.W.X, lhu,    ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemRdu.BP,  WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, sb,     ImmS.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemWt.BP,   WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, sh,     ImmS.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemWt.BP,   WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, sw,     ImmS.BP,    PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpAdd,    MemWt.BP,   WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, beq,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,  SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, bne,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,  SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b100".BP, 5.W.X, blt,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,  SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b101".BP, 5.W.X, bge,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,  SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b110".BP, 5.W.X, bltu,   ImmB.BP,    PcBr.BP,    SrcARs1.BP,  SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b111".BP, 5.W.X, bgeu,   ImmB.BP,    PcBr.BP,    SrcARs1.BP,  SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.X,     5.W.X, jal,    ImmJ.BP,    PcAlu.BP,   SrcAPc.BP,   SrcBImm.BP, AluOpFunct3, MemNone.BP, WbSnpc.BP, 1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.N,     5.W.X, jalr,   ImmI.BP,    PcAlu.BP,   SrcARs1.BP,  SrcBImm.BP, AluOpFunct3, MemNone.BP, WbSnpc.BP, 1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.N,       5.W.N, 3.W.N,     5.W.N, ecall,  ImmI.BP,    PcMtvec.BP, SrcAR0.BP,   SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjEcall.BP, 1.W.N),
-    InstrPat(7.W.N,         "b00001".BP, 5.W.N, 3.W.N,     5.W.N, ebreak, ImmI.BP,    PcSnpc.BP,  SrcAR0.BP,   SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
-    InstrPat("b0011000".BP, "b00010".BP, 5.W.N, 3.W.N,     5.W.N, mret,   ImmR.BP,    PcMepc.BP,  SrcAR0.BP,   SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjMret.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, csrrw,  ImmIcsr.BP, PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpX,      MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, csrrs,  ImmIcsr.BP, PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpX,      MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b011".BP, 5.W.X, csrrc,  ImmIcsr.BP, PcSnpc.BP,  SrcARs1.BP,  SrcBImm.BP, AluOpX,      MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b101".BP, 5.W.X, csrrwi, ImmIcsr.BP, PcSnpc.BP,  SrcAZimm.BP, SrcBImm.BP, AluOpX,      MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b110".BP, 5.W.X, csrrsi, ImmIcsr.BP, PcSnpc.BP,  SrcAZimm.BP, SrcBImm.BP, AluOpX,      MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.X,         5.W.X,       5.W.X, "b111".BP, 5.W.X, csrrci, ImmIcsr.BP, PcSnpc.BP,  SrcAZimm.BP, SrcBImm.BP, AluOpX,      MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
-    InstrPat(7.W.N,         5.W.N,       5.W.N, "b001".BP, 5.W.N, fencei, ImmI.BP,    PcSnpc.BP,  SrcAR0.BP,   SrcBRs2.BP, AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.Y)
+    //      |funct7        |rs2         |rs1   |funct3    |rd    |op     |Fmt        |PcSel      |SrcASel        |SrcBSel     |AluOpSel    |MemAct     |WbSel     |WbEn  |ExcpAdj         |ICacheFlush
+    InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b000".BP, 5.W.X, add,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, addi,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b0100000".BP, 5.W.X,       5.W.X, "b000".BP, 5.W.X, sub,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.X,     5.W.X, lui,    ImmU.BP,    PcSnpc.BP,  SrcAR0.BP,      SrcBImm.BP,  AluOpAdd,    MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.X,     5.W.X, auipc,  ImmU.BP,    PcSnpc.BP,  SrcAPc.BP,      SrcBImm.BP,  AluOpAdd,    MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.X,       5.W.X, "b100".BP, 5.W.X, xor,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b100".BP, 5.W.X, xori,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.X,       5.W.X, "b110".BP, 5.W.X, or,     ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b110".BP, 5.W.X, ori,    ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.X,       5.W.X, "b111".BP, 5.W.X, and,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b111".BP, 5.W.X, andi,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b001".BP, 5.W.X, sll,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b000000?".BP, 5.W.X,       5.W.X, "b001".BP, 5.W.X, slli,   ImmIs.BP,   PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b0000000".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, srl,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b000000?".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, srli,   ImmIs.BP,   PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b0100000".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, sra,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b010000?".BP, 5.W.X,       5.W.X, "b101".BP, 5.W.X, srai,   ImmIs.BP,   PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.X,       5.W.X, "b010".BP, 5.W.X, slt,    ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, slti,   ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.X,       5.W.X, "b011".BP, 5.W.X, sltu,   ImmR.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBRs2.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b011".BP, 5.W.X, sltiu,  ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbAlu.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, lb,     ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemRd.BP,   WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, lh,     ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemRd.BP,   WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, lw,     ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemRd.BP,   WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b100".BP, 5.W.X, lbu,    ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemRdu.BP,  WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b101".BP, 5.W.X, lhu,    ImmI.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemRdu.BP,  WbMem.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, sb,     ImmS.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemWt.BP,   WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, sh,     ImmS.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemWt.BP,   WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, sw,     ImmS.BP,    PcSnpc.BP,  SrcARs1.BP,     SrcBImm.BP,  AluOpAdd,    MemWt.BP,   WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b000".BP, 5.W.X, beq,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,     SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, bne,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,     SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b100".BP, 5.W.X, blt,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,     SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b101".BP, 5.W.X, bge,    ImmB.BP,    PcBr.BP,    SrcARs1.BP,     SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b110".BP, 5.W.X, bltu,   ImmB.BP,    PcBr.BP,    SrcARs1.BP,     SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b111".BP, 5.W.X, bgeu,   ImmB.BP,    PcBr.BP,    SrcARs1.BP,     SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.X,     5.W.X, jal,    ImmJ.BP,    PcAlu.BP,   SrcAPc.BP,      SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbSnpc.BP, 1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, 3.W.N,     5.W.X, jalr,   ImmI.BP,    PcAlu.BP,   SrcARs1.BP,     SrcBImm.BP,  AluOpFunct3, MemNone.BP, WbSnpc.BP, 1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.N,       5.W.N, 3.W.N,     5.W.N, ecall,  ImmI.BP,    PcMtvec.BP, SrcAR0.BP,      SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjEcall.BP, 1.W.N),
+    InstrPat(7.W.N,         "b00001".BP, 5.W.N, 3.W.N,     5.W.N, ebreak, ImmI.BP,    PcSnpc.BP,  SrcAR0.BP,      SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.N),
+    InstrPat("b0011000".BP, "b00010".BP, 5.W.N, 3.W.N,     5.W.N, mret,   ImmR.BP,    PcMepc.BP,  SrcAR0.BP,      SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjMret.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b001".BP, 5.W.X, csrrw,  ImmIcsr.BP, PcSnpc.BP,  SrcARs1.BP,     SrcBZero.BP, AluOpAdd,    MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b010".BP, 5.W.X, csrrs,  ImmIcsr.BP, PcSnpc.BP,  SrcARs1.BP,     SrcBCsr.BP,  AluOpOr,     MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b011".BP, 5.W.X, csrrc,  ImmIcsr.BP, PcSnpc.BP,  SrcARs1Inv.BP,  SrcBCsr.BP,  AluOpAnd,    MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b101".BP, 5.W.X, csrrwi, ImmIcsr.BP, PcSnpc.BP,  SrcAZimm.BP,    SrcBZero.BP, AluOpAdd,    MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b110".BP, 5.W.X, csrrsi, ImmIcsr.BP, PcSnpc.BP,  SrcAZimm.BP,    SrcBCsr.BP,  AluOpOr,     MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.X,         5.W.X,       5.W.X, "b111".BP, 5.W.X, csrrci, ImmIcsr.BP, PcSnpc.BP,  SrcAZimmInv.BP, SrcBCsr.BP,  AluOpAnd,    MemNone.BP, WbCsr.BP,  1.W.Y, ExcpAdjNone.BP,  1.W.N),
+    InstrPat(7.W.N,         5.W.N,       5.W.N, "b001".BP, 5.W.N, fencei, ImmI.BP,    PcSnpc.BP,  SrcAR0.BP,      SrcBRs2.BP,  AluOpX,      MemNone.BP, WbSel.X,   1.W.N, ExcpAdjNone.BP,  1.W.Y)
     // scalafmt: { align.tokens.add = [] }
   )
   private val fields = Seq(
@@ -382,7 +385,7 @@ class Idu extends Module {
     AluCalcOpField,
     AluCalcDirField,
     AluBrCondField,
-    CsrOpField,
+    CsrWbEnField,
     ImmFmtField,
     PcSelField,
     SrcASelField,
@@ -405,10 +408,11 @@ class Idu extends Module {
   io.msgOut.bits.aluCalcOp  := res(AluCalcOpField)
   io.msgOut.bits.aluCalcDir := res(AluCalcDirField)
   io.msgOut.bits.aluBrCond  := res(AluBrCondField)
-  io.msgOut.bits.csrOp      := res(CsrOpField)
+  io.msgOut.bits.csrWbEn    := res(CsrWbEnField)
   io.msgOut.bits.imm        := immDec.io.imm
   io.msgOut.bits.srcASel    := res(SrcASelField)
   io.msgOut.bits.srcBSel    := res(SrcBSelField)
+  io.msgOut.bits.csrAddr    := immDec.io.imm(11, 0)
   io.msgOut.bits.excpAdj    := res(ExcpAdjField)
   io.msgOut.bits.bad        := io.msgIn.bits.bad | io.msgIn.bits.instr(1, 0) =/= "b11".U
 
@@ -427,7 +431,8 @@ class Idu extends Module {
   io.msgOut.bits.pdnpc := io.msgIn.bits.pdnpc
 
   io.msgOut.bits.fwdEn     := io.fwdEn
-  io.msgOut.bits.fwdRegVal := io.fwdRegVal
+  io.msgOut.bits.fwdGprVal := io.fwdGprVal
+  io.msgOut.bits.fwdCsrVal := io.fwdCsrVal
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

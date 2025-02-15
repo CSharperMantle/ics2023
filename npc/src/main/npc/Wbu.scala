@@ -18,6 +18,7 @@ class Wbu extends Module {
     val msgIn    = Flipped(Decoupled(new Lsu2WbuMsg))
     val msgOut   = Decoupled(new Bundle {})
     val gprWrite = Flipped(new GprFileWriteConn)
+    val csrWrite = Flipped(new CsrFileWriteConn)
     val pc       = Output(UInt(XLen.W))
     val instr    = Output(UInt(XLen.W))
     val retired  = Output(Bool())
@@ -42,9 +43,17 @@ class Wbu extends Module {
     )
   )
 
-  io.gprWrite.wEn    := io.msgIn.valid & ~io.msgIn.bits.bad & io.msgIn.bits.wbEn
+  io.gprWrite.valid  := io.msgIn.valid & ~io.msgIn.bits.bad
+  io.gprWrite.wEn    := io.msgIn.bits.wbEn
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
+
+  io.csrWrite.valid   := io.msgIn.valid & ~io.msgIn.bits.bad
+  io.csrWrite.csrAddr := io.msgIn.bits.csrAddr
+  io.csrWrite.csrWbEn := io.msgIn.bits.csrWbEn
+  io.csrWrite.csrVal  := io.msgIn.bits.d
+  io.csrWrite.excpAdj := io.msgIn.bits.excpAdj
+  io.csrWrite.pc      := io.msgIn.bits.pc
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid

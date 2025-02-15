@@ -10,6 +10,7 @@ import npc._
 class FwdEn extends Bundle {
   val rs1 = Bool()
   val rs2 = Bool()
+  val csr = Bool()
 }
 
 class HazardCtrl extends Module {
@@ -41,71 +42,105 @@ class HazardCtrl extends Module {
     val lsuCtrl        = Output(new PipelineCtrl)
     val wbuCtrl        = Output(new PipelineCtrl)
     val fwdEn          = Output(new FwdEn)
-    val fwdRegVal      = Output(UInt(XLen.W))
+    val fwdGprVal      = Output(UInt(XLen.W))
+    val fwdCsrVal      = Output(UInt(XLen.W))
   }
   val io = IO(new Port)
 
-  private def conflict(rs: UInt, rd: UInt) = rs === rd & rd =/= 0.U
+  private def gprConflict(rs: UInt, rd: UInt) = rs === rd & rd =/= 0.U
 
-  private def rwConflict(rs: UInt) = (
-    (io.exuInMsgValid & conflict(rs, io.exuInMsg.rdIdx) & io.exuInMsg.wbEn)
-      | (io.lsuInMsgValid & conflict(rs, io.lsuInMsg.rdIdx) & io.lsuInMsg.wbEn)
-      | (io.wbuInMsgValid & conflict(rs, io.wbuInMsg.rdIdx) & io.wbuInMsg.wbEn)
+  private def gprRwConflict(rs: UInt) = (
+    (io.exuInMsgValid & gprConflict(rs, io.exuInMsg.rdIdx) & io.exuInMsg.wbEn)
+      | (io.lsuInMsgValid & gprConflict(rs, io.lsuInMsg.rdIdx) & io.lsuInMsg.wbEn)
+      | (io.wbuInMsgValid & gprConflict(rs, io.wbuInMsg.rdIdx) & io.wbuInMsg.wbEn)
   )
 
-  private val hasRwHazard = (
+  private val hasGprRwHazard = (
     io.iduOutMsgValid
-      & (rwConflict(io.iduOutMsg.rs1Idx) | rwConflict(io.iduOutMsg.rs2Idx))
+      & (gprRwConflict(io.iduOutMsg.rs1Idx) | gprRwConflict(io.iduOutMsg.rs2Idx))
   )
+
+  private def csrConflict(srcIdx: UInt, dstIdx: UInt) = srcIdx === dstIdx
+
+  private def csrRwConflict(srcIdx: UInt) = (
+    (io.exuInMsgValid & csrConflict(srcIdx, io.exuInMsg.csrAddr) & io.exuInMsg.csrWbEn)
+      | (io.lsuInMsgValid & csrConflict(srcIdx, io.lsuInMsg.csrAddr) & io.lsuInMsg.csrWbEn)
+      | (io.wbuInMsgValid & csrConflict(srcIdx, io.wbuInMsg.csrAddr) & io.wbuInMsg.csrWbEn)
+  )
+
+  private val hasCsrRwHazard = io.iduOutMsgValid & csrRwConflict(io.iduOutMsg.csrAddr)
 
   // ALU ops/csrrx result ready at end of EXU
-  private val exuResultFwdable = (
+  private val exuResultGprFwdable = (
     io.exuOutMsgValid
       & io.exuOutMsg.wbEn
       & io.exuOutMsg.wbSel.isOneOf(WbSel.WbAlu, WbSel.WbCsr)
   )
   // EXU handshake has completed, so go for LSU register
-  private val lsuInputFwdable = (
+  private val lsuInputGprFwdable = (
     io.lsuInMsgValid
       & io.lsuInMsg.wbEn
       & io.lsuInMsg.wbSel.isOneOf(WbSel.WbAlu, WbSel.WbCsr)
   )
   // lx result ready at end of LSU
-  private val lsuResultFwdable = (
+  private val lsuResultGprFwdable = (
     io.lsuOutMsgValid
       & io.lsuOutMsg.wbEn
       & io.lsuOutMsg.wbSel === WbSel.WbMem
   )
-  private val anyFwdable = exuResultFwdable | lsuInputFwdable | lsuResultFwdable
+  private val anyGprFwdable = exuResultGprFwdable | lsuInputGprFwdable | lsuResultGprFwdable
 
-  private val fwdRegIdx = MuxCase(
+  private val fwdGprIdx = MuxCase(
     0.U,
     Seq(
-      exuResultFwdable -> io.exuOutMsg.rdIdx,
-      lsuInputFwdable  -> io.lsuInMsg.rdIdx,
-      lsuResultFwdable -> io.lsuOutMsg.rdIdx
+      exuResultGprFwdable -> io.exuOutMsg.rdIdx,
+      lsuInputGprFwdable  -> io.lsuInMsg.rdIdx,
+      lsuResultGprFwdable -> io.lsuOutMsg.rdIdx
     )
   )
-  private val fwdRegVal = MuxCase(
+  private val fwdGprVal = MuxCase(
     0.U,
     Seq(
-      exuResultFwdable -> Mux(
+      exuResultGprFwdable -> Mux(
         io.exuOutMsg.wbSel === WbSel.WbAlu,
         io.exuOutMsg.d,
         io.exuOutMsg.csrVal
       ),
-      lsuInputFwdable -> Mux(
+      lsuInputGprFwdable -> Mux(
         io.lsuInMsg.wbSel === WbSel.WbAlu,
         io.lsuInMsg.d,
         io.lsuInMsg.csrVal
       ),
-      lsuResultFwdable -> io.lsuOutMsg.memRData
+      lsuResultGprFwdable -> io.lsuOutMsg.memRData
+    )
+  )
+
+  private val exuResultCsrFwdable = io.exuOutMsgValid & io.exuOutMsg.csrWbEn
+  private val lsuInputCsrFwdable  = io.lsuInMsgValid & io.lsuInMsg.csrWbEn
+  private val lsuResultCsrFwdable = io.lsuOutMsgValid & io.lsuOutMsg.csrWbEn
+  private val anyCsrFwdable       = exuResultCsrFwdable | lsuInputCsrFwdable | lsuResultCsrFwdable
+
+  private val fwdCsrAddr = MuxCase(
+    0.U,
+    Seq(
+      exuResultCsrFwdable -> io.exuOutMsg.csrAddr,
+      lsuInputCsrFwdable  -> io.lsuInMsg.csrAddr,
+      lsuResultCsrFwdable -> io.lsuOutMsg.csrAddr
+    )
+  )
+  private val fwdCsrVal = MuxCase(
+    0.U,
+    Seq(
+      exuResultCsrFwdable -> io.exuOutMsg.csrVal,
+      lsuInputCsrFwdable  -> io.lsuInMsg.csrVal,
+      lsuResultCsrFwdable -> io.lsuOutMsg.csrVal
     )
   )
 
   private val fwdable = Wire(new FwdEn)
-  fwdable.rs1 := io.iduOutMsgValid & io.iduOutMsg.rs1Idx === fwdRegIdx & anyFwdable
-  fwdable.rs2 := io.iduOutMsgValid & io.iduOutMsg.rs2Idx === fwdRegIdx & anyFwdable
+  fwdable.rs1 := io.iduOutMsgValid & io.iduOutMsg.rs1Idx === fwdGprIdx & anyGprFwdable
+  fwdable.rs2 := io.iduOutMsgValid & io.iduOutMsg.rs2Idx === fwdGprIdx & anyGprFwdable
+  fwdable.csr := io.iduOutMsgValid & io.iduOutMsg.csrAddr === fwdCsrAddr & anyCsrFwdable
 
   private val mispredicted = io.exuOutMsgValid & io.dnpc =/= io.exuOutMsg.pdnpc
 
@@ -116,12 +151,13 @@ class HazardCtrl extends Module {
   io.iduCtrl.flush := mispredicted
   io.iduCtrl.stall := false.B
   io.exuCtrl.flush := false.B
-  io.exuCtrl.stall := hasRwHazard & ~(fwdable.rs1 | fwdable.rs2)
+  io.exuCtrl.stall := (hasGprRwHazard | hasCsrRwHazard) & ~fwdable.asUInt.orR
   io.lsuCtrl.flush := false.B
   io.lsuCtrl.stall := false.B
   io.wbuCtrl.flush := false.B
   io.wbuCtrl.stall := false.B
 
   io.fwdEn     := fwdable
-  io.fwdRegVal := fwdRegVal
+  io.fwdGprVal := fwdGprVal
+  io.fwdCsrVal := fwdCsrVal
 }

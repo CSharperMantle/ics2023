@@ -159,7 +159,8 @@ class Core extends Module {
   wbu.io.msgOut.ready := true.B
 
   idu.io.fwdEn     := hazardCtrl.io.fwdEn
-  idu.io.fwdRegVal := hazardCtrl.io.fwdRegVal
+  idu.io.fwdGprVal := hazardCtrl.io.fwdGprVal
+  idu.io.fwdCsrVal := hazardCtrl.io.fwdCsrVal
 
   pcu.io.pc      := exu.io.msgOut.bits.pc
   pcu.io.snpc    := exu.io.msgOut.bits.snpc
@@ -171,8 +172,9 @@ class Core extends Module {
   pcu.io.mtvec   := exu.io.msgOut.bits.mtvec
 
   gpr.io.read  <> exu.io.gprRead
-  csr.io.conn  <> exu.io.csrConn
+  csr.io.read  <> exu.io.csrRead
   gpr.io.write <> wbu.io.gprWrite
+  csr.io.write <> wbu.io.csrWrite
 
   private val dpi = Module(new Dpi)
   dpi.io.retired     := wbu.io.retired

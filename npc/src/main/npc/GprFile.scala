@@ -15,6 +15,7 @@ class GprFileReadConn extends Bundle {
 }
 
 class GprFileWriteConn extends Bundle {
+  val valid  = Input(Bool())
   val wEn    = Input(Bool())
   val rdIdx  = Input(UInt(5.W))
   val rdData = Input(UInt(XLen.W))
@@ -39,5 +40,5 @@ class GprFile extends Module {
 
   regs.writePorts(0).address := io.write.rdIdx
   regs.writePorts(0).data    := io.write.rdData
-  regs.writePorts(0).enable  := io.write.wEn & (io.write.rdIdx =/= 0.U)
+  regs.writePorts(0).enable  := io.write.valid & io.write.wEn & (io.write.rdIdx =/= 0.U)
 }
