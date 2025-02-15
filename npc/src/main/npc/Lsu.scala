@@ -36,15 +36,11 @@ class Lsu2WbuMsg extends Bundle {
   val wbEn    = Output(WbEnField.chiselType)
   val wbSel   = Output(WbSelField.chiselType)
   val pcSel   = Output(PcSelField.chiselType)
-  val brTaken = Output(Bool())
   val rdIdx   = Output(UInt(5.W))
   val csrVal  = Output(UInt(XLen.W))
   val csrAddr = Output(UInt(12.W))
   val csrWbEn = Output(CsrWbEnField.chiselType)
   val excpAdj = Output(ExcpAdjField.chiselType)
-  val imm     = Output(UInt(XLen.W))
-  val mepc    = Output(UInt(XLen.W))
-  val mtvec   = Output(UInt(XLen.W))
   val break   = Output(Bool())
 }
 
@@ -214,15 +210,11 @@ class Lsu extends Module {
   io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn
   io.msgOut.bits.wbSel   := io.msgIn.bits.wbSel
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
-  io.msgOut.bits.brTaken := io.msgIn.bits.brTaken
   io.msgOut.bits.rdIdx   := io.msgIn.bits.rdIdx
   io.msgOut.bits.csrVal  := io.msgIn.bits.csrVal
   io.msgOut.bits.csrAddr := io.msgIn.bits.csrAddr
   io.msgOut.bits.csrWbEn := io.msgIn.bits.csrWbEn
   io.msgOut.bits.excpAdj := io.msgIn.bits.excpAdj
-  io.msgOut.bits.imm     := io.msgIn.bits.imm
-  io.msgOut.bits.mepc    := io.msgIn.bits.mepc
-  io.msgOut.bits.mtvec   := io.msgIn.bits.mtvec
   io.msgOut.bits.break   := io.msgIn.bits.break
 
   io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid

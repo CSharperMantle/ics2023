@@ -145,46 +145,28 @@ class Exu extends Module {
   io.msgOut.bits.break     := io.msgIn.bits.break
 
   private object State extends CvtChiselEnum {
-    val S_Idle   = Value
-    val S_GprReq = Value
-    val S_Gpr    = Value
-    val S_CsrReq = Value
-    val S_Csr    = Value
-    val S_Done   = Value
+    val S_Idle = Value
+    val S_Req  = Value
+    val S_Read = Value
+    val S_Done = Value
   }
   import State._
-  private val (firstAction, _) = State.safe(
-    decoder(
-      Cat(bad, gprNop, csrNop),
-      TruthTable(
-        Seq(
-          "b1??".BP -> S_Done.BP,
-          "b011".BP -> S_Done.BP,
-          "b00?".BP -> S_GprReq.BP,
-          "b010".BP -> S_CsrReq.BP
-        ),
-        S_Idle.BP
-      )
-    )
-  )
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle   -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_GprReq -> S_Gpr,
-      S_Gpr    -> Mux(csrNop, S_Done, S_CsrReq),
-      S_CsrReq -> S_Csr,
-      S_Csr    -> S_Done,
-      S_Done   -> Mux(io.msgOut.ready, S_Idle, S_Done)
+      S_Idle -> Mux(io.msgIn.valid, Mux(bad | (gprNop & csrNop), S_Done, S_Req), S_Idle),
+      S_Req  -> S_Read,
+      S_Read -> S_Done,
+      S_Done -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
   // SRAM response is returned at the next cycle
-  gprRespValid := y === S_Gpr
-  csrRespValid := y === S_Csr
+  gprRespValid := y === S_Read & ~gprNop
+  csrRespValid := y === S_Read & ~csrNop
 
-  io.gprRead.valid := y === S_GprReq
-  io.csrRead.valid := y === S_CsrReq
+  io.gprRead.valid := y === S_Req & ~gprNop
+  io.csrRead.valid := y === S_Req & ~csrNop
 
   io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid
   io.msgOut.valid := y === S_Done
