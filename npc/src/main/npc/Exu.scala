@@ -59,8 +59,13 @@ class Exu extends Module {
   import ExSrcBSel._
 
   private val bad = io.msgIn.bits.bad
-  private val rs1 = Mux(io.msgIn.bits.fwdEn.rs1, io.msgIn.bits.fwdRegVal, io.gprRead.rs1)
-  private val rs2 = Mux(io.msgIn.bits.fwdEn.rs2, io.msgIn.bits.fwdRegVal, io.gprRead.rs2)
+
+  private val gprRespValid = Wire(Bool())
+  private val rs1Read      = RegEnable(io.gprRead.rs1, gprRespValid)
+  private val rs2Read      = RegEnable(io.gprRead.rs2, gprRespValid)
+
+  private val rs1 = Mux(io.msgIn.bits.fwdEn.rs1, io.msgIn.bits.fwdRegVal, rs1Read)
+  private val rs2 = Mux(io.msgIn.bits.fwdEn.rs2, io.msgIn.bits.fwdRegVal, rs2Read)
   private val csrNop = (
     io.msgIn.bits.csrOp === CsrOp.Unk
       & io.msgIn.bits.excpAdj === CsrExcpAdj.ExcpAdjNone
@@ -83,7 +88,7 @@ class Exu extends Module {
 
   private val srcB = MuxLookup(io.msgIn.bits.srcBSel, 0.U)(
     Seq(
-      SrcBRs2 -> io.gprRead.rs2,
+      SrcBRs2 -> rs2Read,
       SrcBImm -> io.msgIn.bits.imm
     )
   )
@@ -126,10 +131,11 @@ class Exu extends Module {
   io.msgOut.bits.break     := io.msgIn.bits.break
 
   private object State extends CvtChiselEnum {
-    val S_Idle = Value
-    val S_Gpr  = Value
-    val S_Csr  = Value
-    val S_Done = Value
+    val S_Idle   = Value
+    val S_GprReq = Value
+    val S_Gpr    = Value
+    val S_Csr    = Value
+    val S_Done   = Value
   }
   import State._
   private val (firstAction, _) = State.safe(
@@ -139,7 +145,7 @@ class Exu extends Module {
         Seq(
           "b1??".BP -> S_Done.BP,
           "b011".BP -> S_Done.BP,
-          "b00?".BP -> S_Gpr.BP,
+          "b00?".BP -> S_GprReq.BP,
           "b010".BP -> S_Csr.BP
         ),
         S_Idle.BP
@@ -149,14 +155,17 @@ class Exu extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_Gpr  -> Mux(io.gprRead.ready, Mux(csrNop, S_Done, S_Csr), S_Gpr),
-      S_Csr  -> Mux(io.csrConn.ready, S_Done, S_Csr),
-      S_Done -> Mux(io.msgOut.ready, S_Idle, S_Done)
+      S_Idle   -> Mux(io.msgIn.valid, firstAction, S_Idle),
+      S_GprReq -> S_Gpr,
+      S_Gpr    -> Mux(csrNop, S_Done, S_Csr),
+      S_Csr    -> Mux(io.csrConn.ready, S_Done, S_Csr),
+      S_Done   -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
-  io.gprRead.valid := y === S_Gpr
+  gprRespValid := y === S_Gpr // SRAM response is returned at the next cycle
+
+  io.gprRead.valid := y === S_GprReq
   io.csrConn.valid := y === S_Csr
 
   io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid

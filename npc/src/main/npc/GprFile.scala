@@ -12,7 +12,6 @@ class GprFileReadConn extends Bundle {
   val rs2Idx = Input(UInt(5.W))
   val rs1    = Output(UInt(XLen.W))
   val rs2    = Output(UInt(XLen.W))
-  val ready  = Output(Bool())
 }
 
 class GprFileWriteConn extends Bundle {
@@ -35,28 +34,8 @@ class GprFile extends Module {
   regs.readPorts(1).address := io.read.rs2Idx
   regs.readPorts(1).enable  := io.read.valid
 
-  private object State extends CvtChiselEnum {
-    val S_RdIdle   = Value
-    val S_RdCommit = Value
-  }
-  import State._
-  private val y = RegInit(S_RdIdle)
-  y := MuxLookup(y, S_RdIdle)(
-    Seq(
-      S_RdIdle   -> Mux(io.read.valid, S_RdCommit, S_RdIdle),
-      S_RdCommit -> S_RdIdle
-    )
-  )
-
-  io.read.ready := y === S_RdCommit
-
-  private val regsRead = Wire(Vec(2, UInt(XLen.W)))
-  for (i <- 0 until regsRead.length) {
-    regsRead(i) := regs.readPorts(i).data
-  }
-  private val rsx = RegEnable(regsRead, VecInit(Seq.fill(2)(0.U(XLen.W))), y === S_RdCommit)
-  io.read.rs1 := Mux(io.read.rs1Idx.orR, rsx(0), 0.U)
-  io.read.rs2 := Mux(io.read.rs2Idx.orR, rsx(1), 0.U)
+  io.read.rs1 := Mux(io.read.rs1Idx === 0.U, 0.U, regs.readPorts(0).data)
+  io.read.rs2 := Mux(io.read.rs2Idx === 0.U, 0.U, regs.readPorts(1).data)
 
   regs.writePorts(0).address := io.write.rdIdx
   regs.writePorts(0).data    := io.write.rdData
