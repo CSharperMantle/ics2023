@@ -140,7 +140,6 @@ class Exu extends Module {
 
   private object State extends CvtChiselEnum {
     val S_Idle = Value
-    val S_Req  = Value
     val S_Read = Value
     val S_Done = Value
   }
@@ -148,19 +147,18 @@ class Exu extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle -> Mux(io.msgIn.valid, Mux(bad | (gprNop & csrNop), S_Done, S_Req), S_Idle),
-      S_Req  -> S_Read,
+      S_Idle -> Mux(io.msgIn.valid, Mux(bad | (gprNop & csrNop), S_Done, S_Read), S_Idle),
       S_Read -> S_Done,
       S_Done -> Mux(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
+  io.gprRead.valid := y === S_Idle & (io.msgIn.valid & ~bad & ~gprNop)
+  io.csrRead.valid := y === S_Idle & (io.msgIn.valid & ~bad & ~csrNop)
+
   // SRAM response is returned at the next cycle
   gprRespValid := y === S_Read & ~gprNop
   csrRespValid := y === S_Read & ~csrNop
-
-  io.gprRead.valid := y === S_Req & ~gprNop
-  io.csrRead.valid := y === S_Req & ~csrNop
 
   io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid
   io.msgOut.valid := y === S_Done
