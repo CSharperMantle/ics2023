@@ -128,7 +128,7 @@ void assert_fail_msg() {
         "\t%s\t" FMT_WORD,
         REG_NAMES[i],
         dut.rootp
-            ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_sram_ext__DOT__Memory
+            ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__gprs_sram_ext__DOT__Memory
                 [i]);
   }
 #if defined(CONFIG_DUMP_WAVE) && CONFIG_DUMP_WAVE
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
 
   const word_t reg_a0 = static_cast<word_t>(
       dut.rootp
-          ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__regs_sram_ext__DOT__Memory
+          ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__gprs_sram_ext__DOT__Memory
               [10]);
   if (reg_a0 == 0) {
     Log("npc: " ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = " FMT_WORD, dut_dpi_state.pc);

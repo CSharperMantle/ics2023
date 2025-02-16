@@ -28,17 +28,17 @@ class GprFile extends Module {
   }
   val io = IO(new Port)
 
-  private val regs = SRAM(16, UInt(XLen.W), 2, 1, 0)
+  private val gprs = SRAM(16, UInt(XLen.W), 2, 1, 0)
 
-  regs.readPorts(0).address := io.read.rs1Idx
-  regs.readPorts(0).enable  := io.read.valid
-  regs.readPorts(1).address := io.read.rs2Idx
-  regs.readPorts(1).enable  := io.read.valid
+  gprs.readPorts(0).address := io.read.rs1Idx
+  gprs.readPorts(0).enable  := io.read.valid
+  gprs.readPorts(1).address := io.read.rs2Idx
+  gprs.readPorts(1).enable  := io.read.valid
 
-  io.read.rs1 := Mux(io.read.rs1Idx === 0.U, 0.U, regs.readPorts(0).data)
-  io.read.rs2 := Mux(io.read.rs2Idx === 0.U, 0.U, regs.readPorts(1).data)
+  io.read.rs1 := Mux(io.read.rs1Idx === 0.U, 0.U, gprs.readPorts(0).data)
+  io.read.rs2 := Mux(io.read.rs2Idx === 0.U, 0.U, gprs.readPorts(1).data)
 
-  regs.writePorts(0).address := io.write.rdIdx
-  regs.writePorts(0).data    := io.write.rdData
-  regs.writePorts(0).enable  := io.write.valid & io.write.wEn & (io.write.rdIdx =/= 0.U)
+  gprs.writePorts(0).address := io.write.rdIdx
+  gprs.writePorts(0).data    := io.write.rdData
+  gprs.writePorts(0).enable  := io.write.valid & io.write.wEn & (io.write.rdIdx =/= 0.U)
 }
