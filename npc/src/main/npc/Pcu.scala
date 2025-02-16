@@ -24,6 +24,7 @@ class Pcu extends Module {
     val d       = Input(UInt(XLen.W))
     val mepc    = Input(UInt(XLen.W))
     val mtvec   = Input(UInt(XLen.W))
+    val trapped = Input(Bool())
     val dnpc    = Output(UInt(XLen.W))
   }
   val io = IO(new Port)
@@ -38,5 +39,5 @@ class Pcu extends Module {
     )
   )
 
-  io.dnpc := dnpc
+  io.dnpc := Mux(io.trapped, io.mtvec, dnpc)
 }

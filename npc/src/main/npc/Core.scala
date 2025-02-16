@@ -133,10 +133,13 @@ class Core extends Module {
   memWXbar.io.slaveResp(0).bits.bResp := BResp(io.master.bresp)
   // bid
 
+  hazardCtrl.io.ifuOutMsgValid := ifu.io.msgOut.valid
+  hazardCtrl.io.ifuOutMsg      := ifu.io.msgOut.bits
+  hazardCtrl.io.iduInMsgValid  := idu.io.msgIn.valid
+  hazardCtrl.io.iduInMsg       := idu.io.msgIn.bits
   hazardCtrl.io.iduOutMsgValid := idu.io.msgOut.valid
   hazardCtrl.io.iduOutMsg      := idu.io.msgOut.bits
   hazardCtrl.io.exuInMsgValid  := exu.io.msgIn.valid
-  hazardCtrl.io.exuInMsgReady  := exu.io.msgIn.ready
   hazardCtrl.io.exuInMsg       := exu.io.msgIn.bits
   hazardCtrl.io.exuOutMsgValid := exu.io.msgOut.valid
   hazardCtrl.io.exuOutMsg      := exu.io.msgOut.bits
@@ -168,8 +171,9 @@ class Core extends Module {
   pcu.io.brTaken := exu.io.msgOut.bits.brTaken
   pcu.io.imm     := exu.io.msgOut.bits.imm
   pcu.io.d       := exu.io.msgOut.bits.d
-  pcu.io.mepc    := exu.io.msgOut.bits.mepc
-  pcu.io.mtvec   := exu.io.msgOut.bits.mtvec
+  pcu.io.mepc    := Mux(hazardCtrl.io.trapFwdEn.mepc, hazardCtrl.io.trapFwdVal.mepc, csr.io.mepc)
+  pcu.io.mtvec   := Mux(hazardCtrl.io.trapFwdEn.mtvec, hazardCtrl.io.trapFwdVal.mtvec, csr.io.mtvec)
+  pcu.io.trapped := hazardCtrl.io.trapped
 
   gpr.io.read  <> exu.io.gprRead
   csr.io.read  <> exu.io.csrRead

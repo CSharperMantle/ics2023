@@ -272,6 +272,12 @@ object ICacheFlushField extends BoolDecodeField[InstrPat] {
   override def genTable(pat: InstrPat): BitPat = pat.icacheFlush
 }
 
+class IduExcp extends Bundle {
+  val illegal = Output(Bool())
+  val ecall   = Output(Bool())
+  val break   = Output(Bool())
+}
+
 class Idu2ExuMsg extends Bundle {
   // GEN
   // Used by Exu
@@ -286,7 +292,6 @@ class Idu2ExuMsg extends Bundle {
   val srcBSel    = Output(SrcBSelField.chiselType)
   val csrAddr    = Output(UInt(12.W))
   val excpAdj    = Output(ExcpAdjField.chiselType)
-  val bad        = Output(Bool())
   // Unused by Exu
   val memAction   = Output(MemActionField.chiselType)
   val memWidth    = Output(MemWidthField.chiselType)
@@ -294,13 +299,14 @@ class Idu2ExuMsg extends Bundle {
   val wbSel       = Output(WbSelField.chiselType)
   val rdIdx       = Output(UInt(5.W))
   val pcSel       = Output(PcSelField.chiselType)
-  val break       = Output(Bool())
   val icacheFlush = Output(Bool())
+  val iduExcp     = Output(new IduExcp)
   // PASS-THRU
-  val instr = Output(UInt(XLen.W))
-  val pc    = Output(UInt(XLen.W))
-  val snpc  = Output(UInt(XLen.W))
-  val pdnpc = Output(UInt(XLen.W))
+  val instr   = Output(UInt(XLen.W))
+  val pc      = Output(UInt(XLen.W))
+  val snpc    = Output(UInt(XLen.W))
+  val pdnpc   = Output(UInt(XLen.W))
+  val ifuExcp = Output(new IfuExcp)
   // FORWARDING
   val fwdEn     = Output(new FwdEn)
   val fwdGprVal = Output(UInt(XLen.W))
@@ -414,7 +420,10 @@ class Idu extends Module {
   io.msgOut.bits.srcBSel    := res(SrcBSelField)
   io.msgOut.bits.csrAddr    := immDec.io.imm(11, 0)
   io.msgOut.bits.excpAdj    := res(ExcpAdjField)
-  io.msgOut.bits.bad        := io.msgIn.bits.bad | io.msgIn.bits.instr(1, 0) =/= "b11".U
+
+  io.msgOut.bits.iduExcp.illegal := io.msgIn.bits.instr(1, 0) =/= "b11".U
+  io.msgOut.bits.iduExcp.ecall   := res(ExcpAdjField) === ExcpAdjEcall
+  io.msgOut.bits.iduExcp.break   := res(BreakField)
 
   io.msgOut.bits.memAction   := res(MemActionField)
   io.msgOut.bits.memWidth    := res(MemWidthField)
@@ -422,13 +431,13 @@ class Idu extends Module {
   io.msgOut.bits.wbSel       := res(WbSelField)
   io.msgOut.bits.rdIdx       := io.msgIn.bits.instr(11, 7)
   io.msgOut.bits.pcSel       := res(PcSelField)
-  io.msgOut.bits.break       := res(BreakField)
   io.msgOut.bits.icacheFlush := res(ICacheFlushField)
 
-  io.msgOut.bits.instr := io.msgIn.bits.instr
-  io.msgOut.bits.pc    := io.msgIn.bits.pc
-  io.msgOut.bits.snpc  := io.msgIn.bits.snpc
-  io.msgOut.bits.pdnpc := io.msgIn.bits.pdnpc
+  io.msgOut.bits.instr   := io.msgIn.bits.instr
+  io.msgOut.bits.pc      := io.msgIn.bits.pc
+  io.msgOut.bits.snpc    := io.msgIn.bits.snpc
+  io.msgOut.bits.pdnpc   := io.msgIn.bits.pdnpc
+  io.msgOut.bits.ifuExcp := io.msgIn.bits.ifuExcp
 
   io.msgOut.bits.fwdEn     := io.fwdEn
   io.msgOut.bits.fwdGprVal := io.fwdGprVal

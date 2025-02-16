@@ -13,6 +13,16 @@ class FwdEn extends Bundle {
   val csr = Bool()
 }
 
+class TrapFwdEn extends Bundle {
+  val mepc  = Bool()
+  val mtvec = Bool()
+}
+
+class TrapFwdVal extends Bundle {
+  val mepc  = UInt(XLen.W)
+  val mtvec = UInt(XLen.W)
+}
+
 class HazardCtrl extends Module {
   class PipelineCtrl extends common.PipelineCtrl {
     override val stall = Bool()
@@ -20,10 +30,13 @@ class HazardCtrl extends Module {
   }
 
   class Port extends Bundle {
+    val ifuOutMsgValid = Input(Bool())
+    val ifuOutMsg      = Flipped(new Ifu2IduMsg)
+    val iduInMsgValid  = Input(Bool())
+    val iduInMsg       = Flipped(new Ifu2IduMsg)
     val iduOutMsgValid = Input(Bool())
     val iduOutMsg      = Flipped(new Idu2ExuMsg)
     val exuInMsgValid  = Input(Bool())
-    val exuInMsgReady  = Input(Bool())
     val exuInMsg       = Flipped(new Idu2ExuMsg)
     val exuOutMsgValid = Input(Bool())
     val exuOutMsg      = Flipped(new Exu2LsuMsg)
@@ -44,6 +57,9 @@ class HazardCtrl extends Module {
     val fwdEn          = Output(new FwdEn)
     val fwdGprVal      = Output(UInt(XLen.W))
     val fwdCsrVal      = Output(UInt(XLen.W))
+    val trapped        = Output(Bool())
+    val trapFwdEn      = Output(new TrapFwdEn)
+    val trapFwdVal     = Output(new TrapFwdVal)
   }
   val io = IO(new Port)
 
@@ -146,13 +162,33 @@ class HazardCtrl extends Module {
 
   private val flushIcache = io.iduOutMsgValid & io.iduOutMsg.icacheFlush
 
-  io.ifuCtrl.flush := mispredicted | flushIcache
+  private val ifuOutTrap = io.ifuOutMsgValid & Seq(
+    io.ifuOutMsg.ifuExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
+  private val iduInTrap = io.iduInMsgValid & Seq(
+    io.iduInMsg.ifuExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
+  private val iduOutTrap = io.iduOutMsgValid & Seq(
+    io.iduOutMsg.ifuExcp,
+    io.iduOutMsg.iduExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
+  private val lsuInTrap = io.lsuInMsgValid & Seq(
+    io.lsuInMsg.ifuExcp,
+    io.lsuInMsg.iduExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
+  private val lsuOutTrap = io.lsuOutMsgValid & Seq(
+    io.lsuOutMsg.ifuExcp,
+    io.lsuOutMsg.iduExcp,
+    io.lsuOutMsg.lsuExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
+
+  io.ifuCtrl.flush := mispredicted | flushIcache | iduInTrap | iduOutTrap | lsuInTrap | lsuOutTrap
   io.ifuCtrl.stall := false.B
-  io.iduCtrl.flush := mispredicted
+  io.iduCtrl.flush := mispredicted | iduInTrap | iduOutTrap | lsuInTrap
   io.iduCtrl.stall := false.B
-  io.exuCtrl.flush := false.B
+  io.exuCtrl.flush := lsuInTrap | lsuOutTrap
   io.exuCtrl.stall := (hasGprRwHazard | hasCsrRwHazard) & ~fwdable.asUInt.orR
-  io.lsuCtrl.flush := false.B
+  io.lsuCtrl.flush := lsuInTrap | lsuOutTrap
   io.lsuCtrl.stall := false.B
   io.wbuCtrl.flush := false.B
   io.wbuCtrl.stall := false.B
@@ -160,4 +196,49 @@ class HazardCtrl extends Module {
   io.fwdEn     := fwdable
   io.fwdGprVal := fwdGprVal
   io.fwdCsrVal := fwdCsrVal
+
+  io.trapped := ifuOutTrap | iduInTrap | iduOutTrap | lsuInTrap | lsuOutTrap
+
+  private def trapCsrFwdable(valid: Bool, en: Bool, dstAddr: UInt, csr: UInt) =
+    valid & en & dstAddr === csr
+
+  private def trapCsrExuOutFwdable(csr: UInt) =
+    trapCsrFwdable(io.exuOutMsgValid, io.exuOutMsg.csrWbEn, io.exuOutMsg.csrAddr, csr)
+  private def trapCsrLsuInFwdable(csr: UInt) =
+    trapCsrFwdable(io.lsuInMsgValid, io.lsuInMsg.csrWbEn, io.lsuInMsg.csrAddr, csr)
+  private def trapCsrLsuOutFwdable(csr: UInt) =
+    trapCsrFwdable(io.lsuOutMsgValid, io.lsuOutMsg.csrWbEn, io.lsuOutMsg.csrAddr, csr)
+
+  private val trapMepcExuOutFwdable = trapCsrExuOutFwdable("h341".U(12.W))
+  private val trapMepcLsuInFwdable  = trapCsrLsuInFwdable("h341".U(12.W))
+  private val trapMepcLsuOutFwdable = trapCsrLsuOutFwdable("h341".U(12.W))
+
+  private val trapMtvecExuOutFwdable = trapCsrExuOutFwdable("h305".U(12.W))
+  private val trapMtvecLsuInFwdable  = trapCsrLsuInFwdable("h305".U(12.W))
+  private val trapMtvecLsuOutFwdable = trapCsrLsuOutFwdable("h305".U(12.W))
+
+  private val trapFwdEn = Wire(new TrapFwdEn)
+  trapFwdEn.mepc  := trapMepcExuOutFwdable | trapMepcLsuInFwdable | trapMepcLsuOutFwdable
+  trapFwdEn.mtvec := trapMtvecExuOutFwdable | trapMtvecLsuInFwdable | trapMtvecLsuOutFwdable
+
+  private val trapFwdVal = Wire(new TrapFwdVal)
+  trapFwdVal.mepc := MuxCase(
+    0.U,
+    Seq(
+      trapMepcExuOutFwdable -> io.exuOutMsg.csrVal,
+      trapMepcLsuInFwdable  -> io.lsuInMsg.csrVal,
+      trapMepcLsuOutFwdable -> io.lsuOutMsg.csrVal
+    )
+  )
+  trapFwdVal.mtvec := MuxCase(
+    0.U,
+    Seq(
+      trapMtvecExuOutFwdable -> io.exuOutMsg.csrVal,
+      trapMtvecLsuInFwdable  -> io.lsuInMsg.csrVal,
+      trapMtvecLsuOutFwdable -> io.lsuOutMsg.csrVal
+    )
+  )
+
+  io.trapFwdEn  := trapFwdEn
+  io.trapFwdVal := trapFwdVal
 }

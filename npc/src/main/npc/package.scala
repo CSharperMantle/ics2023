@@ -60,10 +60,10 @@ object npc {
   object ExcpCode {
     val InstUnaligned  = 0
     val InstAccess     = 1
-    val Inst           = 2
+    val IllegalInst    = 2
     val Break          = 3
-    val ReadUnaligned  = 4
-    val ReadAccess     = 5
+    val LoadUnaligned  = 4
+    val LoadAccess     = 5
     val StoreUnaligned = 6
     val StoreAccess    = 7
     val UEnvCall       = 8

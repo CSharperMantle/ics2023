@@ -21,11 +21,18 @@ object MemAction extends CvtChiselEnum {
   val MemNone = Value
 }
 
+class LsuExcp extends Bundle {
+  val loadMisalign  = Bool()
+  val loadAccess    = Bool()
+  val storeMisalign = Bool()
+  val storeAccess   = Bool()
+}
+
 class Lsu2WbuMsg extends Bundle {
   // GEN
   // Used by Wbu
   val memRData = Output(UInt(XLen.W))
-  val bad      = Output(Bool())
+  val lsuExcp  = Output(new LsuExcp)
   // Unused by Wbu
   // (none)
   // PASS-THRU
@@ -33,6 +40,8 @@ class Lsu2WbuMsg extends Bundle {
   val d       = Output(UInt(XLen.W))
   val pc      = Output(UInt(XLen.W))
   val snpc    = Output(UInt(XLen.W))
+  val ifuExcp = Output(new IfuExcp)
+  val iduExcp = Output(new IduExcp)
   val wbEn    = Output(WbEnField.chiselType)
   val wbSel   = Output(WbSelField.chiselType)
   val pcSel   = Output(PcSelField.chiselType)
@@ -41,12 +50,9 @@ class Lsu2WbuMsg extends Bundle {
   val csrAddr = Output(UInt(12.W))
   val csrWbEn = Output(CsrWbEnField.chiselType)
   val excpAdj = Output(ExcpAdjField.chiselType)
-  val break   = Output(Bool())
 }
 
 class Lsu extends Module {
-  require(XLen == 32, "Lsu for RV64 is not implemented")
-
   class Port extends Bundle {
     val msgIn  = Flipped(Decoupled(new Exu2LsuMsg))
     val msgOut = Decoupled(new Lsu2WbuMsg)
@@ -56,6 +62,11 @@ class Lsu extends Module {
     val wResp  = Flipped(Irrevocable(new MemWriteResp))
   }
   val io = IO(new Port)
+
+  private val bad = Seq(
+    io.msgIn.bits.ifuExcp,
+    io.msgIn.bits.iduExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
 
   private val addr  = io.msgIn.bits.d
   private val wData = io.msgIn.bits.rs2
@@ -162,7 +173,7 @@ class Lsu extends Module {
   import State._
   private val (firstAction, _) = State.safe(
     decoder(
-      Cat(io.msgIn.bits.bad | alignBad, rEn, wEn),
+      Cat(bad | alignBad, rEn, wEn),
       TruthTable(
         Seq(
           "b000".BP -> S_Done.BP,
@@ -186,8 +197,8 @@ class Lsu extends Module {
     )
   )
 
-  private val memRResp = RegEnable(io.rResp.bits.rResp, RResp.Okay, io.rResp.valid)
-  private val memWResp = RegEnable(io.wResp.bits.bResp, BResp.Okay, io.wResp.valid)
+  private val memRResp = RegEnable(io.rResp.bits.rResp, io.rResp.valid)
+  private val memWResp = RegEnable(io.wResp.bits.bResp, io.wResp.valid)
 
   io.rReq.valid  := y === S_ReadReq
   io.rResp.ready := io.rResp.valid & y === S_Done
@@ -196,17 +207,18 @@ class Lsu extends Module {
   io.wResp.ready := io.wResp.valid & y === S_Done
 
   io.msgOut.bits.memRData := sext.io.sextRes
-  io.msgOut.bits.bad := (
-    io.msgIn.bits.bad
-      | ((rEn | wEn) & alignBad)
-      | (rEn & memRResp =/= RResp.Okay)
-      | (wEn & memWResp =/= BResp.Okay)
-  )
+
+  io.msgOut.bits.lsuExcp.loadMisalign  := rEn & alignBad
+  io.msgOut.bits.lsuExcp.loadAccess    := rEn & memRResp =/= RResp.Okay
+  io.msgOut.bits.lsuExcp.storeMisalign := wEn & alignBad
+  io.msgOut.bits.lsuExcp.storeAccess   := wEn & memWResp =/= BResp.Okay
 
   io.msgOut.bits.instr   := io.msgIn.bits.instr
   io.msgOut.bits.d       := io.msgIn.bits.d
   io.msgOut.bits.pc      := io.msgIn.bits.pc
   io.msgOut.bits.snpc    := io.msgIn.bits.snpc
+  io.msgOut.bits.ifuExcp := io.msgIn.bits.ifuExcp
+  io.msgOut.bits.iduExcp := io.msgIn.bits.iduExcp
   io.msgOut.bits.wbEn    := io.msgIn.bits.wbEn
   io.msgOut.bits.wbSel   := io.msgIn.bits.wbSel
   io.msgOut.bits.pcSel   := io.msgIn.bits.pcSel
@@ -215,7 +227,6 @@ class Lsu extends Module {
   io.msgOut.bits.csrAddr := io.msgIn.bits.csrAddr
   io.msgOut.bits.csrWbEn := io.msgIn.bits.csrWbEn
   io.msgOut.bits.excpAdj := io.msgIn.bits.excpAdj
-  io.msgOut.bits.break   := io.msgIn.bits.break
 
   io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid
   io.msgOut.valid := y === S_Done

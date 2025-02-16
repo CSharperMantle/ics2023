@@ -60,23 +60,24 @@ class CsrFileReadConn extends Bundle {
   val valid   = Input(Bool())
   val csrAddr = Input(UInt(12.W))
   val csrVal  = Output(UInt(XLen.W))
-  val mepc    = Output(UInt(XLen.W))
-  val mtvec   = Output(UInt(XLen.W))
 }
 
 class CsrFileWriteConn extends Bundle {
-  val valid   = Input(Bool())
-  val csrAddr = Input(UInt(12.W))
-  val csrWbEn = Input(Bool())
-  val csrVal  = Input(UInt(XLen.W))
-  val excpAdj = Input(CsrExcpAdj())
-  val pc      = Input(UInt(XLen.W))
+  val valid    = Input(Bool())
+  val csrAddr  = Input(UInt(12.W))
+  val csrWbEn  = Input(Bool())
+  val csrVal   = Input(UInt(XLen.W))
+  val excpAdj  = Input(CsrExcpAdj())
+  val excpCode = Input(UInt((XLen - 1).W))
+  val pc       = Input(UInt(XLen.W))
 }
 
 class CsrFile extends Module {
   class Port extends Bundle {
     val read  = new CsrFileReadConn
     val write = new CsrFileWriteConn
+    val mepc  = Output(UInt(XLen.W))
+    val mtvec = Output(UInt(XLen.W))
   }
   val io = IO(new Port)
 
@@ -116,8 +117,9 @@ class CsrFile extends Module {
     Mux(readPropBundle(CsrPropIsConstField), readPropBundle(CsrPropConstValField), csrs(readIdx.U))
 
   io.read.csrVal := readVal
-  io.read.mepc   := csrs(MepcIdx.U)
-  io.read.mtvec  := csrs(MtvecIdx.U)
+
+  io.mepc  := csrs(MepcIdx.U)
+  io.mtvec := csrs(MtvecIdx.U)
 
   private val mstatus = csrs(MstatusIdx.U)
   // scalafmt: { maxColumn = 512, align.tokens.add = [ { code = "," } ] }
@@ -146,7 +148,7 @@ class CsrFile extends Module {
       csr := MuxCase(
         normalWriteVal,
         Seq(
-          (io.write.excpAdj === ExcpAdjEcall) -> ExcpCode.MEnvCall.U(XLen.W),
+          (io.write.excpAdj === ExcpAdjEcall) -> Cat(0.U(1.W), io.write.excpCode),
           (~writable | writeIdx =/= hwIdx)    -> csr
         )
       )

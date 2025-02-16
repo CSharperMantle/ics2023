@@ -43,24 +43,46 @@ class Wbu extends Module {
     )
   )
 
-  io.gprWrite.valid  := io.msgIn.valid & ~io.msgIn.bits.bad
+  private val anyExcp = Seq(
+    io.msgIn.bits.ifuExcp,
+    io.msgIn.bits.iduExcp,
+    io.msgIn.bits.lsuExcp
+  ).map(_.asUInt.orR).reduce(_ | _)
+
+  private val excpCode = MuxCase(
+    0.U,
+    Seq(
+      io.msgIn.bits.ifuExcp.misalign      -> ExcpCode.InstUnaligned.U,
+      io.msgIn.bits.ifuExcp.access        -> ExcpCode.InstAccess.U,
+      io.msgIn.bits.iduExcp.illegal       -> ExcpCode.IllegalInst.U,
+      io.msgIn.bits.iduExcp.ecall         -> ExcpCode.MEnvCall.U,
+      io.msgIn.bits.iduExcp.break         -> ExcpCode.Break.U,
+      io.msgIn.bits.lsuExcp.loadMisalign  -> ExcpCode.LoadUnaligned.U,
+      io.msgIn.bits.lsuExcp.loadAccess    -> ExcpCode.LoadAccess.U,
+      io.msgIn.bits.lsuExcp.storeMisalign -> ExcpCode.StoreUnaligned.U,
+      io.msgIn.bits.lsuExcp.storeAccess   -> ExcpCode.StoreAccess.U
+    )
+  )
+
+  io.gprWrite.valid  := io.msgIn.valid & ~anyExcp
   io.gprWrite.wEn    := io.msgIn.bits.wbEn
   io.gprWrite.rdIdx  := io.msgIn.bits.rdIdx
   io.gprWrite.rdData := wbData
 
-  io.csrWrite.valid   := io.msgIn.valid & ~io.msgIn.bits.bad
-  io.csrWrite.csrAddr := io.msgIn.bits.csrAddr
-  io.csrWrite.csrWbEn := io.msgIn.bits.csrWbEn
-  io.csrWrite.csrVal  := io.msgIn.bits.d
-  io.csrWrite.excpAdj := io.msgIn.bits.excpAdj
-  io.csrWrite.pc      := io.msgIn.bits.pc
+  io.csrWrite.valid    := io.msgIn.valid
+  io.csrWrite.csrAddr  := io.msgIn.bits.csrAddr
+  io.csrWrite.csrWbEn  := io.msgIn.bits.csrWbEn & ~anyExcp
+  io.csrWrite.csrVal   := io.msgIn.bits.d
+  io.csrWrite.excpAdj  := Mux(anyExcp, CsrExcpAdj.ExcpAdjEcall, io.msgIn.bits.excpAdj)
+  io.csrWrite.excpCode := excpCode
+  io.csrWrite.pc       := io.msgIn.bits.pc
 
   io.msgIn.ready  := io.msgOut.ready
   io.msgOut.valid := io.msgIn.valid
 
-  io.break   := io.msgIn.bits.break
+  io.break   := io.msgIn.bits.iduExcp.break
   io.instr   := io.msgIn.bits.instr
   io.pc      := io.msgIn.bits.pc
   io.retired := io.msgIn.valid
-  io.bad     := io.msgIn.valid & io.msgIn.bits.bad
+  io.bad     := false.B
 }

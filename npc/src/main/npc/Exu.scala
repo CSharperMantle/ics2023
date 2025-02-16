@@ -28,12 +28,9 @@ class Exu2LsuMsg extends Bundle {
   // Used by Lsu
   val d   = Output(UInt(XLen.W))
   val rs2 = Output(UInt(XLen.W))
-  val bad = Output(Bool())
   // Unused by Lsu
   val brTaken = Output(Bool())
   val csrVal  = Output(UInt(XLen.W))
-  val mepc    = Output(UInt(XLen.W))
-  val mtvec   = Output(UInt(XLen.W))
   // PASS-THRU
   val instr     = Output(UInt(XLen.W))
   val memAction = Output(MemActionField.chiselType)
@@ -41,6 +38,8 @@ class Exu2LsuMsg extends Bundle {
   val pc        = Output(UInt(XLen.W))
   val snpc      = Output(UInt(XLen.W))
   val pdnpc     = Output(UInt(XLen.W))
+  val ifuExcp   = Output(new IfuExcp)
+  val iduExcp   = Output(new IduExcp)
   val wbEn      = Output(WbEnField.chiselType)
   val wbSel     = Output(WbSelField.chiselType)
   val rdIdx     = Output(UInt(5.W))
@@ -49,7 +48,6 @@ class Exu2LsuMsg extends Bundle {
   val excpAdj   = Output(ExcpAdjField.chiselType)
   val pcSel     = Output(PcSelField.chiselType)
   val imm       = Output(UInt(XLen.W))
-  val break     = Output(Bool())
 }
 
 class Exu extends Module {
@@ -65,15 +63,13 @@ class Exu extends Module {
   import ExSrcASel._
   import ExSrcBSel._
 
-  private val bad = io.msgIn.bits.bad
+  private val bad = io.msgIn.bits.ifuExcp.asUInt.orR
 
   private val gprRespValid = Wire(Bool())
   private val rs1Read      = RegEnable(io.gprRead.rs1, gprRespValid)
   private val rs2Read      = RegEnable(io.gprRead.rs2, gprRespValid)
   private val csrRespValid = Wire(Bool())
   private val csrRead      = RegEnable(io.csrRead.csrVal, csrRespValid)
-  private val mepcRead     = RegEnable(io.csrRead.mepc, csrRespValid)
-  private val mtvecRead    = RegEnable(io.csrRead.mtvec, csrRespValid)
 
   private val rs1 = Mux(io.msgIn.bits.fwdEn.rs1, io.msgIn.bits.fwdGprVal, rs1Read)
   private val rs2 = Mux(io.msgIn.bits.fwdEn.rs2, io.msgIn.bits.fwdGprVal, rs2Read)
@@ -121,12 +117,9 @@ class Exu extends Module {
 
   io.msgOut.bits.d   := alu.io.d
   io.msgOut.bits.rs2 := rs2
-  io.msgOut.bits.bad := bad
 
   io.msgOut.bits.brTaken := alu.io.brTaken
   io.msgOut.bits.csrVal  := csrRead
-  io.msgOut.bits.mepc    := mepcRead
-  io.msgOut.bits.mtvec   := mtvecRead
 
   io.msgOut.bits.instr     := io.msgIn.bits.instr
   io.msgOut.bits.memAction := io.msgIn.bits.memAction
@@ -134,6 +127,8 @@ class Exu extends Module {
   io.msgOut.bits.pc        := io.msgIn.bits.pc
   io.msgOut.bits.snpc      := io.msgIn.bits.snpc
   io.msgOut.bits.pdnpc     := io.msgIn.bits.pdnpc
+  io.msgOut.bits.ifuExcp   := io.msgIn.bits.ifuExcp
+  io.msgOut.bits.iduExcp   := io.msgIn.bits.iduExcp
   io.msgOut.bits.wbEn      := io.msgIn.bits.wbEn
   io.msgOut.bits.wbSel     := io.msgIn.bits.wbSel
   io.msgOut.bits.rdIdx     := io.msgIn.bits.rdIdx
@@ -142,7 +137,6 @@ class Exu extends Module {
   io.msgOut.bits.excpAdj   := io.msgIn.bits.excpAdj
   io.msgOut.bits.pcSel     := io.msgIn.bits.pcSel
   io.msgOut.bits.imm       := io.msgIn.bits.imm
-  io.msgOut.bits.break     := io.msgIn.bits.break
 
   private object State extends CvtChiselEnum {
     val S_Idle = Value
