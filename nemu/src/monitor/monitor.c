@@ -13,6 +13,7 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+#include <cpu/btrace.h>
 #include <isa.h>
 #include <memory/paddr.h>
 
@@ -34,6 +35,8 @@ static void welcome() {
       MUXDEF(CONFIG_IRINGBUF, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
   Log("\tFunction call trace: %s",
       MUXDEF(CONFIG_FTRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
+  Log("\tBranch trace: %s",
+      MUXDEF(CONFIG_BTRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
 #endif
   Log("Watchpoints: %s",
       MUXDEF(CONFIG_WATCHPOINT, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
@@ -51,6 +54,7 @@ static char *log_file = NULL;
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
 static char *elf_file = NULL;
+static char *btrace_file = NULL;
 static int difftest_port = 1234;
 
 static long load_img() {
@@ -77,31 +81,36 @@ static long load_img() {
 
 static int parse_args(int argc, char *argv[]) {
   const struct option table[] = {
-      {"batch", no_argument,       NULL, 'b'},
-      {"log",   required_argument, NULL, 'l'},
-      {"diff",  required_argument, NULL, 'd'},
-      {"port",  required_argument, NULL, 'p'},
-      {"elf",   required_argument, NULL, 'e'},
-      {"help",  no_argument,       NULL, 'h'},
-      {0,       0,                 NULL, 0  },
+      {"batch",  no_argument,       NULL, 'b'},
+      {"log",    required_argument, NULL, 'l'},
+      {"diff",   required_argument, NULL, 'd'},
+      {"port",   required_argument, NULL, 'p'},
+      {"elf",    required_argument, NULL, 'e'},
+      {"btrace", required_argument, NULL, 'r'},
+      {"help",   no_argument,       NULL, 'h'},
+      {0,        0,                 NULL, 0  },
   };
   int o;
-  while ((o = getopt_long(argc, argv, "-bhl:d:p:e:", table, NULL)) != -1) {
+  while ((o = getopt_long(argc, argv, "-bhl:d:p:e:r:", table, NULL)) != -1) {
     switch (o) {
       case 'b': sdb_set_batch_mode(); break;
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
       case 'e': elf_file = optarg; break;
+      case 'r': btrace_file = optarg; break;
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);
-        puts("\t-b,--batch              run with batch mode");
-        puts("\t-l,--log=FILE           output log to FILE");
-        puts("\t-d,--diff=REF_SO        run DiffTest with reference REF_SO");
-        puts("\t-p,--port=PORT          run DiffTest with port PORT");
+        puts("\t-b,--batch                run with batch mode");
+        puts("\t-l,--log=FILE             output log to FILE");
+        puts("\t-d,--diff=REF_SO          run DiffTest with reference REF_SO");
+        puts("\t-p,--port=PORT            run DiffTest with port PORT");
 #ifdef CONFIG_FTRACE
-        puts("\t-e,--elf=ELF_FILE       import symbols from ELF_FILE");
+        puts("\t-e,--elf=ELF_FILE         import symbols from ELF_FILE");
+#endif
+#ifdef CONFIG_BTRACE
+        puts("\t-r,--btrace=BTRACE_FILE   output branch tracing to BTRACE_FILE");
 #endif
         puts("\n");
         exit(0);
@@ -121,6 +130,8 @@ void init_monitor(int argc, char *argv[]) {
 
   /* Open the log file. */
   init_log(log_file);
+
+  init_btrace(btrace_file);
 
   /* Initialize memory. */
   init_mem();
