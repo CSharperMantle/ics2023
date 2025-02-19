@@ -233,19 +233,19 @@ static int decode_exec(Decode *s) {
 
   // CONTROL TRANSFERS
   // Branches
-  INSTPAT("??????? ????? ????? 000 ????? 11000 11", beq    ,    B, const bool taken = src1 == src2; write_btrace(s->pc, taken); if (taken) { s->dnpc = s->pc + imm; });
-  INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne    ,    B, const bool taken = src1 != src2; write_btrace(s->pc, taken); if (taken) { s->dnpc = s->pc + imm; });
-  INSTPAT("??????? ????? ????? 100 ????? 11000 11", blt    ,    B, const bool taken = (sword_t)src1 < (sword_t)src2; write_btrace(s->pc, taken); if (taken) { s->dnpc = s->pc + imm; });
-  INSTPAT("??????? ????? ????? 101 ????? 11000 11", bge    ,    B, const bool taken = (sword_t)src1 >= (sword_t)src2; write_btrace(s->pc, taken); if (taken) { s->dnpc = s->pc + imm; });
-  INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   ,    B, const bool taken = src1 < src2; write_btrace(s->pc, taken); if (taken) { s->dnpc = s->pc + imm; });
-  INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu   ,    B, const bool taken = src1 >= src2; write_btrace(s->pc, taken); if (taken) { s->dnpc = s->pc + imm; });
+  INSTPAT("??????? ????? ????? 000 ????? 11000 11", beq    ,    B, const bool taken = src1 == src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc));
+  INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne    ,    B, const bool taken = src1 != src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc));
+  INSTPAT("??????? ????? ????? 100 ????? 11000 11", blt    ,    B, const bool taken = (sword_t)src1 < (sword_t)src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc));
+  INSTPAT("??????? ????? ????? 101 ????? 11000 11", bge    ,    B, const bool taken = (sword_t)src1 >= (sword_t)src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc););
+  INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   ,    B, const bool taken = src1 < src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc););
+  INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu   ,    B, const bool taken = src1 >= src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc););
   // Jump & Link
 #ifdef CONFIG_FTRACE
-  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, write_btrace(s->pc, true); R(rd) = s->pc + 4; s->dnpc = s->pc + imm; s->isa.is_jal = true);
-  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, write_btrace(s->pc, true); word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; s->isa.is_jalr = true);
+  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm; s->isa.is_jal = true; write_btrace(s->pc, false, true, s->dnpc));
+  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; s->isa.is_jalr = true; write_btrace(s->pc, false, true, s->dnpc));
 #else   
-  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, write_btrace(s->pc, true); R(rd) = s->pc + 4; s->dnpc = s->pc + imm);
-  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, write_btrace(s->pc, true); word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t);
+  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm; write_btrace(s->pc, false, true, s->dnpc));
+  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; write_btrace(s->pc, false, true, s->dnpc));
 #endif
   // MEMORY ORDERING
   // Sync
@@ -254,10 +254,10 @@ static int decode_exec(Decode *s) {
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, write_btrace(s->pc, true); s->dnpc = ecall_do_call(s->pc));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = ecall_do_call(s->pc); write_btrace(s->pc, false, true, s->dnpc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,    N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   // Trap-Return
-  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, write_btrace(s->pc, true); s->dnpc = CSR(CSR_IDX_MEPC); mret_adj_mstatus());
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); mret_adj_mstatus(); write_btrace(s->pc, false, true, s->dnpc));
 
   // COUNTERS
   // rdcycle

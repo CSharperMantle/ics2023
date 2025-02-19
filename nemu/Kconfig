@@ -161,8 +161,13 @@ config TRACE_END
 
 config BTRACE
   depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER
-  bool "Enable branch tracer"
+  bool "Enable branch tracer with Zstd compression"
   default n
+
+config BTRACE_ZSTD_CMD
+  depends on BTRACE
+  string "Command for executable `zstd`"
+  default "zstd"
 
 config ITRACE
   depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER

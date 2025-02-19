@@ -9,15 +9,16 @@ typedef struct BTraceEntry_ {
   union {
     word_t as_word_t;
     uint8_t as_bytes[sizeof(word_t)];
-  } pc;
+  } pc, target;
   uint8_t is_branch;
+  uint8_t is_cond;
   uint8_t taken;
 } BTraceEntry_t;
 
 extern FILE *file_btrace;
 
 void init_btrace(const char *path);
-void write_btrace(word_t pc, bool taken);
+void write_btrace(word_t pc, bool is_cond, bool taken, word_t target);
 void flush_btrace(void);
 void close_btrace(void);
 

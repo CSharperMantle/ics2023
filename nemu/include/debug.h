@@ -17,6 +17,7 @@
 #define __DEBUG_H__
 
 #include <common.h>
+#include <errno.h>
 #include <stdio.h>
 #include <utils.h>
 
@@ -54,6 +55,8 @@
       assert(cond);                                                                                \
     }                                                                                              \
   } while (0)
+
+#define AssertErrno(cond, format, ...) Assert(cond, format ": %s", ##__VA_ARGS__, strerror(errno))
 
 #define panic(format, ...)                                                                         \
   do {                                                                                             \
