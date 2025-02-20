@@ -6,10 +6,17 @@
 #include <stdio.h>
 
 typedef enum BTraceEntryType_ {
+  // Not a branch.
   BTRACE_NOT_BRANCH = 0,
+  // Conditional (direct) branch.
   BTRACE_CONDITIONAL,
+  // Unconditional (direct) jump.
   BTRACE_JUMP,
+  // Unconditional indirect jump.
+  BTRACE_JUMP_INDIR,
+  // Call.
   BTRACE_CALL,
+  // Return.
   BTRACE_RETURN,
 } BTraceEntryType_t;
 

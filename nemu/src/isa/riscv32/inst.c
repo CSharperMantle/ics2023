@@ -137,21 +137,22 @@ static void log_btrace_jal_jalr(bool is_jalr, int rd, int rs1, word_t pc, word_t
     if (rd == 0 && rs1 == 1) {
       // Return: jalr x0, 0(ra)
       write_btrace(pc, BTRACE_RETURN, true, dnpc);
-    } else if (rd == 0 || rd == 1) {
-      // Indirect call: jalr ra, 0(t0)
-      // Tailcall: jalr x0, 0(t0)
+    } else if (rd == 0 && rs1 != 1) {
+      // Indirect jump/Tailcall: jalr x0, 0(x?)
+      write_btrace(pc, BTRACE_JUMP_INDIR, true, dnpc);
+    } else if (rd == 1) {
+      // Indirect call: jalr ra, 0(x?)
       write_btrace(pc, BTRACE_CALL, true, dnpc);
     } else {
-      // Ordinary jump
+      // Unknown type of jalr
       write_btrace(pc, BTRACE_JUMP, true, dnpc);
     }
   } else {
     if (rd == 1) {
-      // Call: jal ra, $imm
+      // Call: jal ra, ?
       write_btrace(pc, BTRACE_CALL, true, dnpc);
     } else if (rd == 0) {
-      // Tailcall: jal x0, $imm
-      // Ordinary jump
+      // Direct jump/Tailcall: jal x0, ?
       write_btrace(pc, BTRACE_JUMP, true, dnpc);
     }
   }
