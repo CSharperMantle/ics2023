@@ -132,7 +132,33 @@ static word_t ecall_do_call(word_t epc) {
   return isa_raise_intr(((CsrMcause_t){.intr = false, .code = code}).packed, epc);
 }
 
-static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
+static void log_btrace_jal_jalr(bool is_jalr, int rd, int rs1, word_t pc, word_t dnpc) {
+  if (is_jalr) {
+    if (rd == 0 && rs1 == 1) {
+      // Return: jalr x0, 0(ra)
+      write_btrace(pc, BTRACE_RETURN, true, dnpc);
+    } else if (rd == 0 || rd == 1) {
+      // Indirect call: jalr ra, 0(t0)
+      // Tailcall: jalr x0, 0(t0)
+      write_btrace(pc, BTRACE_CALL, true, dnpc);
+    } else {
+      // Ordinary jump
+      write_btrace(pc, BTRACE_JUMP, true, dnpc);
+    }
+  } else {
+    if (rd == 1) {
+      // Call: jal ra, $imm
+      write_btrace(pc, BTRACE_CALL, true, dnpc);
+    } else if (rd == 0) {
+      // Tailcall: jal x0, $imm
+      // Ordinary jump
+      write_btrace(pc, BTRACE_JUMP, true, dnpc);
+    }
+  }
+}
+
+static void
+decode_operand(Decode *s, int *rd, int *rs1p, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst.val;
   int rs1 = BITS(i, 19, 15);
   int rs2 = BITS(i, 24, 20);
@@ -149,6 +175,7 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
     case TYPE_J:                      immJ();    break;
       // clang-format on
   }
+  *rs1p = rs1;
 }
 
 static int decode_exec(Decode *s) {
@@ -157,7 +184,7 @@ static int decode_exec(Decode *s) {
   CSR(CSR_IDX_MARCHID) = MARCHID;
   CSR(CSR_IDX_MIMPID) = MIMPID;
 
-  int rd = 0;
+  int rd = 0, rs1 = 0;
   word_t src1 = 0, src2 = 0, imm = 0;
   s->dnpc = s->snpc;
 #ifdef CONFIG_FTRACE
@@ -168,7 +195,7 @@ static int decode_exec(Decode *s) {
 #define INSTPAT_INST(s) ((s)->isa.inst.val)
 #define INSTPAT_MATCH(s, name, type, ...)                                                          \
   {                                                                                                \
-    decode_operand(s, &rd, &src1, &src2, &imm, concat(TYPE_, type));                               \
+    decode_operand(s, &rd, &rs1, &src1, &src2, &imm, concat(TYPE_, type));                         \
     __VA_ARGS__;                                                                                   \
   }
 
@@ -233,19 +260,19 @@ static int decode_exec(Decode *s) {
 
   // CONTROL TRANSFERS
   // Branches
-  INSTPAT("??????? ????? ????? 000 ????? 11000 11", beq    ,    B, const bool taken = src1 == src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc));
-  INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne    ,    B, const bool taken = src1 != src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc));
-  INSTPAT("??????? ????? ????? 100 ????? 11000 11", blt    ,    B, const bool taken = (sword_t)src1 < (sword_t)src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc));
-  INSTPAT("??????? ????? ????? 101 ????? 11000 11", bge    ,    B, const bool taken = (sword_t)src1 >= (sword_t)src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc););
-  INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   ,    B, const bool taken = src1 < src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc););
-  INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu   ,    B, const bool taken = src1 >= src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, true, taken, s->dnpc););
+  INSTPAT("??????? ????? ????? 000 ????? 11000 11", beq    ,    B, const bool taken = src1 == src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, BTRACE_CONDITIONAL, taken, s->dnpc));
+  INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne    ,    B, const bool taken = src1 != src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, BTRACE_CONDITIONAL, taken, s->dnpc));
+  INSTPAT("??????? ????? ????? 100 ????? 11000 11", blt    ,    B, const bool taken = (sword_t)src1 < (sword_t)src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, BTRACE_CONDITIONAL, taken, s->dnpc));
+  INSTPAT("??????? ????? ????? 101 ????? 11000 11", bge    ,    B, const bool taken = (sword_t)src1 >= (sword_t)src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, BTRACE_CONDITIONAL, taken, s->dnpc););
+  INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   ,    B, const bool taken = src1 < src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, BTRACE_CONDITIONAL, taken, s->dnpc););
+  INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu   ,    B, const bool taken = src1 >= src2; if (taken) { s->dnpc = s->pc + imm; } write_btrace(s->pc, BTRACE_CONDITIONAL, taken, s->dnpc););
   // Jump & Link
 #ifdef CONFIG_FTRACE
-  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm; s->isa.is_jal = true; write_btrace(s->pc, false, true, s->dnpc));
-  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; s->isa.is_jalr = true; write_btrace(s->pc, false, true, s->dnpc));
+  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm; s->isa.is_jal = true; log_btrace_jal_jalr(false, rd, rs1, s->pc, s->dnpc));
+  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; s->isa.is_jalr = true; log_btrace_jal_jalr(true, rd, rs1, s->pc, s->dnpc));
 #else   
-  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm; write_btrace(s->pc, false, true, s->dnpc));
-  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; write_btrace(s->pc, false, true, s->dnpc));
+  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    ,    J, R(rd) = s->pc + 4; s->dnpc = s->pc + imm; log_btrace_jal_jalr(false, rd, rs1, s->pc, s->dnpc));
+  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   ,    I, word_t t = s->pc + 4; s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = t; log_btrace_jal_jalr(true, rd, rs1, s->pc, s->dnpc));
 #endif
   // MEMORY ORDERING
   // Sync
@@ -254,10 +281,10 @@ static int decode_exec(Decode *s) {
 
   // ENVIRONMENTAL CALLS & BREAKPOINTS
   // System
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = ecall_do_call(s->pc); write_btrace(s->pc, false, true, s->dnpc));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  ,    N, s->dnpc = ecall_do_call(s->pc); write_btrace(s->pc, BTRACE_JUMP, true, s->dnpc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak ,    N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   // Trap-Return
-  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); mret_adj_mstatus(); write_btrace(s->pc, false, true, s->dnpc));
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   ,    R, s->dnpc = CSR(CSR_IDX_MEPC); mret_adj_mstatus(); write_btrace(s->pc, BTRACE_JUMP, true, s->dnpc));
 
   // COUNTERS
   // rdcycle
@@ -301,7 +328,7 @@ static int decode_exec(Decode *s) {
 
   // clang-format on
   INSTPAT_END();
-  
+
   R(0) = 0; // reset $zero to 0
   CSR(CSR_IDX_MVENDORID) = MVENDORID;
   CSR(CSR_IDX_MARCHID) = MARCHID;

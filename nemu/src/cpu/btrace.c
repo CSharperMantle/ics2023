@@ -46,13 +46,12 @@ void init_btrace(const char *path) {
   setbuf(file_btrace, NULL);
 }
 
-void write_btrace(word_t pc, bool is_cond, bool taken, word_t target) {
+void write_btrace(word_t pc, BTraceEntryType_t type, bool taken, word_t target) {
   if (file_btrace != NULL) {
     const BTraceEntry_t entry = {
         .pc.as_word_t = pc,
         .target.as_word_t = target,
-        .is_branch = true,
-        .is_cond = is_cond,
+        .type = type,
         .taken = taken,
     };
     fwrite(&entry, sizeof entry, 1, file_btrace);
