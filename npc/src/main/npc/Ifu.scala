@@ -59,9 +59,9 @@ class Ifu extends Module {
   y := MuxLookup(y, S_Idle)(
     Seq(
       S_Idle    -> S_ReadReq,
-      S_ReadReq -> Mux(io.rReq.ready, S_Read, S_ReadReq),
-      S_Read    -> Mux(io.rResp.valid, S_Done, S_Read),
-      S_Done    -> Mux(flush | io.msgOut.ready, S_Idle, S_Done)
+      S_ReadReq -> MuxDontTouch(io.rReq.ready, S_Read, S_ReadReq),
+      S_Read    -> MuxDontTouch(io.rResp.valid, S_Done, S_Read),
+      S_Done    -> MuxDontTouch(flush | io.msgOut.ready, S_Idle, S_Done)
     )
   )
 

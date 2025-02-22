@@ -53,13 +53,13 @@ class Cache(val numLines: Int) extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle         -> Mux(io.req.valid, S_Query, S_Idle),
+      S_Idle         -> MuxDontTouch(io.req.valid, S_Query, S_Idle),
       S_Query        -> S_Compare,
-      S_Compare      -> Mux(lineValid, S_HitReply, S_MissReq),
-      S_HitReply     -> Mux(io.resp.ready, S_Idle, S_HitReply),
-      S_MissReq      -> Mux(io.memReq.ready, S_MissWaitResp, S_MissReq),
-      S_MissWaitResp -> Mux(io.memResp.valid, S_MissReply, S_MissWaitResp),
-      S_MissReply    -> Mux(io.resp.ready, S_Idle, S_MissReply)
+      S_Compare      -> MuxDontTouch(lineValid, S_HitReply, S_MissReq),
+      S_HitReply     -> MuxDontTouch(io.resp.ready, S_Idle, S_HitReply),
+      S_MissReq      -> MuxDontTouch(io.memReq.ready, S_MissWaitResp, S_MissReq),
+      S_MissWaitResp -> MuxDontTouch(io.memResp.valid, S_MissReply, S_MissWaitResp),
+      S_MissReply    -> MuxDontTouch(io.resp.ready, S_Idle, S_MissReply)
     )
   )
 

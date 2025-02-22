@@ -50,8 +50,8 @@ class Clint extends Module {
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle      -> Mux(io.rReq.valid, S_WaitReady, S_Idle),
-      S_WaitReady -> Mux(io.rResp.ready, S_Idle, S_WaitReady)
+      S_Idle      -> MuxDontTouch(io.rReq.valid, S_WaitReady, S_Idle),
+      S_WaitReady -> MuxDontTouch(io.rResp.ready, S_Idle, S_WaitReady)
     )
   )
 

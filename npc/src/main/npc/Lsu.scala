@@ -171,29 +171,24 @@ class Lsu extends Module {
     val S_Done     = Value
   }
   import State._
-  private val (firstAction, _) = State.safe(
-    decoder(
-      Cat(bad | alignBad, rEn, wEn),
-      TruthTable(
-        Seq(
-          "b000".BP -> S_Done.BP,
-          "b1??".BP -> S_Done.BP,
-          "b01?".BP -> S_ReadReq.BP,
-          "b001".BP -> S_WriteReq.BP
-        ),
-        S_Idle.BP
-      )
+  private val firstAction = MuxCaseDontTouch(
+    S_Idle,
+    Seq(
+      (~(bad | alignBad) & ~rEn & ~wEn) -> S_Done,
+      (bad | alignBad)                  -> S_Done,
+      rEn                               -> S_ReadReq,
+      wEn                               -> S_WriteReq
     )
   )
   private val y = RegInit(S_Idle)
   y := MuxLookup(y, S_Idle)(
     Seq(
-      S_Idle     -> Mux(io.msgIn.valid, firstAction, S_Idle),
-      S_ReadReq  -> Mux(io.rReq.ready, S_Read, S_ReadReq),
-      S_Read     -> Mux(io.rResp.valid, Mux(wEn, S_WriteReq, S_Done), S_Read),
-      S_WriteReq -> Mux(io.wReq.ready, S_Write, S_WriteReq),
-      S_Write    -> Mux(io.wResp.valid, S_Done, S_Write),
-      S_Done     -> Mux(io.msgOut.ready, S_Idle, S_Done)
+      S_Idle     -> MuxDontTouch(io.msgIn.valid, firstAction, S_Idle),
+      S_ReadReq  -> MuxDontTouch(io.rReq.ready, S_Read, S_ReadReq),
+      S_Read     -> MuxDontTouch(io.rResp.valid, MuxDontTouch(wEn, S_WriteReq, S_Done), S_Read),
+      S_WriteReq -> MuxDontTouch(io.wReq.ready, S_Write, S_WriteReq),
+      S_Write    -> MuxDontTouch(io.wResp.valid, S_Done, S_Write),
+      S_Done     -> MuxDontTouch(io.msgOut.ready, S_Idle, S_Done)
     )
   )
 
