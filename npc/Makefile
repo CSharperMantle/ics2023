@@ -3,7 +3,7 @@ BUILD_DIR = ./build
 OBJ_DIR = $(BUILD_DIR)/obj_dir
 BIN = $(BUILD_DIR)/$(TOP_NAME)
 
-PRJ_NAME = playground
+PRJ_NAME = npc
 
 
 TOP_NAME = ysyxSoCFull
