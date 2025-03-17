@@ -82,7 +82,7 @@ void close_btrace(void) {
 
 void init_btrace(const char *path) {}
 
-void write_btrace(word_t pc, bool taken) {}
+void write_btrace(word_t pc, BTraceEntryType_t type, bool taken, word_t target) {}
 
 void flush_btrace(void) {}
 
