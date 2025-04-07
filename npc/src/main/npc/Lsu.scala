@@ -223,6 +223,6 @@ class Lsu extends Module {
   io.msgOut.bits.csrWbEn := io.msgIn.bits.csrWbEn
   io.msgOut.bits.excpAdj := io.msgIn.bits.excpAdj
 
-  io.msgIn.ready  := y === S_Idle & ~io.msgIn.valid
+  io.msgIn.ready  := y === S_Idle
   io.msgOut.valid := y === S_Done
 }
