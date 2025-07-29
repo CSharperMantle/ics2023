@@ -10,7 +10,7 @@ import mill.bsp._
 
 object npc extends SbtModule with ScalafmtModule { m =>
   override def millSourcePath = super.millSourcePath / os.up / "src"
-  override def scalaVersion   = "2.13.14"
+  override def scalaVersion   = "2.13.16"
   override def scalacOptions = Seq(
     "-language:reflectiveCalls",
     "-deprecation",
@@ -21,10 +21,10 @@ object npc extends SbtModule with ScalafmtModule { m =>
     super.sources() ++ Seq(PathRef(this.millSourcePath / "main"))
   }
   override def ivyDeps = Agg(
-    ivy"org.chipsalliance::chisel:7.0.0-M2"
+    ivy"org.chipsalliance::chisel:7.0.0-RC3"
   )
   override def scalacPluginIvyDeps = Agg(
-    ivy"org.chipsalliance:::chisel-plugin:7.0.0-M2"
+    ivy"org.chipsalliance:::chisel-plugin:7.0.0-RC3"
   )
 
   object test extends SbtTests with TestModule.ScalaTest with ScalafmtModule {

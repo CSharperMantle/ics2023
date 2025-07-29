@@ -44,3 +44,6 @@ test_run_dir/
 .history/
 # Built Visual Studio Code Extensions
 *.vsix
+
+!/mill
+!/mill.bat

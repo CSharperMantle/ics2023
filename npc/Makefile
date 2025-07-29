@@ -59,7 +59,7 @@ CXXFLAGS += -DTOP_NAME="\"V$(TOP_NAME)\"" -g -std=gnu++14
 $(VSRCS): $(SCALA_SRCS)
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
-	mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
+	./mill -i $(PRJ_NAME).runMain Elaborate --target-dir $(BUILD_DIR)
 	./script/remove_f.py $(VSRCS)
 
 $(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) $(HEADERS)
@@ -70,18 +70,18 @@ $(BIN): $(VSRCS) $(SOC_TOP_VSRC) $(SOC_PERIPH_VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 		$(SOC_INCFLAGS) --Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 
 test:
-	mill -i $(PRJ_NAME).test
+	./mill -i $(PRJ_NAME).test
 
 verilog: $(VSRCS)
 
 help:
-	mill -i $(PRJ_NAME).runMain Elaborate --help
+	./mill -i $(PRJ_NAME).runMain Elaborate --help
 
 reformat:
-	mill -i __.reformat
+	./mill -i __.reformat
 
 checkformat:
-	mill -i __.checkFormat
+	./mill -i __.checkFormat
 
 clean:
 	-rm -rf $(BUILD_DIR)
